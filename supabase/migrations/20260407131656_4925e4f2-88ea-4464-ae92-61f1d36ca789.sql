@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN is_beginner boolean NOT NULL DEFAULT true;

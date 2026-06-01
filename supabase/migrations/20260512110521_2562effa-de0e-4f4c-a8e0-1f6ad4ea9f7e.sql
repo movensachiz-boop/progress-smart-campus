@@ -1,0 +1,1 @@
+UPDATE public.profiles SET form = '5', stream = 'Commercials', updated_at = now() WHERE form = '1' AND stream ILIKE 'blue';

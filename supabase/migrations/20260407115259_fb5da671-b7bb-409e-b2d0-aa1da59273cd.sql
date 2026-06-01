@@ -1,0 +1,1 @@
+DELETE FROM public.device_sessions WHERE user_id = '8e7fa742-cdad-4ef1-814e-d0b24ee44b52';
