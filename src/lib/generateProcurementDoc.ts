@@ -181,7 +181,10 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
   // Signatures
   y = Math.max(y + 10, ph - 50);
   const colW = (pw - 2 * margin) / 3;
-  ["Prepared By", "Approved By", "Received / Issued By"].forEach((label, i) => {
+  const sigLabels = data.docType === "PAYMENT VOUCHER"
+    ? ["Paid By (Handover)", "Received By", "Authorized By"]
+    : ["Prepared By", "Approved By", "Received / Issued By"];
+  sigLabels.forEach((label, i) => {
     const x = margin + i * colW + 5;
     doc.setDrawColor(120, 120, 120);
     doc.line(x, y, x + colW - 10, y);
