@@ -211,6 +211,7 @@ export type Database = {
           item_name: string
           learning_area: string | null
           notes: string | null
+          residency: string
           returning_only: boolean
           sort_order: number
           updated_at: string
@@ -228,6 +229,7 @@ export type Database = {
           item_name: string
           learning_area?: string | null
           notes?: string | null
+          residency?: string
           returning_only?: boolean
           sort_order?: number
           updated_at?: string
@@ -245,6 +247,7 @@ export type Database = {
           item_name?: string
           learning_area?: string | null
           notes?: string | null
+          residency?: string
           returning_only?: boolean
           sort_order?: number
           updated_at?: string
@@ -508,6 +511,60 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_vouchers: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          method: string
+          notes: string | null
+          paid_by: string
+          paid_to: string
+          payment_date: string
+          purchase_order_id: string | null
+          received_by: string
+          supplier_name: string | null
+          updated_at: string
+          voucher_number: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          paid_by: string
+          paid_to: string
+          payment_date?: string
+          purchase_order_id?: string | null
+          received_by: string
+          supplier_name?: string | null
+          updated_at?: string
+          voucher_number?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          paid_by?: string
+          paid_to?: string
+          payment_date?: string
+          purchase_order_id?: string | null
+          received_by?: string
+          supplier_name?: string | null
+          updated_at?: string
+          voucher_number?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -603,6 +660,7 @@ export type Database = {
           is_beginner: boolean
           last_name: string
           registration_number: string
+          residency: string
           status: string
           stream: string | null
           updated_at: string
@@ -621,6 +679,7 @@ export type Database = {
           is_beginner?: boolean
           last_name: string
           registration_number: string
+          residency?: string
           status?: string
           stream?: string | null
           updated_at?: string
@@ -639,6 +698,7 @@ export type Database = {
           is_beginner?: boolean
           last_name?: string
           registration_number?: string
+          residency?: string
           status?: string
           stream?: string | null
           updated_at?: string

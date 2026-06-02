@@ -9,7 +9,7 @@ export interface ProcurementLineItem {
 }
 
 export interface ProcurementDocData {
-  docType: "REQUISITION" | "PURCHASE ORDER" | "GOODS RECEIVED NOTE";
+  docType: "REQUISITION" | "PURCHASE ORDER" | "GOODS RECEIVED NOTE" | "PAYMENT VOUCHER";
   number: string;
   date: string;
   currency?: string;
@@ -23,6 +23,11 @@ export interface ProcurementDocData {
   // GRN
   receivedBy?: string;
   poNumber?: string;
+  // Payment Voucher
+  paidTo?: string;
+  paidBy?: string;
+  paymentMethod?: string;
+  amount?: number;
   // Common
   items: ProcurementLineItem[];
   notes?: string;
@@ -87,6 +92,10 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
     if (data.purpose) meta.push(["Purpose", data.purpose, "", ""]);
   } else if (data.docType === "PURCHASE ORDER") {
     meta.push(["Supplier", data.supplierName || "—", "Expected Delivery", data.expectedDelivery || "—"]);
+  } else if (data.docType === "PAYMENT VOUCHER") {
+    meta.push(["Paid To", data.paidTo || "—", "Related PO", data.poNumber || "—"]);
+    meta.push(["Paid By (Handover)", data.paidBy || "—", "Received By", data.receivedBy || "—"]);
+    meta.push(["Method", (data.paymentMethod || "Cash").toString().toUpperCase(), "Amount", `${data.currency || "USD"} ${Number(data.amount || 0).toFixed(2)}`]);
   } else {
     meta.push(["Supplier", data.supplierName || "—", "Received By", data.receivedBy || "—"]);
     if (data.poNumber) meta.push(["Related PO", data.poNumber, "", ""]);
@@ -172,7 +181,10 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
   // Signatures
   y = Math.max(y + 10, ph - 50);
   const colW = (pw - 2 * margin) / 3;
-  ["Prepared By", "Approved By", "Received / Issued By"].forEach((label, i) => {
+  const sigLabels = data.docType === "PAYMENT VOUCHER"
+    ? ["Paid By (Handover)", "Received By", "Authorized By"]
+    : ["Prepared By", "Approved By", "Received / Issued By"];
+  sigLabels.forEach((label, i) => {
     const x = margin + i * colW + 5;
     doc.setDrawColor(120, 120, 120);
     doc.line(x, y, x + colW - 10, y);

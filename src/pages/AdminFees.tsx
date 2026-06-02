@@ -25,12 +25,14 @@ interface FeeItem {
   notes: string | null;
   is_active: boolean;
   sort_order: number;
+  residency: string;
 }
 
 const CATEGORIES = ["fees", "uniforms", "books", "stationery"];
 const GENDERS = ["all", "boys", "girls"];
 const FORM_OPTIONS = ["1", "2", "3", "4", "5", "6"];
 const LEARNING_AREAS = ["Sciences", "Commercials", "Arts"];
+const RESIDENCIES = ["all", "day", "boarder"];
 
 export default function AdminFees() {
   const [items, setItems] = useState<FeeItem[]>([]);
@@ -49,6 +51,7 @@ export default function AdminFees() {
     amount: 0,
     notes: "",
     sort_order: 0,
+    residency: "all",
   });
 
   const fetchItems = async () => {
@@ -66,7 +69,7 @@ export default function AdminFees() {
 
   const openAdd = () => {
     setEditItem(null);
-    setForm({ item_name: "", category: "fees", form_levels: [], learning_area: "", gender: "all", amount: 0, notes: "", sort_order: 0 });
+    setForm({ item_name: "", category: "fees", form_levels: [], learning_area: "", gender: "all", amount: 0, notes: "", sort_order: 0, residency: "all" });
     setDialogOpen(true);
   };
 
@@ -81,6 +84,7 @@ export default function AdminFees() {
       amount: item.amount,
       notes: item.notes || "",
       sort_order: item.sort_order,
+      residency: item.residency || "all",
     });
     setDialogOpen(true);
   };
@@ -99,6 +103,7 @@ export default function AdminFees() {
       amount: form.amount,
       notes: form.notes || null,
       sort_order: form.sort_order,
+      residency: form.residency,
     };
 
     if (editItem) {
@@ -243,6 +248,17 @@ export default function AdminFees() {
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Amount (USD)</Label><Input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: Number(e.target.value) }))} /></div>
               <div><Label>Sort Order</Label><Input type="number" value={form.sort_order} onChange={e => setForm(p => ({ ...p, sort_order: Number(e.target.value) }))} /></div>
+            </div>
+            <div>
+              <Label>Residency (fees only)</Label>
+              <Select value={form.residency} onValueChange={v => setForm(p => ({ ...p, residency: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All (Day & Boarder)</SelectItem>
+                  <SelectItem value="day">Day Scholars Only</SelectItem>
+                  <SelectItem value="boarder">Boarders Only</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} /></div>
           </div>

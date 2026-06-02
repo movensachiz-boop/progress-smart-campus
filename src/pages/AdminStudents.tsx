@@ -82,6 +82,7 @@ const AdminStudents = () => {
   const [bulkStream, setBulkStream] = useState("");
   const [bulkGender, setBulkGender] = useState("male");
   const [bulkIsBeginner, setBulkIsBeginner] = useState(true);
+  const [bulkResidency, setBulkResidency] = useState<"day" | "boarder">("day");
   const [bulkNames, setBulkNames] = useState("");
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkScanning, setBulkScanning] = useState(false);
@@ -143,6 +144,7 @@ const AdminStudents = () => {
   const [guardianPhone, setGuardianPhone] = useState("");
   const [isBeginner, setIsBeginner] = useState(true);
   const [gender, setGender] = useState("male");
+  const [residency, setResidency] = useState<"day" | "boarder">("day");
 
   // Pull live class definitions so any class edits made in Admin → Classes
   // appear here in registration as well.
@@ -268,6 +270,7 @@ const AdminStudents = () => {
           guardianName: guardianName.trim(),
           guardianPhone: guardianPhone.trim(),
           isBeginner,
+          residency,
         },
       });
 
@@ -313,6 +316,7 @@ const AdminStudents = () => {
       setGuardianName("");
       setGuardianPhone("");
       setIsBeginner(true);
+      setResidency("day");
       setOpen(false);
       fetchStudents();
     } catch {
@@ -354,6 +358,7 @@ const AdminStudents = () => {
             stream: bulkStream,
             gender: bulkGender,
             isBeginner: bulkIsBeginner,
+            residency: bulkResidency,
           },
         });
         if (error || data?.error) failed++;
@@ -939,6 +944,9 @@ const AdminStudents = () => {
                           {s.is_beginner && (
                             <Badge variant="secondary" className="text-xs">Beginner</Badge>
                           )}
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {(s as any).residency === "boarder" ? "Boarder" : "Day"}
+                          </Badge>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -1097,10 +1105,20 @@ const AdminStudents = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center space-x-2 pt-7">
-                <Checkbox id="isBeginner" checked={isBeginner} onCheckedChange={(v) => setIsBeginner(!!v)} />
-                <Label htmlFor="isBeginner" className="text-sm font-normal">Beginner / New / Transferred</Label>
+              <div className="space-y-2">
+                <Label>Residency *</Label>
+                <Select value={residency} onValueChange={(v) => setResidency(v as "day" | "boarder")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">Day Scholar</SelectItem>
+                    <SelectItem value="boarder">Boarder</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="isBeginner" checked={isBeginner} onCheckedChange={(v) => setIsBeginner(!!v)} />
+              <Label htmlFor="isBeginner" className="text-sm font-normal">Beginner / New / Transferred</Label>
             </div>
             <div className="rounded-md bg-secondary p-3">
               <p className="text-xs text-muted-foreground">Registration number will be auto-generated (e.g. K0023T)</p>
@@ -1362,9 +1380,21 @@ const AdminStudents = () => {
                 </Select>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox id="bulkBeginner" checked={bulkIsBeginner} onCheckedChange={(v) => setBulkIsBeginner(!!v)} />
-              <Label htmlFor="bulkBeginner" className="text-sm font-normal">Mark all as Beginner / New / Transferred</Label>
+            <div className="grid grid-cols-2 gap-3 items-end">
+              <div className="space-y-2">
+                <Label>Residency *</Label>
+                <Select value={bulkResidency} onValueChange={(v) => setBulkResidency(v as "day" | "boarder")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">Day Scholars</SelectItem>
+                    <SelectItem value="boarder">Boarders</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center space-x-2 pt-7">
+                <Checkbox id="bulkBeginner" checked={bulkIsBeginner} onCheckedChange={(v) => setBulkIsBeginner(!!v)} />
+                <Label htmlFor="bulkBeginner" className="text-sm font-normal">Mark all as Beginner / New / Transferred</Label>
+              </div>
             </div>
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">

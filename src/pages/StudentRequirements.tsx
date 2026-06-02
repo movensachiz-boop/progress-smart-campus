@@ -16,6 +16,7 @@ interface FeeItem {
   gender: string;
   amount: number;
   notes: string | null;
+  residency?: string;
 }
 
 const categoryIcons: Record<string, any> = {
@@ -37,6 +38,7 @@ export default function StudentRequirements() {
   const [loading, setLoading] = useState(true);
   const [selectedForm, setSelectedForm] = useState("1");
   const [selectedArea, setSelectedArea] = useState("all");
+  const [selectedResidency, setSelectedResidency] = useState<"day" | "boarder">("day");
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -57,6 +59,7 @@ export default function StudentRequirements() {
     if (!item.form_levels.includes(selectedForm)) return false;
     if (isUpperForm && item.learning_area && selectedArea !== "all" && item.learning_area !== selectedArea) return false;
     if (!isUpperForm && item.learning_area) return false;
+    if (item.category === "fees" && item.residency && item.residency !== "all" && item.residency !== selectedResidency) return false;
     return true;
   });
 
@@ -113,6 +116,13 @@ export default function StudentRequirements() {
               </SelectContent>
             </Select>
           )}
+          <Select value={selectedResidency} onValueChange={v => setSelectedResidency(v as "day" | "boarder")}>
+            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="day">Day Scholar</SelectItem>
+              <SelectItem value="boarder">Boarder</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Total fees card */}

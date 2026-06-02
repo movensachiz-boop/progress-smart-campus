@@ -24,6 +24,7 @@ interface Profile {
   gender: string;
   balance: number;
   is_beginner: boolean;
+  residency: string;
 }
 
 interface Payment {
@@ -49,7 +50,7 @@ const StudentDashboard = () => {
       // Load profile
       const { data: prof } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, registration_number, form, stream, gender, balance, is_beginner")
+        .select("id, first_name, last_name, registration_number, form, stream, gender, balance, is_beginner, residency")
         .eq("user_id", user.id)
         .maybeSingle();
       if (!prof) return;
@@ -68,17 +69,16 @@ const StudentDashboard = () => {
           const stream = prof.stream || "";
           const studentGender = prof.gender === "female" ? "girls" : "boys";
           const isBeginner = prof.is_beginner;
+          const residency = prof.residency || "day";
           const learningArea = ["Sciences", "Commercials", "Arts"].includes(stream) ? stream : null;
 
           const applicable = feeItems.filter((item: any) => {
-            // Only include beginner-specific categories (uniforms, books, stationery) for beginners
             if (item.category !== "fees" && !isBeginner) return false;
-            // Skip beginner_only items for returning students, skip returning_only items for beginners
             if (item.beginner_only && !isBeginner) return false;
             if (item.returning_only && isBeginner) return false;
             if (!item.form_levels.includes(formNum)) return false;
-            // Filter by gender
             if (item.gender !== "all" && item.gender !== studentGender) return false;
+            if (item.residency && item.residency !== "all" && item.residency !== residency) return false;
             if (item.learning_area) {
               return item.learning_area === learningArea;
             }
