@@ -9,7 +9,7 @@ export interface ProcurementLineItem {
 }
 
 export interface ProcurementDocData {
-  docType: "REQUISITION" | "PURCHASE ORDER" | "GOODS RECEIVED NOTE";
+  docType: "REQUISITION" | "PURCHASE ORDER" | "GOODS RECEIVED NOTE" | "PAYMENT VOUCHER";
   number: string;
   date: string;
   currency?: string;
@@ -23,6 +23,11 @@ export interface ProcurementDocData {
   // GRN
   receivedBy?: string;
   poNumber?: string;
+  // Payment Voucher
+  paidTo?: string;
+  paidBy?: string;
+  paymentMethod?: string;
+  amount?: number;
   // Common
   items: ProcurementLineItem[];
   notes?: string;
