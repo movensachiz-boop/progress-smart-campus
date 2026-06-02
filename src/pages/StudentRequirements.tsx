@@ -116,6 +116,13 @@ export default function StudentRequirements() {
               </SelectContent>
             </Select>
           )}
+          <Select value={selectedResidency} onValueChange={v => setSelectedResidency(v as "day" | "boarder")}>
+            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="day">Day Scholar</SelectItem>
+              <SelectItem value="boarder">Boarder</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Total fees card */}
