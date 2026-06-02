@@ -1054,6 +1054,238 @@ function SuppliersTab({ data, onChange }: { data: Supplier[]; onChange: () => vo
   );
 }
 
+/* ──────── Payment Vouchers ──────── */
+function VouchersTab({ data, pos, onChange }: { data: PaymentVoucher[]; pos: PurchaseOrder[]; onChange: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [poId, setPoId] = useState("");
+  const [form, setForm] = useState({
+    paid_to: "",
+    paid_by: "",
+    received_by: "",
+    amount: 0,
+    currency: "USD",
+    method: "cash",
+    payment_date: new Date().toISOString().slice(0, 10),
+    notes: "",
+  });
+
+  const reset = () => {
+    setPoId("");
+    setForm({ paid_to: "", paid_by: "", received_by: "", amount: 0, currency: "USD", method: "cash", payment_date: new Date().toISOString().slice(0, 10), notes: "" });
+  };
+
+  const onPickPO = (id: string) => {
+    setPoId(id);
+    const p = pos.find((x) => x.id === id);
+    if (p) {
+      setForm((f) => ({
+        ...f,
+        paid_to: p.supplier_name || f.paid_to,
+        amount: Number(p.total_amount) || f.amount,
+        currency: p.currency || f.currency,
+      }));
+    }
+  };
+
+  const submit = async () => {
+    if (!form.paid_to.trim() || !form.paid_by.trim() || !form.received_by.trim()) {
+      toast({ title: "Paid To, Paid By and Received By are required", variant: "destructive" });
+      return;
+    }
+    if (!form.amount || form.amount <= 0) {
+      toast({ title: "Amount must be greater than zero", variant: "destructive" });
+      return;
+    }
+    const po = pos.find((p) => p.id === poId);
+    const { error } = await supabase.from("payment_vouchers").insert({
+      purchase_order_id: poId || null,
+      supplier_name: po?.supplier_name || form.paid_to,
+      paid_to: form.paid_to,
+      paid_by: form.paid_by,
+      received_by: form.received_by,
+      amount: form.amount,
+      currency: form.currency,
+      method: form.method,
+      payment_date: form.payment_date,
+      notes: form.notes || null,
+    });
+    if (error) return toast({ title: error.message, variant: "destructive" });
+    toast({ title: "Payment voucher created" });
+    setOpen(false);
+    reset();
+    onChange();
+  };
+
+  const downloadPDF = (v: PaymentVoucher) => {
+    const po = pos.find((p) => p.id === v.purchase_order_id);
+    return generateProcurementDoc({
+      docType: "PAYMENT VOUCHER",
+      number: v.voucher_number,
+      date: new Date(v.payment_date).toLocaleDateString(),
+      currency: v.currency,
+      paidTo: v.paid_to,
+      paidBy: v.paid_by,
+      receivedBy: v.received_by,
+      paymentMethod: v.method,
+      amount: Number(v.amount),
+      poNumber: po?.po_number,
+      supplierName: v.supplier_name,
+      items: [
+        {
+          description: po
+            ? `Payment for Purchase Order ${po.po_number}${po.supplier_name ? ` — ${po.supplier_name}` : ""}`
+            : `Payment to ${v.paid_to}`,
+          quantity: 1,
+          unit: "lot",
+          unit_price: Number(v.amount),
+        },
+      ],
+      notes: v.notes,
+    });
+  };
+
+  const remove = async (v: PaymentVoucher) => {
+    if (!confirm(`Delete ${v.voucher_number}?`)) return;
+    await supabase.from("payment_vouchers").delete().eq("id", v.id);
+    onChange();
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Payment Vouchers</CardTitle>
+          <CardDescription>Record money handover for purchase orders — who paid out and who received</CardDescription>
+        </div>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+          <DialogTrigger asChild><Button><Plus size={16} /> New Voucher</Button></DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>New Payment Voucher</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Related Purchase Order (optional)</Label>
+                <Select value={poId} onValueChange={onPickPO}>
+                  <SelectTrigger><SelectValue placeholder="Select PO to auto-fill" /></SelectTrigger>
+                  <SelectContent>
+                    {pos.length === 0 && <div className="px-3 py-2 text-xs text-muted-foreground">No purchase orders</div>}
+                    {pos.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.po_number} — {p.supplier_name} — {p.currency} {Number(p.total_amount).toFixed(2)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Paid To (Payee / Supplier) *</Label>
+                  <Input value={form.paid_to} onChange={(e) => setForm({ ...form, paid_to: e.target.value })} placeholder="Supplier or person being paid" />
+                </div>
+                <div>
+                  <Label>Paid By (Handover) *</Label>
+                  <Input value={form.paid_by} onChange={(e) => setForm({ ...form, paid_by: e.target.value })} placeholder="Staff who handed over the money" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Received By *</Label>
+                  <Input value={form.received_by} onChange={(e) => setForm({ ...form, received_by: e.target.value })} placeholder="Person who received the money" />
+                </div>
+                <div>
+                  <Label>Payment Date</Label>
+                  <Input type="date" value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label>Amount *</Label>
+                  <Input type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <Label>Currency</Label>
+                  <Select value={form.currency} onValueChange={(v) => setForm({ ...form, currency: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="ZWL">ZWL</SelectItem>
+                      <SelectItem value="ZAR">ZAR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Method</Label>
+                  <Select value={form.method} onValueChange={(v) => setForm({ ...form, method: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                      <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Notes</Label>
+                <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Reference, cheque number, etc." />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={submit}><Receipt size={14} /> Save Voucher</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Voucher #</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>PO #</TableHead>
+                <TableHead>Paid To</TableHead>
+                <TableHead>Paid By</TableHead>
+                <TableHead>Received By</TableHead>
+                <TableHead>Method</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.length === 0 && (
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No payment vouchers yet</TableCell></TableRow>
+              )}
+              {data.map((v) => {
+                const po = pos.find((p) => p.id === v.purchase_order_id);
+                return (
+                  <TableRow key={v.id}>
+                    <TableCell className="font-mono text-xs">{v.voucher_number}</TableCell>
+                    <TableCell>{new Date(v.payment_date).toLocaleDateString()}</TableCell>
+                    <TableCell className="font-mono text-xs">{po?.po_number || "—"}</TableCell>
+                    <TableCell>{v.paid_to}</TableCell>
+                    <TableCell>{v.paid_by}</TableCell>
+                    <TableCell>{v.received_by}</TableCell>
+                    <TableCell className="capitalize text-xs">{v.method.replace(/_/g, " ")}</TableCell>
+                    <TableCell className="text-right font-semibold">{v.currency} {Number(v.amount).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="outline" onClick={() => downloadPDF(v)}><FileDown size={14} /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => remove(v)}><Trash2 size={14} /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-800",
