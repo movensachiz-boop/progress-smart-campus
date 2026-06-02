@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     const { action, ...payload } = await req.json();
 
     if (action === "create_student") {
-      const { firstName, lastName, form, stream, gender, guardianName, guardianPhone, registrationNumber, isBeginner } = payload;
+      const { firstName, lastName, form, stream, gender, guardianName, guardianPhone, registrationNumber, isBeginner, residency } = payload;
 
       if (!firstName || !lastName) {
         return new Response(JSON.stringify({ error: "First name and last name are required" }), {
@@ -114,6 +114,7 @@ Deno.serve(async (req) => {
         guardian_phone: guardianPhone || null,
         claimed: false,
         is_beginner: isBeginner !== undefined ? isBeginner : true,
+        residency: residency === "boarder" ? "boarder" : "day",
       }).select().single();
 
       if (profileError) {
