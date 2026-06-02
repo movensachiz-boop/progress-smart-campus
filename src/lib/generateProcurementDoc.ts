@@ -92,6 +92,10 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
     if (data.purpose) meta.push(["Purpose", data.purpose, "", ""]);
   } else if (data.docType === "PURCHASE ORDER") {
     meta.push(["Supplier", data.supplierName || "—", "Expected Delivery", data.expectedDelivery || "—"]);
+  } else if (data.docType === "PAYMENT VOUCHER") {
+    meta.push(["Paid To", data.paidTo || "—", "Related PO", data.poNumber || "—"]);
+    meta.push(["Paid By (Handover)", data.paidBy || "—", "Received By", data.receivedBy || "—"]);
+    meta.push(["Method", (data.paymentMethod || "Cash").toString().toUpperCase(), "Amount", `${data.currency || "USD"} ${Number(data.amount || 0).toFixed(2)}`]);
   } else {
     meta.push(["Supplier", data.supplierName || "—", "Received By", data.receivedBy || "—"]);
     if (data.poNumber) meta.push(["Related PO", data.poNumber, "", ""]);
