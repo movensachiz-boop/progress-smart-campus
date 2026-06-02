@@ -944,6 +944,9 @@ const AdminStudents = () => {
                           {s.is_beginner && (
                             <Badge variant="secondary" className="text-xs">Beginner</Badge>
                           )}
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {(s as any).residency === "boarder" ? "Boarder" : "Day"}
+                          </Badge>
                         </div>
                       </TableCell>
                       <TableCell>
