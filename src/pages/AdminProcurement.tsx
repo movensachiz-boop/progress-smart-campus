@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, ShoppingCart, Pencil } from "lucide-react";
+import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, ShoppingCart, Pencil, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcurementDoc";
@@ -69,6 +69,21 @@ interface GRN {
   total_amount?: number;
   currency?: string;
   receipt_urls?: string[];
+}
+interface PaymentVoucher {
+  id: string;
+  voucher_number: string;
+  purchase_order_id?: string;
+  supplier_name?: string;
+  paid_to: string;
+  paid_by: string;
+  received_by: string;
+  amount: number;
+  currency: string;
+  method: string;
+  payment_date: string;
+  notes?: string;
+  created_at: string;
 }
 
 const emptyItem = (): Item => ({ description: "", quantity: 1, unit_price: 0, unit: "pcs" });
@@ -188,20 +203,23 @@ export default function AdminProcurement() {
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [pos, setPOs] = useState<PurchaseOrder[]>([]);
   const [grns, setGRNs] = useState<GRN[]>([]);
+  const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
-    const [s, r, p, g] = await Promise.all([
+    const [s, r, p, g, v] = await Promise.all([
       supabase.from("suppliers").select("*").order("name"),
       supabase.from("requisitions").select("*").order("created_at", { ascending: false }),
       supabase.from("purchase_orders").select("*").order("created_at", { ascending: false }),
       supabase.from("goods_received").select("*").order("created_at", { ascending: false }),
+      supabase.from("payment_vouchers").select("*").order("created_at", { ascending: false }),
     ]);
     if (s.data) setSuppliers(s.data as any);
     if (r.data) setRequisitions(r.data as any);
     if (p.data) setPOs(p.data as any);
     if (g.data) setGRNs(g.data as any);
+    if (v.data) setVouchers(v.data as any);
     setLoading(false);
   };
 
@@ -236,10 +254,11 @@ export default function AdminProcurement() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-4 w-full md:w-auto">
+          <TabsList className="grid grid-cols-5 w-full md:w-auto">
             <TabsTrigger value="requisitions">Requisitions</TabsTrigger>
             <TabsTrigger value="pos">Purchase Orders</TabsTrigger>
             <TabsTrigger value="grn">Goods Received</TabsTrigger>
+            <TabsTrigger value="vouchers">Payment Vouchers</TabsTrigger>
             <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           </TabsList>
 
@@ -251,6 +270,9 @@ export default function AdminProcurement() {
           </TabsContent>
           <TabsContent value="grn" className="mt-4">
             <GRNTab data={grns} pos={pos} onChange={fetchAll} />
+          </TabsContent>
+          <TabsContent value="vouchers" className="mt-4">
+            <VouchersTab data={vouchers} pos={pos} onChange={fetchAll} />
           </TabsContent>
           <TabsContent value="suppliers" className="mt-4">
             <SuppliersTab data={suppliers} onChange={fetchAll} />
