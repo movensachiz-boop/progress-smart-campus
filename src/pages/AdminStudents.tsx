@@ -62,6 +62,13 @@ const AdminStudents = () => {
   const [editStudent, setEditStudent] = useState<Student | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  const [editForm, setEditForm] = useState("");
+  const [editStream, setEditStream] = useState("");
+  const [editGender, setEditGender] = useState("male");
+  const [editResidency, setEditResidency] = useState<"day" | "boarder">("day");
+  const [editIsBeginner, setEditIsBeginner] = useState(true);
+  const [editGuardianName, setEditGuardianName] = useState("");
+  const [editGuardianPhone, setEditGuardianPhone] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -496,6 +503,13 @@ const AdminStudents = () => {
     setEditStudent(s);
     setEditFirstName(s.first_name || "");
     setEditLastName(s.last_name || "");
+    setEditForm(s.form || "");
+    setEditStream(s.stream || "");
+    setEditGender(s.gender || "male");
+    setEditResidency(((s as any).residency === "boarder" ? "boarder" : "day"));
+    setEditIsBeginner(!!s.is_beginner);
+    setEditGuardianName(s.guardian_name || "");
+    setEditGuardianPhone(s.guardian_phone || "");
     setEditOpen(true);
   };
 
@@ -511,13 +525,23 @@ const AdminStudents = () => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ first_name: fn, last_name: ln })
+        .update({
+          first_name: fn,
+          last_name: ln,
+          form: editForm || null,
+          stream: editStream || null,
+          gender: editGender,
+          residency: editResidency,
+          is_beginner: editIsBeginner,
+          guardian_name: editGuardianName.trim() || null,
+          guardian_phone: editGuardianPhone.trim() || null,
+        })
         .eq("id", editStudent.id);
       if (error) {
         toast({ title: "Update Failed", description: error.message, variant: "destructive" });
         return;
       }
-      toast({ title: "Student Updated", description: `Name changed to ${fn} ${ln}.` });
+      toast({ title: "Student Updated", description: `${fn} ${ln} saved.` });
       setEditOpen(false);
       setEditStudent(null);
       fetchStudents();
@@ -527,6 +551,7 @@ const AdminStudents = () => {
       setEditSaving(false);
     }
   };
+
 
   const handleSendNotification = async (student: Student) => {
     if (!student.guardian_phone) {
@@ -929,7 +954,7 @@ const AdminStudents = () => {
                           {duplicateIds.has(s.id) && (
                             <Badge variant="destructive" className="text-[10px]" title="Possible duplicate (matching name or registration number)">Duplicate</Badge>
                           )}
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEditStudent(s)} title="Edit name">
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEditStudent(s)} title="Edit student">
                             <Pencil size={12} />
                           </Button>
                         </div>
@@ -1135,23 +1160,85 @@ const AdminStudents = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Student Name Dialog */}
+      {/* Edit Student Dialog */}
       <Dialog open={editOpen} onOpenChange={(v) => { if (!editSaving) setEditOpen(v); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Student Name</DialogTitle>
+            <DialogTitle>Edit Student</DialogTitle>
             <DialogDescription>
               {editStudent ? `Reg No: ${editStudent.registration_number}` : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>First Name *</Label>
-              <Input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>First Name *</Label>
+                <Input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Name *</Label>
+                <Input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Last Name *</Label>
-              <Input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Form</Label>
+                <Select value={editForm} onValueChange={(v) => { setEditForm(v); setEditStream(""); }}>
+                  <SelectTrigger><SelectValue placeholder="Select form" /></SelectTrigger>
+                  <SelectContent>
+                    {["1","2","3","4","5","6"].map((f) => (
+                      <SelectItem key={f} value={f}>Form {f}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Stream / Learning Area</Label>
+                <Select value={editStream} onValueChange={setEditStream} disabled={!editForm}>
+                  <SelectTrigger><SelectValue placeholder="Select stream" /></SelectTrigger>
+                  <SelectContent>
+                    {streamsForForm(editForm).map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Gender</Label>
+                <Select value={editGender} onValueChange={setEditGender}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Residency</Label>
+                <Select value={editResidency} onValueChange={(v) => setEditResidency(v as "day" | "boarder")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">Day Scholar</SelectItem>
+                    <SelectItem value="boarder">Boarder</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Guardian Name</Label>
+                <Input value={editGuardianName} onChange={(e) => setEditGuardianName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Guardian Phone</Label>
+                <Input value={editGuardianPhone} onChange={(e) => setEditGuardianPhone(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="edit-beginner" checked={editIsBeginner} onCheckedChange={(c) => setEditIsBeginner(!!c)} />
+              <Label htmlFor="edit-beginner" className="cursor-pointer">Beginner (new student this year)</Label>
             </div>
           </div>
           <DialogFooter>
@@ -1163,6 +1250,7 @@ const AdminStudents = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Reset Password Dialog */}
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
