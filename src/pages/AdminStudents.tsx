@@ -503,6 +503,13 @@ const AdminStudents = () => {
     setEditStudent(s);
     setEditFirstName(s.first_name || "");
     setEditLastName(s.last_name || "");
+    setEditForm(s.form || "");
+    setEditStream(s.stream || "");
+    setEditGender(s.gender || "male");
+    setEditResidency(((s as any).residency === "boarder" ? "boarder" : "day"));
+    setEditIsBeginner(!!s.is_beginner);
+    setEditGuardianName(s.guardian_name || "");
+    setEditGuardianPhone(s.guardian_phone || "");
     setEditOpen(true);
   };
 
@@ -518,13 +525,23 @@ const AdminStudents = () => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ first_name: fn, last_name: ln })
+        .update({
+          first_name: fn,
+          last_name: ln,
+          form: editForm || null,
+          stream: editStream || null,
+          gender: editGender,
+          residency: editResidency,
+          is_beginner: editIsBeginner,
+          guardian_name: editGuardianName.trim() || null,
+          guardian_phone: editGuardianPhone.trim() || null,
+        })
         .eq("id", editStudent.id);
       if (error) {
         toast({ title: "Update Failed", description: error.message, variant: "destructive" });
         return;
       }
-      toast({ title: "Student Updated", description: `Name changed to ${fn} ${ln}.` });
+      toast({ title: "Student Updated", description: `${fn} ${ln} saved.` });
       setEditOpen(false);
       setEditStudent(null);
       fetchStudents();
@@ -534,6 +551,7 @@ const AdminStudents = () => {
       setEditSaving(false);
     }
   };
+
 
   const handleSendNotification = async (student: Student) => {
     if (!student.guardian_phone) {
