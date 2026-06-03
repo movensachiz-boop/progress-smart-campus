@@ -62,6 +62,13 @@ const AdminStudents = () => {
   const [editStudent, setEditStudent] = useState<Student | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  const [editForm, setEditForm] = useState("");
+  const [editStream, setEditStream] = useState("");
+  const [editGender, setEditGender] = useState("male");
+  const [editResidency, setEditResidency] = useState<"day" | "boarder">("day");
+  const [editIsBeginner, setEditIsBeginner] = useState(true);
+  const [editGuardianName, setEditGuardianName] = useState("");
+  const [editGuardianPhone, setEditGuardianPhone] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
