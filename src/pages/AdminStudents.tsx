@@ -954,7 +954,7 @@ const AdminStudents = () => {
                           {duplicateIds.has(s.id) && (
                             <Badge variant="destructive" className="text-[10px]" title="Possible duplicate (matching name or registration number)">Duplicate</Badge>
                           )}
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEditStudent(s)} title="Edit name">
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEditStudent(s)} title="Edit student">
                             <Pencil size={12} />
                           </Button>
                         </div>
