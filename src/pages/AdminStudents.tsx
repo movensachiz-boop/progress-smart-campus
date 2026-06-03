@@ -1160,23 +1160,85 @@ const AdminStudents = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Student Name Dialog */}
+      {/* Edit Student Dialog */}
       <Dialog open={editOpen} onOpenChange={(v) => { if (!editSaving) setEditOpen(v); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Student Name</DialogTitle>
+            <DialogTitle>Edit Student</DialogTitle>
             <DialogDescription>
               {editStudent ? `Reg No: ${editStudent.registration_number}` : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>First Name *</Label>
-              <Input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>First Name *</Label>
+                <Input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Name *</Label>
+                <Input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Last Name *</Label>
-              <Input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Form</Label>
+                <Select value={editForm} onValueChange={(v) => { setEditForm(v); setEditStream(""); }}>
+                  <SelectTrigger><SelectValue placeholder="Select form" /></SelectTrigger>
+                  <SelectContent>
+                    {["1","2","3","4","5","6"].map((f) => (
+                      <SelectItem key={f} value={f}>Form {f}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Stream / Learning Area</Label>
+                <Select value={editStream} onValueChange={setEditStream} disabled={!editForm}>
+                  <SelectTrigger><SelectValue placeholder="Select stream" /></SelectTrigger>
+                  <SelectContent>
+                    {streamsForForm(editForm).map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Gender</Label>
+                <Select value={editGender} onValueChange={setEditGender}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Residency</Label>
+                <Select value={editResidency} onValueChange={(v) => setEditResidency(v as "day" | "boarder")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">Day Scholar</SelectItem>
+                    <SelectItem value="boarder">Boarder</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Guardian Name</Label>
+                <Input value={editGuardianName} onChange={(e) => setEditGuardianName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Guardian Phone</Label>
+                <Input value={editGuardianPhone} onChange={(e) => setEditGuardianPhone(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="edit-beginner" checked={editIsBeginner} onCheckedChange={(c) => setEditIsBeginner(!!c)} />
+              <Label htmlFor="edit-beginner" className="cursor-pointer">Beginner (new student this year)</Label>
             </div>
           </div>
           <DialogFooter>
@@ -1188,6 +1250,7 @@ const AdminStudents = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Reset Password Dialog */}
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
