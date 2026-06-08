@@ -646,6 +646,92 @@ export type Database = {
           },
         ]
       }
+      prepaid_accounts: {
+        Row: {
+          created_at: string
+          currency: string
+          default_unit_price: number
+          id: string
+          is_active: boolean
+          item_name: string
+          notes: string | null
+          supplier_name: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          default_unit_price?: number
+          id?: string
+          is_active?: boolean
+          item_name: string
+          notes?: string | null
+          supplier_name: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          default_unit_price?: number
+          id?: string
+          is_active?: boolean
+          item_name?: string
+          notes?: string | null
+          supplier_name?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prepaid_entries: {
+        Row: {
+          account_id: string
+          amount: number
+          created_at: string
+          entry_type: string
+          id: string
+          note: string | null
+          occurred_on: string
+          quantity: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount?: number
+          created_at?: string
+          entry_type: string
+          id?: string
+          note?: string | null
+          occurred_on?: string
+          quantity?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          created_at?: string
+          entry_type?: string
+          id?: string
+          note?: string | null
+          occurred_on?: string
+          quantity?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prepaid_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "prepaid_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           balance: number
