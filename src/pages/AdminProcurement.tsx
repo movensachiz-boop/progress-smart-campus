@@ -499,6 +499,9 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                     {scanning ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                     {imageUrl ? "Re-scan" : "Scan"}
                   </Button>
+                  <Button type="button" variant="outline" onClick={() => setPhonePairOpen(true)} disabled={scanning} title="Scan QR with phone to capture from phone camera">
+                    <Smartphone size={14} /> Use Phone
+                  </Button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
