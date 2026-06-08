@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Wallet, PackageCheck, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Wallet, PackageCheck, ArrowLeft, FileDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { generatePrepaidReport } from "@/lib/generatePrepaidReport";
 
 interface PrepaidAccount {
   id: string;
