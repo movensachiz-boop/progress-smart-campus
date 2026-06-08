@@ -497,15 +497,21 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
         <div>
           <CardTitle>Pre-Requisitions</CardTitle>
           <CardDescription>Submit requests for procurement with auto-calculated totals</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => reset()}><Plus size={16} /> New Requisition</Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <Button variant="outline" onClick={downloadCombined}>
+              <FileDown size={16} /> Combined PDF ({selected.size})
+            </Button>
+          )}
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+            <DialogTrigger asChild>
+              <Button onClick={() => reset()}><Plus size={16} /> New Requisition</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? `Edit ${editing.requisition_number}` : "New Pre-Requisition"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
