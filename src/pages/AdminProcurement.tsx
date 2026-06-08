@@ -316,6 +316,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [signedPreview, setSignedPreview] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  const [phonePairOpen, setPhonePairOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
 
