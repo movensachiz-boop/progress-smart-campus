@@ -327,6 +327,24 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
   const [scanning, setScanning] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
 
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSel = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected((s) => s.size === data.length ? new Set() : new Set(data.map((r) => r.id)));
+  const downloadCombined = () => {
+    const picked = data.filter((r) => selected.has(r.id));
+    if (!picked.length) return toast({ title: "Select at least one requisition", variant: "destructive" });
+    generateCombinedRequisitions(picked.map((r) => ({
+      requisition_number: r.requisition_number,
+      created_at: r.created_at,
+      requested_by: r.requested_by,
+      department: r.department,
+      purpose: r.purpose,
+      currency: r.currency,
+      items: r.items || [],
+      notes: r.notes,
+    })));
+  };
+
   const reset = () => {
     setEditing(null);
     setForm({ requested_by: "", department: "", purpose: "", currency: "USD", notes: "" });
