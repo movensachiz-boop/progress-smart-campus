@@ -766,6 +766,7 @@ export type Database = {
           currency: string
           department: string | null
           id: string
+          image_url: string | null
           items: Json
           notes: string | null
           purpose: string | null
@@ -783,6 +784,7 @@ export type Database = {
           currency?: string
           department?: string | null
           id?: string
+          image_url?: string | null
           items?: Json
           notes?: string | null
           purpose?: string | null
@@ -800,6 +802,7 @@ export type Database = {
           currency?: string
           department?: string | null
           id?: string
+          image_url?: string | null
           items?: Json
           notes?: string | null
           purpose?: string | null
