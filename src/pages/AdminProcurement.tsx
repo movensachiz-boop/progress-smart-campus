@@ -259,11 +259,12 @@ export default function AdminProcurement() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-5 w-full md:w-auto">
+          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full md:w-auto">
             <TabsTrigger value="requisitions">Requisitions</TabsTrigger>
             <TabsTrigger value="pos">Purchase Orders</TabsTrigger>
             <TabsTrigger value="grn">Goods Received</TabsTrigger>
             <TabsTrigger value="vouchers">Payment Vouchers</TabsTrigger>
+            <TabsTrigger value="prepaid">Prepaid Accounts</TabsTrigger>
             <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           </TabsList>
 
@@ -278,6 +279,9 @@ export default function AdminProcurement() {
           </TabsContent>
           <TabsContent value="vouchers" className="mt-4">
             <VouchersTab data={vouchers} pos={pos} onChange={fetchAll} />
+          </TabsContent>
+          <TabsContent value="prepaid" className="mt-4">
+            <PrepaidAccountsTab />
           </TabsContent>
           <TabsContent value="suppliers" className="mt-4">
             <SuppliersTab data={suppliers} onChange={fetchAll} />
