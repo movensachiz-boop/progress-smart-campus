@@ -362,9 +362,9 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
       setImageUrl(path);
       setSignedPreview(await signUrl(path));
 
-      // OCR
+      // OCR — pass storage path so function fetches image server-side (avoids large request body)
       const { data, error } = await supabase.functions.invoke("extract-requisition", {
-        body: { imageBase64: dataUrl },
+        body: { imagePath: path },
       });
       if (error) {
         toast({ title: "OCR failed", description: error.message, variant: "destructive" });
