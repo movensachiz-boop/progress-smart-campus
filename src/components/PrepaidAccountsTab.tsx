@@ -94,12 +94,34 @@ export default function PrepaidAccountsTab() {
               Track upfront payments to suppliers (e.g. bread) and reconcile against goods delivered.
             </CardDescription>
           </div>
-          <Dialog open={openNew} onOpenChange={setOpenNew}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus size={16} className="mr-1" /> New Account</Button>
-            </DialogTrigger>
-            <NewAccountDialog onSaved={() => { setOpenNew(false); fetchAll(); }} />
-          </Dialog>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => {
+              const rows = accounts.map(a => {
+                const s = summaries[a.id] || { deposits: 0, deliveriesValue: 0, deliveredQty: 0 };
+                return {
+                  supplier: a.supplier_name,
+                  item: a.item_name,
+                  unit: a.unit,
+                  currency: a.currency,
+                  unitPrice: Number(a.default_unit_price) || 0,
+                  totalPaid: s.deposits,
+                  deliveredQty: s.deliveredQty,
+                  deliveredValue: s.deliveriesValue,
+                  balance: s.deposits - s.deliveriesValue,
+                };
+              });
+              if (rows.length === 0) { toast({ title: "No accounts to report" }); return; }
+              generatePrepaidReport(rows);
+            }}>
+              <FileDown size={16} className="mr-1" /> PDF Report
+            </Button>
+            <Dialog open={openNew} onOpenChange={setOpenNew}>
+              <DialogTrigger asChild>
+                <Button size="sm"><Plus size={16} className="mr-1" /> New Account</Button>
+              </DialogTrigger>
+              <NewAccountDialog onSaved={() => { setOpenNew(false); fetchAll(); }} />
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
