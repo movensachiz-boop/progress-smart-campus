@@ -481,6 +481,23 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? `Edit ${editing.requisition_number}` : "New Pre-Requisition"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
+              <div className="rounded-md border border-dashed p-3 flex items-center justify-between gap-3 bg-muted/30">
+                <div className="text-sm">
+                  <div className="font-medium flex items-center gap-2"><Camera size={14} /> Scan paper requisition</div>
+                  <div className="text-xs text-muted-foreground">Take a photo to auto-fill items, then verify before saving.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {signedPreview && (
+                    <button type="button" onClick={() => setViewImage(signedPreview)} className="h-12 w-12 rounded border overflow-hidden">
+                      <img src={signedPreview} alt="Scan" className="h-full w-full object-cover" />
+                    </button>
+                  )}
+                  <Button type="button" variant="outline" onClick={() => setScanOpen(true)} disabled={scanning}>
+                    {scanning ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                    {imageUrl ? "Re-scan" : "Scan"}
+                  </Button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Requested By *</Label>
@@ -509,7 +526,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                 </div>
               </div>
               <div>
-                <Label>Items</Label>
+                <Label>Items {scanning && <span className="text-xs text-muted-foreground">(extracting…)</span>}</Label>
                 <ItemsEditor items={items} setItems={setItems} currency={form.currency} />
               </div>
               <div>
@@ -521,6 +538,19 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={submit}>{editing ? "Save Changes" : "Create Requisition"}</Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <CameraCaptureDialog
+          open={scanOpen}
+          onOpenChange={setScanOpen}
+          onCapture={handleScan}
+          title="Scan Requisition"
+          description="Capture a clear photo of the paper requisition form."
+        />
+        <Dialog open={!!viewImage} onOpenChange={(v) => !v && setViewImage(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader><DialogTitle>Requisition Scan</DialogTitle></DialogHeader>
+            {viewImage && <img src={viewImage} alt="Requisition scan" className="w-full h-auto rounded" />}
           </DialogContent>
         </Dialog>
       </CardHeader>
