@@ -88,9 +88,7 @@ Deno.serve(async (req) => {
               { type: "text", text: "Extract the requisition header and all line items from this requisition form." },
               {
                 type: "image_url",
-                image_url: {
-                  url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`,
-                },
+                image_url: { url: imageDataUrl },
               },
             ],
           },
