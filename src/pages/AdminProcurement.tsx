@@ -11,10 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, ShoppingCart, Pencil, Receipt } from "lucide-react";
+import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, ShoppingCart, Pencil, Receipt, Camera, Loader2, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcurementDoc";
+import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 
 type Item = ProcurementLineItem;
 
@@ -39,6 +40,7 @@ interface Requisition {
   currency: string;
   status: string;
   notes?: string;
+  image_url?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -309,14 +311,26 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
     notes: "",
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [signedPreview, setSignedPreview] = useState<string | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [viewImage, setViewImage] = useState<string | null>(null);
 
   const reset = () => {
     setEditing(null);
     setForm({ requested_by: "", department: "", purpose: "", currency: "USD", notes: "" });
     setItems([emptyItem()]);
+    setImageUrl(null);
+    setSignedPreview(null);
   };
 
-  const openEdit = (r: Requisition) => {
+  const signUrl = async (path: string) => {
+    const { data } = await supabase.storage.from("requisition-scans").createSignedUrl(path, 3600);
+    return data?.signedUrl || null;
+  };
+
+  const openEdit = async (r: Requisition) => {
     setEditing(r);
     setForm({
       requested_by: r.requested_by || "",
@@ -326,7 +340,52 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
       notes: r.notes || "",
     });
     setItems((r.items && r.items.length ? r.items : [emptyItem()]) as Item[]);
+    setImageUrl(r.image_url || null);
+    setSignedPreview(r.image_url ? await signUrl(r.image_url) : null);
     setOpen(true);
+  };
+
+  const handleScan = async (dataUrl: string) => {
+    setScanning(true);
+    try {
+      // Upload image to storage
+      const blob = await (await fetch(dataUrl)).blob();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const { error: upErr } = await supabase.storage.from("requisition-scans").upload(path, blob, { contentType: "image/jpeg" });
+      if (upErr) {
+        toast({ title: "Upload failed", description: upErr.message, variant: "destructive" });
+        return;
+      }
+      setImageUrl(path);
+      setSignedPreview(await signUrl(path));
+
+      // OCR
+      const { data, error } = await supabase.functions.invoke("extract-requisition", {
+        body: { imageBase64: dataUrl },
+      });
+      if (error) {
+        toast({ title: "OCR failed", description: error.message, variant: "destructive" });
+        return;
+      }
+      setForm((f) => ({
+        requested_by: data.requested_by || f.requested_by,
+        department: data.department || f.department,
+        purpose: data.purpose || f.purpose,
+        currency: data.currency || f.currency,
+        notes: data.notes || f.notes,
+      }));
+      if (Array.isArray(data.items) && data.items.length) {
+        setItems(data.items.map((it: any) => ({
+          description: String(it.description || ""),
+          quantity: Number(it.quantity) || 1,
+          unit: String(it.unit || "pcs"),
+          unit_price: Number(it.unit_price) || 0,
+        })));
+      }
+      toast({ title: "Scan complete", description: "Please verify the extracted details before saving." });
+    } finally {
+      setScanning(false);
+    }
   };
 
   const submit = async () => {
@@ -347,6 +406,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
       total_amount: total,
       currency: form.currency,
       notes: form.notes || null,
+      image_url: imageUrl,
     };
     if (editing) {
       const { error } = await supabase
@@ -421,6 +481,23 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? `Edit ${editing.requisition_number}` : "New Pre-Requisition"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
+              <div className="rounded-md border border-dashed p-3 flex items-center justify-between gap-3 bg-muted/30">
+                <div className="text-sm">
+                  <div className="font-medium flex items-center gap-2"><Camera size={14} /> Scan paper requisition</div>
+                  <div className="text-xs text-muted-foreground">Take a photo to auto-fill items, then verify before saving.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {signedPreview && (
+                    <button type="button" onClick={() => setViewImage(signedPreview)} className="h-12 w-12 rounded border overflow-hidden">
+                      <img src={signedPreview} alt="Scan" className="h-full w-full object-cover" />
+                    </button>
+                  )}
+                  <Button type="button" variant="outline" onClick={() => setScanOpen(true)} disabled={scanning}>
+                    {scanning ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                    {imageUrl ? "Re-scan" : "Scan"}
+                  </Button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Requested By *</Label>
@@ -449,7 +526,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                 </div>
               </div>
               <div>
-                <Label>Items</Label>
+                <Label>Items {scanning && <span className="text-xs text-muted-foreground">(extracting…)</span>}</Label>
                 <ItemsEditor items={items} setItems={setItems} currency={form.currency} />
               </div>
               <div>
@@ -461,6 +538,19 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={submit}>{editing ? "Save Changes" : "Create Requisition"}</Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <CameraCaptureDialog
+          open={scanOpen}
+          onOpenChange={setScanOpen}
+          onCapture={handleScan}
+          title="Scan Requisition"
+          description="Capture a clear photo of the paper requisition form."
+        />
+        <Dialog open={!!viewImage} onOpenChange={(v) => !v && setViewImage(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader><DialogTitle>Requisition Scan</DialogTitle></DialogHeader>
+            {viewImage && <img src={viewImage} alt="Requisition scan" className="w-full h-auto rounded" />}
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -512,6 +602,12 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                         </>
                       )}
                       <Button size="sm" variant="outline" onClick={() => openEdit(r)}><Pencil size={14} /></Button>
+                      {r.image_url && (
+                        <Button size="sm" variant="outline" title="View scan" onClick={async () => {
+                          const url = await signUrl(r.image_url!);
+                          if (url) setViewImage(url);
+                        }}><Eye size={14} /></Button>
+                      )}
                       <Button size="sm" variant="outline" onClick={() => downloadPDF(r)}><FileDown size={14} /></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(r)}><Trash2 size={14} /></Button>
                     </div>
