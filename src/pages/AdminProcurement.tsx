@@ -311,14 +311,26 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
     notes: "",
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [signedPreview, setSignedPreview] = useState<string | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [viewImage, setViewImage] = useState<string | null>(null);
 
   const reset = () => {
     setEditing(null);
     setForm({ requested_by: "", department: "", purpose: "", currency: "USD", notes: "" });
     setItems([emptyItem()]);
+    setImageUrl(null);
+    setSignedPreview(null);
   };
 
-  const openEdit = (r: Requisition) => {
+  const signUrl = async (path: string) => {
+    const { data } = await supabase.storage.from("requisition-scans").createSignedUrl(path, 3600);
+    return data?.signedUrl || null;
+  };
+
+  const openEdit = async (r: Requisition) => {
     setEditing(r);
     setForm({
       requested_by: r.requested_by || "",
@@ -328,7 +340,52 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
       notes: r.notes || "",
     });
     setItems((r.items && r.items.length ? r.items : [emptyItem()]) as Item[]);
+    setImageUrl(r.image_url || null);
+    setSignedPreview(r.image_url ? await signUrl(r.image_url) : null);
     setOpen(true);
+  };
+
+  const handleScan = async (dataUrl: string) => {
+    setScanning(true);
+    try {
+      // Upload image to storage
+      const blob = await (await fetch(dataUrl)).blob();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const { error: upErr } = await supabase.storage.from("requisition-scans").upload(path, blob, { contentType: "image/jpeg" });
+      if (upErr) {
+        toast({ title: "Upload failed", description: upErr.message, variant: "destructive" });
+        return;
+      }
+      setImageUrl(path);
+      setSignedPreview(await signUrl(path));
+
+      // OCR
+      const { data, error } = await supabase.functions.invoke("extract-requisition", {
+        body: { imageBase64: dataUrl },
+      });
+      if (error) {
+        toast({ title: "OCR failed", description: error.message, variant: "destructive" });
+        return;
+      }
+      setForm((f) => ({
+        requested_by: data.requested_by || f.requested_by,
+        department: data.department || f.department,
+        purpose: data.purpose || f.purpose,
+        currency: data.currency || f.currency,
+        notes: data.notes || f.notes,
+      }));
+      if (Array.isArray(data.items) && data.items.length) {
+        setItems(data.items.map((it: any) => ({
+          description: String(it.description || ""),
+          quantity: Number(it.quantity) || 1,
+          unit: String(it.unit || "pcs"),
+          unit_price: Number(it.unit_price) || 0,
+        })));
+      }
+      toast({ title: "Scan complete", description: "Please verify the extracted details before saving." });
+    } finally {
+      setScanning(false);
+    }
   };
 
   const submit = async () => {
@@ -349,6 +406,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
       total_amount: total,
       currency: form.currency,
       notes: form.notes || null,
+      image_url: imageUrl,
     };
     if (editing) {
       const { error } = await supabase
