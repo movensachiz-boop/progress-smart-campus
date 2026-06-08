@@ -18,6 +18,7 @@ import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcu
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import { Smartphone } from "lucide-react";
+import PrepaidAccountsTab from "@/components/PrepaidAccountsTab";
 
 type Item = ProcurementLineItem;
 
