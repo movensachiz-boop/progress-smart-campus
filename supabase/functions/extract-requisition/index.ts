@@ -46,8 +46,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { imageBase64 } = await req.json();
-    if (!imageBase64) {
+    const { imageBase64, imagePath } = await req.json();
+    let imageDataUrl: string | null = null;
+
+    if (imagePath && typeof imagePath === "string") {
+      // Download from storage server-side to avoid huge request bodies
+      const { data: fileData, error: dlErr } = await supabaseAdmin.storage
+        .from("requisition-scans").download(imagePath);
+      if (dlErr || !fileData) {
+        return new Response(JSON.stringify({ error: `Could not load image: ${dlErr?.message || "not found"}` }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const buf = new Uint8Array(await fileData.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+      const b64 = btoa(bin);
+      const mime = fileData.type || "image/jpeg";
+      imageDataUrl = `data:${mime};base64,${b64}`;
+    } else if (imageBase64 && typeof imageBase64 === "string") {
+      imageDataUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+    } else {
       return new Response(JSON.stringify({ error: "No image provided" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
