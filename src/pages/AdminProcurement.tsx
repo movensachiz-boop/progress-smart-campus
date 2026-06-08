@@ -576,7 +576,8 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
               <Button onClick={submit}>{editing ? "Save Changes" : "Create Requisition"}</Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
         <CameraCaptureDialog
           open={scanOpen}
           onOpenChange={setScanOpen}
