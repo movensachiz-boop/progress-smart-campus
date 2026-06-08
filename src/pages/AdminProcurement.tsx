@@ -16,6 +16,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcurementDoc";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
+import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
+import { Smartphone } from "lucide-react";
 
 type Item = ProcurementLineItem;
 
@@ -314,6 +316,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [signedPreview, setSignedPreview] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  const [phonePairOpen, setPhonePairOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
 
@@ -496,6 +499,9 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                     {scanning ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                     {imageUrl ? "Re-scan" : "Scan"}
                   </Button>
+                  <Button type="button" variant="outline" onClick={() => setPhonePairOpen(true)} disabled={scanning} title="Scan QR with phone to capture from phone camera">
+                    <Smartphone size={14} /> Use Phone
+                  </Button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -546,6 +552,12 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           onCapture={handleScan}
           title="Scan Requisition"
           description="Capture a clear photo of the paper requisition form."
+        />
+        <PhoneCameraPairDialog
+          open={phonePairOpen}
+          onOpenChange={setPhonePairOpen}
+          onPhotos={async (photos) => { if (photos[0]) await handleScan(photos[0]); }}
+          title="Use Phone Camera for Requisition"
         />
         <Dialog open={!!viewImage} onOpenChange={(v) => !v && setViewImage(null)}>
           <DialogContent className="max-w-3xl">
