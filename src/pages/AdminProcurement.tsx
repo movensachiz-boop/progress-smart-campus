@@ -603,6 +603,13 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={data.length > 0 && selected.size === data.length}
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
                 <TableHead>Number</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Requested By</TableHead>
@@ -615,12 +622,19 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
             </TableHeader>
             <TableBody>
               {data.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No requisitions yet</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No requisitions yet</TableCell></TableRow>
               )}
               {data.map((r) => {
                 const edited = r.updated_at && new Date(r.updated_at).getTime() - new Date(r.created_at).getTime() > 2000;
                 return (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} data-state={selected.has(r.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selected.has(r.id)}
+                      onCheckedChange={() => toggleSel(r.id)}
+                      aria-label={`Select ${r.requisition_number}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono text-xs">
                     <div className="flex items-center gap-2">
                       <span>{r.requisition_number}</span>
