@@ -602,6 +602,12 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                         </>
                       )}
                       <Button size="sm" variant="outline" onClick={() => openEdit(r)}><Pencil size={14} /></Button>
+                      {r.image_url && (
+                        <Button size="sm" variant="outline" title="View scan" onClick={async () => {
+                          const url = await signUrl(r.image_url!);
+                          if (url) setViewImage(url);
+                        }}><Eye size={14} /></Button>
+                      )}
                       <Button size="sm" variant="outline" onClick={() => downloadPDF(r)}><FileDown size={14} /></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(r)}><Trash2 size={14} /></Button>
                     </div>
