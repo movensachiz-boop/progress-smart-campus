@@ -98,6 +98,16 @@ export default function PrepaidAccountsTab() {
             <Button size="sm" variant="outline" onClick={() => {
               const rows = accounts.map(a => {
                 const s = summaries[a.id] || { deposits: 0, deliveriesValue: 0, deliveredQty: 0 };
+                const acctEntries = entries
+                  .filter(e => e.account_id === a.id)
+                  .map(e => ({
+                    date: e.occurred_on,
+                    type: e.entry_type,
+                    amount: Number(e.amount) || 0,
+                    quantity: Number(e.quantity) || 0,
+                    unitPrice: Number(e.unit_price) || 0,
+                    note: e.note,
+                  }));
                 return {
                   supplier: a.supplier_name,
                   item: a.item_name,
@@ -108,6 +118,8 @@ export default function PrepaidAccountsTab() {
                   deliveredQty: s.deliveredQty,
                   deliveredValue: s.deliveriesValue,
                   balance: s.deposits - s.deliveriesValue,
+                  entries: acctEntries,
+                  notes: a.notes,
                 };
               });
               if (rows.length === 0) { toast({ title: "No accounts to report" }); return; }
