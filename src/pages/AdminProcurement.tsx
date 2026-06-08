@@ -15,10 +15,12 @@ import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, Shoppin
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcurementDoc";
+import { generateCombinedRequisitions } from "@/lib/generateCombinedRequisitions";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import { Smartphone } from "lucide-react";
 import PrepaidAccountsTab from "@/components/PrepaidAccountsTab";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Item = ProcurementLineItem;
 
