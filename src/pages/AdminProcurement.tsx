@@ -15,10 +15,12 @@ import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, Shoppin
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcurementDoc";
+import { generateCombinedRequisitions } from "@/lib/generateCombinedRequisitions";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import { Smartphone } from "lucide-react";
 import PrepaidAccountsTab from "@/components/PrepaidAccountsTab";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Item = ProcurementLineItem;
 
@@ -325,6 +327,24 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
   const [scanning, setScanning] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
 
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSel = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected((s) => s.size === data.length ? new Set() : new Set(data.map((r) => r.id)));
+  const downloadCombined = () => {
+    const picked = data.filter((r) => selected.has(r.id));
+    if (!picked.length) return toast({ title: "Select at least one requisition", variant: "destructive" });
+    generateCombinedRequisitions(picked.map((r) => ({
+      requisition_number: r.requisition_number,
+      created_at: r.created_at,
+      requested_by: r.requested_by,
+      department: r.department,
+      purpose: r.purpose,
+      currency: r.currency,
+      items: r.items || [],
+      notes: r.notes,
+    })));
+  };
+
   const reset = () => {
     setEditing(null);
     setForm({ requested_by: "", department: "", purpose: "", currency: "USD", notes: "" });
@@ -477,15 +497,21 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
         <div>
           <CardTitle>Pre-Requisitions</CardTitle>
           <CardDescription>Submit requests for procurement with auto-calculated totals</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => reset()}><Plus size={16} /> New Requisition</Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <Button variant="outline" onClick={downloadCombined}>
+              <FileDown size={16} /> Combined PDF ({selected.size})
+            </Button>
+          )}
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+            <DialogTrigger asChild>
+              <Button onClick={() => reset()}><Plus size={16} /> New Requisition</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? `Edit ${editing.requisition_number}` : "New Pre-Requisition"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -550,7 +576,8 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
               <Button onClick={submit}>{editing ? "Save Changes" : "Create Requisition"}</Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
         <CameraCaptureDialog
           open={scanOpen}
           onOpenChange={setScanOpen}
@@ -576,6 +603,13 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={data.length > 0 && selected.size === data.length}
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
                 <TableHead>Number</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Requested By</TableHead>
@@ -588,12 +622,19 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
             </TableHeader>
             <TableBody>
               {data.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No requisitions yet</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No requisitions yet</TableCell></TableRow>
               )}
               {data.map((r) => {
                 const edited = r.updated_at && new Date(r.updated_at).getTime() - new Date(r.created_at).getTime() > 2000;
                 return (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} data-state={selected.has(r.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selected.has(r.id)}
+                      onCheckedChange={() => toggleSel(r.id)}
+                      aria-label={`Select ${r.requisition_number}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono text-xs">
                     <div className="flex items-center gap-2">
                       <span>{r.requisition_number}</span>
