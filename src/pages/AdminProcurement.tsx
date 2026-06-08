@@ -553,6 +553,12 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           title="Scan Requisition"
           description="Capture a clear photo of the paper requisition form."
         />
+        <PhoneCameraPairDialog
+          open={phonePairOpen}
+          onOpenChange={setPhonePairOpen}
+          onPhotos={async (photos) => { if (photos[0]) await handleScan(photos[0]); }}
+          title="Use Phone Camera for Requisition"
+        />
         <Dialog open={!!viewImage} onOpenChange={(v) => !v && setViewImage(null)}>
           <DialogContent className="max-w-3xl">
             <DialogHeader><DialogTitle>Requisition Scan</DialogTitle></DialogHeader>
