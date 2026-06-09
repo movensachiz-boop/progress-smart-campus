@@ -631,8 +631,16 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                 </div>
               </div>
               <div>
-                <Label>Items {scanning && <span className="text-xs text-muted-foreground">(extracting…)</span>}</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Items {scanning && <span className="text-xs text-muted-foreground">(extracting…)</span>}</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={autofillPrices}>
+                    Use historical prices
+                  </Button>
+                </div>
                 <ItemsEditor items={items} setItems={setItems} currency={form.currency} />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Items left at 0 will be auto-filled on save using prices from previous requisitions, POs and GRNs.
+                </p>
               </div>
               <div>
                 <Label>Notes</Label>
