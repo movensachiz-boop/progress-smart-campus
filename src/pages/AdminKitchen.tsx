@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChefHat, Plus, Pencil, Trash2, FileDown, PackagePlus, PackageMinus, Utensils, ListPlus } from "lucide-react";
+import { ChefHat, Plus, Pencil, Trash2, FileDown, PackagePlus, PackageMinus, Utensils, ListPlus, Camera, Sparkles, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   generateKitchenReport, KitchenStockRow, KitchenReceiptRow, KitchenIssueRow, KitchenMealRow,
@@ -74,6 +74,14 @@ export default function AdminKitchen() {
   const [bulkText, setBulkText] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
 
+  // AI photo identification
+  const [aiIdentifying, setAiIdentifying] = useState(false);
+  const [aiPreview, setAiPreview] = useState<string | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<{
+    name: string; brand: string | null; container: string; category: string;
+    unit: string; pack_size: string | null; confidence: number; notes: string | null;
+  } | null>(null);
+
   const fetchAll = async () => {
     setLoading(true);
     const [it, rx, iss, ml] = await Promise.all([
@@ -96,11 +104,13 @@ export default function AdminKitchen() {
   const openAddItem = () => {
     setEditItem(null);
     setItemForm({ name: "", category: "ingredient", unit: "kg", stock_quantity: 0, low_stock_threshold: 5, unit_cost: 0, supplier: "", notes: "" });
+    setAiPreview(null); setAiSuggestion(null);
     setItemDlg(true);
   };
   const openEditItem = (i: Item) => {
     setEditItem(i);
     setItemForm({ name: i.name, category: i.category, unit: i.unit, stock_quantity: Number(i.stock_quantity), low_stock_threshold: Number(i.low_stock_threshold), unit_cost: Number(i.unit_cost), supplier: i.supplier || "", notes: i.notes || "" });
+    setAiPreview(null); setAiSuggestion(null);
     setItemDlg(true);
   };
   const saveItem = async () => {
@@ -170,7 +180,46 @@ export default function AdminKitchen() {
     setBulkDlg(false); fetchAll();
   };
 
-  // ─── Receipts ───
+  // ─── AI photo identification ───
+  const fileToDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+
+  const handleIdentifyPhoto = async (file: File) => {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) return toast.error("Image must be under 8MB");
+    try {
+      setAiIdentifying(true);
+      setAiSuggestion(null);
+      const dataUrl = await fileToDataUrl(file);
+      setAiPreview(dataUrl);
+      const { data, error } = await supabase.functions.invoke("identify-kitchen-item", {
+        body: { image: dataUrl },
+      });
+      if (error) throw error;
+      if (!data || (data as any).error) throw new Error((data as any)?.error || "AI failed");
+      const s = data as any;
+      setAiSuggestion(s);
+      // Pre-fill what we have so user can verify
+      setItemForm(prev => ({
+        ...prev,
+        name: s.name || prev.name,
+        category: s.category || prev.category,
+        unit: s.unit || prev.unit,
+        notes: [s.brand, s.pack_size, s.container ? `container: ${s.container}` : null, s.notes]
+          .filter(Boolean).join(" · ") || prev.notes,
+      }));
+      toast.success(`Identified: ${s.name || "item"} (${Math.round((s.confidence || 0) * 100)}%) — please verify`);
+    } catch (e) {
+      toast.error((e as Error).message || "Could not identify image");
+    } finally {
+      setAiIdentifying(false);
+    }
+  };
+
   const openReceipt = () => {
     setRxForm({ item_id: items[0]?.id || "", quantity: 0, unit_cost: items[0]?.unit_cost || 0, supplier: items[0]?.supplier || "", delivery_date: new Date().toISOString().split("T")[0], invoice_number: "", notes: "" });
     setRxDlg(true);
@@ -483,9 +532,52 @@ export default function AdminKitchen() {
 
       {/* Item Dialog */}
       <Dialog open={itemDlg} onOpenChange={setItemDlg}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editItem ? "Edit Item" : "Add Item"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {/* AI Photo Identification */}
+            <div className="border rounded-lg p-3 bg-muted/40 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="flex items-center gap-1 text-xs">
+                  <Sparkles size={14} className="text-primary" /> Identify by photo (AI)
+                </Label>
+                <label className="inline-flex">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    disabled={aiIdentifying}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleIdentifyPhoto(f); e.target.value = ""; }}
+                  />
+                  <span className={`inline-flex items-center gap-1 cursor-pointer border rounded-md px-2 py-1 text-xs ${aiIdentifying ? "opacity-50 pointer-events-none" : "hover:bg-accent"}`}>
+                    {aiIdentifying ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                    {aiIdentifying ? "Identifying..." : "Upload photo"}
+                  </span>
+                </label>
+              </div>
+              {aiPreview && (
+                <div className="flex gap-3 items-start">
+                  <img src={aiPreview} alt="item" className="w-20 h-20 object-cover rounded border" />
+                  {aiSuggestion ? (
+                    <div className="text-xs space-y-0.5 flex-1">
+                      <div><b>Name:</b> {aiSuggestion.name || "—"}</div>
+                      {aiSuggestion.brand && <div><b>Brand:</b> {aiSuggestion.brand}</div>}
+                      <div><b>Container:</b> <Badge variant="outline" className="capitalize">{aiSuggestion.container}</Badge></div>
+                      <div><b>Suggested unit:</b> {aiSuggestion.unit} · <b>category:</b> {aiSuggestion.category.replace("_"," ")}</div>
+                      {aiSuggestion.pack_size && <div><b>Pack size:</b> {aiSuggestion.pack_size}</div>}
+                      <div className="text-muted-foreground">Confidence: {Math.round((aiSuggestion.confidence || 0) * 100)}% — verify and edit below.</div>
+                    </div>
+                  ) : aiIdentifying ? (
+                    <div className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Asking AI…</div>
+                  ) : null}
+                </div>
+              )}
+              {!aiPreview && (
+                <p className="text-[11px] text-muted-foreground">Snap or upload a photo. AI will suggest name, container (tin/bottle/packet…), category and unit. You verify before saving.</p>
+              )}
+            </div>
+
             <div><Label>Name</Label><Input value={itemForm.name} onChange={e => setItemForm({ ...itemForm, name: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Category</Label>
