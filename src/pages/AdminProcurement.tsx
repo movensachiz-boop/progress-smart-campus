@@ -148,39 +148,45 @@ function ItemsEditor({
   setItems,
   showCost = true,
   currency = "USD",
+  priceMap,
 }: {
   items: Item[];
   setItems: (i: Item[]) => void;
   showCost?: boolean;
   currency?: string;
+  priceMap?: PriceMap;
 }) {
   const update = (idx: number, patch: Partial<Item>) => {
     setItems(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   };
+  const updateDescription = (idx: number, value: string) => {
+    setItems(
+      items.map((it, i) => {
+        if (i !== idx) return it;
+        const next: Item = { ...it, description: value };
+        if (priceMap) {
+          const hit = priceMap.get(normDesc(value));
+          const prevHit = priceMap.get(normDesc(it.description || ""));
+          const priceIsAuto =
+            !Number(it.unit_price) ||
+            (prevHit && Number(it.unit_price) === prevHit.price);
+          if (hit && hit.price > 0 && priceIsAuto) {
+            next.unit_price = hit.price;
+            if (!it.unit || (prevHit && it.unit === prevHit.unit)) {
+              next.unit = hit.unit || it.unit || "pcs";
+            }
+          }
+        }
+        return next;
+      })
+    );
+  };
   const total = sumItems(items);
-  return (
-    <div className="space-y-2">
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">#</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="w-20">Qty</TableHead>
-              <TableHead className="w-20">Unit</TableHead>
-              {showCost && <TableHead className="w-28">Unit Price</TableHead>}
-              {showCost && <TableHead className="w-28 text-right">Total</TableHead>}
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((it, idx) => (
-              <TableRow key={idx}>
-                <TableCell>{idx + 1}</TableCell>
+...
                 <TableCell>
                   <Input
                     value={it.description}
-                    onChange={(e) => update(idx, { description: e.target.value })}
+                    onChange={(e) => updateDescription(idx, e.target.value)}
                     placeholder="Item description"
                   />
                 </TableCell>
