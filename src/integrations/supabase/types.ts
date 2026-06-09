@@ -427,6 +427,205 @@ export type Database = {
           },
         ]
       }
+      kitchen_issues: {
+        Row: {
+          created_at: string
+          id: string
+          issue_date: string
+          issue_number: string | null
+          issued_by: string | null
+          item_id: string
+          notes: string | null
+          purpose: string | null
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issue_date?: string
+          issue_number?: string | null
+          issued_by?: string | null
+          item_id: string
+          notes?: string | null
+          purpose?: string | null
+          quantity: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issue_date?: string
+          issue_number?: string | null
+          issued_by?: string | null
+          item_id?: string
+          notes?: string | null
+          purpose?: string | null
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kitchen_issues_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kitchen_items: {
+        Row: {
+          category: string
+          created_at: string
+          currency: string
+          id: string
+          is_active: boolean
+          low_stock_threshold: number
+          name: string
+          notes: string | null
+          stock_quantity: number
+          supplier: string | null
+          unit: string
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          low_stock_threshold?: number
+          name: string
+          notes?: string | null
+          stock_quantity?: number
+          supplier?: string | null
+          unit?: string
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          low_stock_threshold?: number
+          name?: string
+          notes?: string | null
+          stock_quantity?: number
+          supplier?: string | null
+          unit?: string
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kitchen_meals: {
+        Row: {
+          cost_per_portion: number
+          created_at: string
+          id: string
+          ingredients: Json
+          meal_date: string
+          meal_name: string
+          meal_number: string | null
+          meal_type: string
+          notes: string | null
+          portions_served: number
+          prepared_by: string | null
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          cost_per_portion?: number
+          created_at?: string
+          id?: string
+          ingredients?: Json
+          meal_date?: string
+          meal_name: string
+          meal_number?: string | null
+          meal_type?: string
+          notes?: string | null
+          portions_served?: number
+          prepared_by?: string | null
+          total_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_per_portion?: number
+          created_at?: string
+          id?: string
+          ingredients?: Json
+          meal_date?: string
+          meal_name?: string
+          meal_number?: string | null
+          meal_type?: string
+          notes?: string | null
+          portions_served?: number
+          prepared_by?: string | null
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kitchen_receipts: {
+        Row: {
+          created_at: string
+          delivery_date: string
+          id: string
+          invoice_number: string | null
+          item_id: string
+          notes: string | null
+          quantity: number
+          receipt_number: string | null
+          received_by: string | null
+          supplier: string | null
+          total_cost: number
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_date?: string
+          id?: string
+          invoice_number?: string | null
+          item_id: string
+          notes?: string | null
+          quantity: number
+          receipt_number?: string | null
+          received_by?: string | null
+          supplier?: string | null
+          total_cost?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivery_date?: string
+          id?: string
+          invoice_number?: string | null
+          item_id?: string
+          notes?: string | null
+          quantity?: number
+          receipt_number?: string | null
+          received_by?: string | null
+          supplier?: string | null
+          total_cost?: number
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kitchen_receipts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_audit_log: {
         Row: {
           action: string
