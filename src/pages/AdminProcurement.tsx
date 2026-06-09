@@ -216,9 +216,31 @@ function ItemsEditor({
       })
     );
   };
+  const correctSpelling = (idx: number) => {
+    if (!priceMap) return;
+    const it = items[idx];
+    const val = it?.description || "";
+    if (!val.trim()) return;
+    if (priceMap.has(normDesc(val))) return; // already a known item
+    const suggestion = findClosestLabel(val, priceMap);
+    if (suggestion && normDesc(suggestion) !== normDesc(val)) {
+      updateDescription(idx, suggestion);
+    }
+  };
+  const suggestionList = priceMap
+    ? Array.from(new Set(Array.from(priceMap.values()).map((v) => v.label))).slice(0, 500)
+    : [];
+  const listId = React.useId();
   const total = sumItems(items);
   return (
     <div className="space-y-2">
+      {suggestionList.length > 0 && (
+        <datalist id={listId}>
+          {suggestionList.map((label) => (
+            <option key={label} value={label} />
+          ))}
+        </datalist>
+      )}
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
@@ -238,8 +260,10 @@ function ItemsEditor({
                 <TableCell>{idx + 1}</TableCell>
                 <TableCell>
                   <Input
+                    list={suggestionList.length > 0 ? listId : undefined}
                     value={it.description}
                     onChange={(e) => updateDescription(idx, e.target.value)}
+                    onBlur={() => correctSpelling(idx)}
                     placeholder="Item description"
                   />
                 </TableCell>
