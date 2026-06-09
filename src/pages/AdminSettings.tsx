@@ -13,6 +13,7 @@ const STAFF_ROLES = [
   { value: "admin", label: "Full Admin (Mrs Sibanda / Mr Cal / Developer)" },
   { value: "cashier", label: "Cashier (no Dashboard, no Settings)" },
   { value: "timetable_manager", label: "Timetable Manager (timetable + classes only)" },
+  { value: "kitchen", label: "Kitchen Staff (kitchen stock only)" },
 ];
 
 const AdminSettings = () => {
