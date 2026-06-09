@@ -144,7 +144,32 @@ export default function AdminKitchen() {
   // ─── Bulk add items ───
   const openBulk = () => {
     setBulkText("");
+    setBulkAiPreview(null);
     setBulkDlg(true);
+  };
+
+  const handleBulkPhoto = async (file: File) => {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) return toast.error("Image must be under 8MB");
+    try {
+      setBulkAiBusy(true);
+      const dataUrl = await fileToDataUrl(file);
+      setBulkAiPreview(dataUrl);
+      const { data, error } = await supabase.functions.invoke("identify-kitchen-list", {
+        body: { image: dataUrl },
+      });
+      if (error) throw error;
+      if (!data || (data as any).error) throw new Error((data as any)?.error || "AI failed");
+      const csv = String((data as any).csv || "");
+      const count = Number((data as any).count || 0);
+      if (!csv) return toast.error("No items detected — try a clearer photo");
+      setBulkText(prev => prev ? `${prev.replace(/\s+$/, "")}\n${csv}` : csv);
+      toast.success(`Extracted ${count} item(s) — please review before saving`);
+    } catch (e) {
+      toast.error((e as Error).message || "Could not read list");
+    } finally {
+      setBulkAiBusy(false);
+    }
   };
   const saveBulk = async () => {
     const lines = bulkText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
