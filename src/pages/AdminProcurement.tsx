@@ -98,6 +98,51 @@ const emptyItem = (): Item => ({ description: "", quantity: 1, unit_price: 0, un
 const sumItems = (items: Item[]) =>
   items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0);
 
+const normDesc = (s: string) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+type PriceMap = Map<string, { price: number; currency: string; unit?: string }>;
+
+const fetchPriceHistory = async (): Promise<PriceMap> => {
+  const map: PriceMap = new Map();
+  const consume = (rows: any[] | null) => {
+    if (!rows) return;
+    for (const r of rows) {
+      const cur = r.currency || "USD";
+      const items = Array.isArray(r.items) ? r.items : [];
+      for (const it of items) {
+        const key = normDesc(it?.description || "");
+        const price = Number(it?.unit_price) || 0;
+        if (!key || price <= 0) continue;
+        if (!map.has(key)) map.set(key, { price, currency: cur, unit: it?.unit });
+      }
+    }
+  };
+  const [reqs, pos, grns] = await Promise.all([
+    supabase.from("requisitions").select("items,currency,created_at").order("created_at", { ascending: false }).limit(500),
+    supabase.from("purchase_orders").select("items,currency,created_at").order("created_at", { ascending: false }).limit(500),
+    supabase.from("goods_received").select("items,currency,created_at").order("created_at", { ascending: false }).limit(500),
+  ]);
+  // Priority: POs (actual agreed price) > GRNs > previous requisitions
+  consume(pos.data as any[]);
+  consume(grns.data as any[]);
+  consume(reqs.data as any[]);
+  return map;
+};
+
+const applyPriceHistory = (items: Item[], map: PriceMap): { items: Item[]; filled: number } => {
+  let filled = 0;
+  const out = items.map((it) => {
+    if (Number(it.unit_price) > 0) return it;
+    const hit = map.get(normDesc(it.description || ""));
+    if (hit && hit.price > 0) {
+      filled++;
+      return { ...it, unit_price: hit.price, unit: it.unit || hit.unit || "pcs" };
+    }
+    return it;
+  });
+  return { items: out, filled };
+};
+
 function ItemsEditor({
   items,
   setItems,
@@ -373,6 +418,21 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
     setOpen(true);
   };
 
+  const [priceMap, setPriceMap] = useState<PriceMap>(new Map());
+  useEffect(() => {
+    fetchPriceHistory().then(setPriceMap).catch(() => {});
+  }, [data]);
+
+  const autofillPrices = () => {
+    const { items: next, filled } = applyPriceHistory(items, priceMap);
+    if (filled > 0) {
+      setItems(next);
+      toast({ title: `Auto-filled ${filled} price${filled === 1 ? "" : "s"} from history` });
+    } else {
+      toast({ title: "No matching historical prices found" });
+    }
+  };
+
   const handleScan = async (dataUrl: string) => {
     setScanning(true);
     try {
@@ -403,12 +463,17 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
         notes: data.notes || f.notes,
       }));
       if (Array.isArray(data.items) && data.items.length) {
-        setItems(data.items.map((it: any) => ({
+        const raw: Item[] = data.items.map((it: any) => ({
           description: String(it.description || ""),
           quantity: Number(it.quantity) || 1,
           unit: String(it.unit || "pcs"),
           unit_price: Number(it.unit_price) || 0,
-        })));
+        }));
+        const { items: enriched, filled } = applyPriceHistory(raw, priceMap);
+        setItems(enriched);
+        if (filled > 0) {
+          toast({ title: `Auto-filled ${filled} price${filled === 1 ? "" : "s"} from history` });
+        }
       }
       toast({ title: "Scan complete", description: "Please verify the extracted details before saving." });
     } finally {
@@ -425,12 +490,15 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
       toast({ title: "All items need a description", variant: "destructive" });
       return;
     }
-    const total = sumItems(items);
+    // Fill any missing prices using historical prices
+    const { items: finalItems } = applyPriceHistory(items, priceMap);
+    setItems(finalItems);
+    const total = sumItems(finalItems);
     const payload = {
       requested_by: form.requested_by,
       department: form.department || null,
       purpose: form.purpose || null,
-      items: items as any,
+      items: finalItems as any,
       total_amount: total,
       currency: form.currency,
       notes: form.notes || null,
@@ -563,8 +631,16 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                 </div>
               </div>
               <div>
-                <Label>Items {scanning && <span className="text-xs text-muted-foreground">(extracting…)</span>}</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Items {scanning && <span className="text-xs text-muted-foreground">(extracting…)</span>}</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={autofillPrices}>
+                    Use historical prices
+                  </Button>
+                </div>
                 <ItemsEditor items={items} setItems={setItems} currency={form.currency} />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Items left at 0 will be auto-filled on save using prices from previous requisitions, POs and GRNs.
+                </p>
               </div>
               <div>
                 <Label>Notes</Label>
