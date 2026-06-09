@@ -148,14 +148,38 @@ function ItemsEditor({
   setItems,
   showCost = true,
   currency = "USD",
+  priceMap,
 }: {
   items: Item[];
   setItems: (i: Item[]) => void;
   showCost?: boolean;
   currency?: string;
+  priceMap?: PriceMap;
 }) {
   const update = (idx: number, patch: Partial<Item>) => {
     setItems(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  };
+  const updateDescription = (idx: number, value: string) => {
+    setItems(
+      items.map((it, i) => {
+        if (i !== idx) return it;
+        const next: Item = { ...it, description: value };
+        if (priceMap) {
+          const hit = priceMap.get(normDesc(value));
+          const prevHit = priceMap.get(normDesc(it.description || ""));
+          const priceIsAuto =
+            !Number(it.unit_price) ||
+            (prevHit && Number(it.unit_price) === prevHit.price);
+          if (hit && hit.price > 0 && priceIsAuto) {
+            next.unit_price = hit.price;
+            if (!it.unit || (prevHit && it.unit === prevHit.unit)) {
+              next.unit = hit.unit || it.unit || "pcs";
+            }
+          }
+        }
+        return next;
+      })
+    );
   };
   const total = sumItems(items);
   return (
@@ -180,7 +204,7 @@ function ItemsEditor({
                 <TableCell>
                   <Input
                     value={it.description}
-                    onChange={(e) => update(idx, { description: e.target.value })}
+                    onChange={(e) => updateDescription(idx, e.target.value)}
                     placeholder="Item description"
                   />
                 </TableCell>
@@ -637,7 +661,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                     Use historical prices
                   </Button>
                 </div>
-                <ItemsEditor items={items} setItems={setItems} currency={form.currency} />
+                <ItemsEditor items={items} setItems={setItems} currency={form.currency} priceMap={priceMap} />
                 <p className="text-xs text-muted-foreground mt-1">
                   Items left at 0 will be auto-filled on save using prices from previous requisitions, POs and GRNs.
                 </p>
@@ -890,7 +914,7 @@ function POsTab({
               </div>
               <div>
                 <Label>Items</Label>
-                <ItemsEditor items={items} setItems={setItems} currency={form.currency} />
+                <ItemsEditor items={items} setItems={setItems} currency={form.currency} priceMap={priceMap} />
               </div>
               <div>
                 <Label>Notes</Label>
@@ -1093,7 +1117,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
               </div>
               <div>
                 <Label>Items Received (with prices)</Label>
-                <ItemsEditor items={items} setItems={setItems} showCost={true} currency={currency} />
+                <ItemsEditor items={items} setItems={setItems} showCost={true} currency={currency} priceMap={priceMap} />
               </div>
               <div>
                 <Label>Upload Receipts / Invoices (evidence)</Label>
