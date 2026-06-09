@@ -104,11 +104,13 @@ export default function AdminKitchen() {
   const openAddItem = () => {
     setEditItem(null);
     setItemForm({ name: "", category: "ingredient", unit: "kg", stock_quantity: 0, low_stock_threshold: 5, unit_cost: 0, supplier: "", notes: "" });
+    setAiPreview(null); setAiSuggestion(null);
     setItemDlg(true);
   };
   const openEditItem = (i: Item) => {
     setEditItem(i);
     setItemForm({ name: i.name, category: i.category, unit: i.unit, stock_quantity: Number(i.stock_quantity), low_stock_threshold: Number(i.low_stock_threshold), unit_cost: Number(i.unit_cost), supplier: i.supplier || "", notes: i.notes || "" });
+    setAiPreview(null); setAiSuggestion(null);
     setItemDlg(true);
   };
   const saveItem = async () => {
