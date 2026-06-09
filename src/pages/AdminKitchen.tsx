@@ -73,6 +73,8 @@ export default function AdminKitchen() {
   const [bulkDlg, setBulkDlg] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkAiBusy, setBulkAiBusy] = useState(false);
+  const [bulkAiPreview, setBulkAiPreview] = useState<string | null>(null);
 
   // AI photo identification
   const [aiIdentifying, setAiIdentifying] = useState(false);
