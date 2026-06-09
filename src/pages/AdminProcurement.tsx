@@ -182,7 +182,25 @@ function ItemsEditor({
     );
   };
   const total = sumItems(items);
-...
+  return (
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">#</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="w-20">Qty</TableHead>
+              <TableHead className="w-20">Unit</TableHead>
+              {showCost && <TableHead className="w-28">Unit Price</TableHead>}
+              {showCost && <TableHead className="w-28 text-right">Total</TableHead>}
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((it, idx) => (
+              <TableRow key={idx}>
+                <TableCell>{idx + 1}</TableCell>
                 <TableCell>
                   <Input
                     value={it.description}
