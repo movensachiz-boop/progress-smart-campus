@@ -490,12 +490,15 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
       toast({ title: "All items need a description", variant: "destructive" });
       return;
     }
-    const total = sumItems(items);
+    // Fill any missing prices using historical prices
+    const { items: finalItems } = applyPriceHistory(items, priceMap);
+    setItems(finalItems);
+    const total = sumItems(finalItems);
     const payload = {
       requested_by: form.requested_by,
       department: form.department || null,
       purpose: form.purpose || null,
-      items: items as any,
+      items: finalItems as any,
       total_amount: total,
       currency: form.currency,
       notes: form.notes || null,
