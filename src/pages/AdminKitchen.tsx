@@ -318,6 +318,7 @@ export default function AdminKitchen() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={openAddItem} className="gap-2"><Plus size={16} /> Item</Button>
+            <Button variant="outline" onClick={openBulk} className="gap-2"><ListPlus size={16} /> Bulk Add</Button>
             <Button variant="outline" onClick={openReceipt} className="gap-2"><PackagePlus size={16} /> Receive</Button>
             <Button variant="outline" onClick={openIssue} className="gap-2"><PackageMinus size={16} /> Issue</Button>
             <Button onClick={openMeal} className="gap-2"><Utensils size={16} /> Record Meal</Button>
