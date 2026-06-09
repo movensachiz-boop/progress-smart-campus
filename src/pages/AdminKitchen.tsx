@@ -532,9 +532,52 @@ export default function AdminKitchen() {
 
       {/* Item Dialog */}
       <Dialog open={itemDlg} onOpenChange={setItemDlg}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editItem ? "Edit Item" : "Add Item"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {/* AI Photo Identification */}
+            <div className="border rounded-lg p-3 bg-muted/40 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="flex items-center gap-1 text-xs">
+                  <Sparkles size={14} className="text-primary" /> Identify by photo (AI)
+                </Label>
+                <label className="inline-flex">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    disabled={aiIdentifying}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleIdentifyPhoto(f); e.target.value = ""; }}
+                  />
+                  <span className={`inline-flex items-center gap-1 cursor-pointer border rounded-md px-2 py-1 text-xs ${aiIdentifying ? "opacity-50 pointer-events-none" : "hover:bg-accent"}`}>
+                    {aiIdentifying ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                    {aiIdentifying ? "Identifying..." : "Upload photo"}
+                  </span>
+                </label>
+              </div>
+              {aiPreview && (
+                <div className="flex gap-3 items-start">
+                  <img src={aiPreview} alt="item" className="w-20 h-20 object-cover rounded border" />
+                  {aiSuggestion ? (
+                    <div className="text-xs space-y-0.5 flex-1">
+                      <div><b>Name:</b> {aiSuggestion.name || "—"}</div>
+                      {aiSuggestion.brand && <div><b>Brand:</b> {aiSuggestion.brand}</div>}
+                      <div><b>Container:</b> <Badge variant="outline" className="capitalize">{aiSuggestion.container}</Badge></div>
+                      <div><b>Suggested unit:</b> {aiSuggestion.unit} · <b>category:</b> {aiSuggestion.category.replace("_"," ")}</div>
+                      {aiSuggestion.pack_size && <div><b>Pack size:</b> {aiSuggestion.pack_size}</div>}
+                      <div className="text-muted-foreground">Confidence: {Math.round((aiSuggestion.confidence || 0) * 100)}% — verify and edit below.</div>
+                    </div>
+                  ) : aiIdentifying ? (
+                    <div className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Asking AI…</div>
+                  ) : null}
+                </div>
+              )}
+              {!aiPreview && (
+                <p className="text-[11px] text-muted-foreground">Snap or upload a photo. AI will suggest name, container (tin/bottle/packet…), category and unit. You verify before saving.</p>
+              )}
+            </div>
+
             <div><Label>Name</Label><Input value={itemForm.name} onChange={e => setItemForm({ ...itemForm, name: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Category</Label>
