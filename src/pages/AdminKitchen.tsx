@@ -74,6 +74,14 @@ export default function AdminKitchen() {
   const [bulkText, setBulkText] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
 
+  // AI photo identification
+  const [aiIdentifying, setAiIdentifying] = useState(false);
+  const [aiPreview, setAiPreview] = useState<string | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<{
+    name: string; brand: string | null; container: string; category: string;
+    unit: string; pack_size: string | null; confidence: number; notes: string | null;
+  } | null>(null);
+
   const fetchAll = async () => {
     setLoading(true);
     const [it, rx, iss, ml] = await Promise.all([
