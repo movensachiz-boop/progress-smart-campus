@@ -230,7 +230,7 @@ function ItemsEditor({
   const suggestionList = priceMap
     ? Array.from(new Set(Array.from(priceMap.values()).map((v) => v.label))).slice(0, 500)
     : [];
-  const listId = React.useId();
+  const listId = useId();
   const total = sumItems(items);
   return (
     <div className="space-y-2">
