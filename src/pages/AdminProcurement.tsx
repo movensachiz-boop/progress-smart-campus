@@ -98,6 +98,51 @@ const emptyItem = (): Item => ({ description: "", quantity: 1, unit_price: 0, un
 const sumItems = (items: Item[]) =>
   items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0);
 
+const normDesc = (s: string) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+type PriceMap = Map<string, { price: number; currency: string; unit?: string }>;
+
+const fetchPriceHistory = async (): Promise<PriceMap> => {
+  const map: PriceMap = new Map();
+  const consume = (rows: any[] | null) => {
+    if (!rows) return;
+    for (const r of rows) {
+      const cur = r.currency || "USD";
+      const items = Array.isArray(r.items) ? r.items : [];
+      for (const it of items) {
+        const key = normDesc(it?.description || "");
+        const price = Number(it?.unit_price) || 0;
+        if (!key || price <= 0) continue;
+        if (!map.has(key)) map.set(key, { price, currency: cur, unit: it?.unit });
+      }
+    }
+  };
+  const [reqs, pos, grns] = await Promise.all([
+    supabase.from("requisitions").select("items,currency,created_at").order("created_at", { ascending: false }).limit(500),
+    supabase.from("purchase_orders").select("items,currency,created_at").order("created_at", { ascending: false }).limit(500),
+    supabase.from("goods_received").select("items,currency,created_at").order("created_at", { ascending: false }).limit(500),
+  ]);
+  // Priority: POs (actual agreed price) > GRNs > previous requisitions
+  consume(pos.data as any[]);
+  consume(grns.data as any[]);
+  consume(reqs.data as any[]);
+  return map;
+};
+
+const applyPriceHistory = (items: Item[], map: PriceMap): { items: Item[]; filled: number } => {
+  let filled = 0;
+  const out = items.map((it) => {
+    if (Number(it.unit_price) > 0) return it;
+    const hit = map.get(normDesc(it.description || ""));
+    if (hit && hit.price > 0) {
+      filled++;
+      return { ...it, unit_price: hit.price, unit: it.unit || hit.unit || "pcs" };
+    }
+    return it;
+  });
+  return { items: out, filled };
+};
+
 function ItemsEditor({
   items,
   setItems,
