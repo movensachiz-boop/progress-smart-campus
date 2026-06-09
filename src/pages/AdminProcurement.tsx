@@ -833,6 +833,8 @@ function POsTab({
   const [supplierId, setSupplierId] = useState<string>("");
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [form, setForm] = useState({ currency: "USD", expected_delivery: "", notes: "" });
+  const [priceMap, setPriceMap] = useState<PriceMap>(new Map());
+  useEffect(() => { fetchPriceHistory().then(setPriceMap).catch(() => {}); }, []);
 
   const approvedReqs = requisitions.filter((r) => r.status === "approved");
 
