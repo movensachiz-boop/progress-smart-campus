@@ -37,6 +37,7 @@ const adminLinks = [
   { label: "Inventory", icon: Package, path: "/admin/inventory" },
   { label: "Procurement", icon: ShoppingCart, path: "/admin/procurement" },
   { label: "Goods Received", icon: Package, path: "/admin/procurement?tab=grn" },
+  { label: "Kitchen Stock", icon: ChefHat, path: "/admin/kitchen" },
   { label: "Settings", icon: Settings, path: "/admin/settings" },
 ];
 
