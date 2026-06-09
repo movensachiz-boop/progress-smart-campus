@@ -175,17 +175,17 @@ export default function AdminKitchen() {
     const lines = bulkText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (lines.length === 0) return toast.error("Paste at least one item");
     const rows: any[] = [];
-    const errors: string[] = [];
+    const skipped: number[] = [];
     lines.forEach((line, idx) => {
       // Skip header row if present
       if (idx === 0 && /^name\s*,/i.test(line)) return;
       const parts = line.split(",").map(p => p.trim());
       const [name, category, unit, qty, cost, threshold, supplier, notes] = parts;
-      if (!name) { errors.push(`Line ${idx + 1}: missing name`); return; }
-      const cat = (category || "ingredient").toLowerCase();
-      const un = (unit || "kg").toLowerCase();
-      if (!CATEGORIES.includes(cat)) { errors.push(`Line ${idx + 1}: invalid category "${category}" (use: ${CATEGORIES.join(", ")})`); return; }
-      if (!UNITS.includes(un)) { errors.push(`Line ${idx + 1}: invalid unit "${unit}" (use: ${UNITS.join(", ")})`); return; }
+      if (!name) { skipped.push(idx + 1); return; }
+      let cat = (category || "").toLowerCase();
+      if (!CATEGORIES.includes(cat)) cat = "ingredient";
+      let un = (unit || "").toLowerCase();
+      if (!UNITS.includes(un)) un = "kg";
       rows.push({
         name,
         category: cat,
@@ -197,7 +197,7 @@ export default function AdminKitchen() {
         notes: notes || null,
       });
     });
-    if (errors.length) return toast.error(errors.slice(0, 3).join(" | "));
+    if (skipped.length) toast.warning(`Skipped ${skipped.length} line(s) with no name`);
     if (rows.length === 0) return toast.error("Nothing to add");
     setBulkSaving(true);
     const { error } = await supabase.from("kitchen_items").insert(rows as any);
