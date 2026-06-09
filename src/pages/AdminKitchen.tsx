@@ -129,6 +129,47 @@ export default function AdminKitchen() {
     toast.success("Deleted"); fetchAll();
   };
 
+  // ─── Bulk add items ───
+  const openBulk = () => {
+    setBulkText("");
+    setBulkDlg(true);
+  };
+  const saveBulk = async () => {
+    const lines = bulkText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) return toast.error("Paste at least one item");
+    const rows: any[] = [];
+    const errors: string[] = [];
+    lines.forEach((line, idx) => {
+      // Skip header row if present
+      if (idx === 0 && /^name\s*,/i.test(line)) return;
+      const parts = line.split(",").map(p => p.trim());
+      const [name, category, unit, qty, cost, threshold, supplier, notes] = parts;
+      if (!name) { errors.push(`Line ${idx + 1}: missing name`); return; }
+      const cat = (category || "ingredient").toLowerCase();
+      const un = (unit || "kg").toLowerCase();
+      if (!CATEGORIES.includes(cat)) { errors.push(`Line ${idx + 1}: invalid category "${category}" (use: ${CATEGORIES.join(", ")})`); return; }
+      if (!UNITS.includes(un)) { errors.push(`Line ${idx + 1}: invalid unit "${unit}" (use: ${UNITS.join(", ")})`); return; }
+      rows.push({
+        name,
+        category: cat,
+        unit: un,
+        stock_quantity: Number(qty) || 0,
+        unit_cost: Number(cost) || 0,
+        low_stock_threshold: Number(threshold) || 5,
+        supplier: supplier || null,
+        notes: notes || null,
+      });
+    });
+    if (errors.length) return toast.error(errors.slice(0, 3).join(" | "));
+    if (rows.length === 0) return toast.error("Nothing to add");
+    setBulkSaving(true);
+    const { error } = await supabase.from("kitchen_items").insert(rows as any);
+    setBulkSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(`${rows.length} items added`);
+    setBulkDlg(false); fetchAll();
+  };
+
   // ─── Receipts ───
   const openReceipt = () => {
     setRxForm({ item_id: items[0]?.id || "", quantity: 0, unit_cost: items[0]?.unit_cost || 0, supplier: items[0]?.supplier || "", delivery_date: new Date().toISOString().split("T")[0], invoice_number: "", notes: "" });
