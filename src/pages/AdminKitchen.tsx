@@ -636,6 +636,43 @@ export default function AdminKitchen() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Add Items Dialog */}
+      <Dialog open={bulkDlg} onOpenChange={setBulkDlg}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Bulk Add Kitchen Items</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>Paste one item per line as comma-separated values:</p>
+              <p className="font-mono text-xs bg-muted p-2 rounded">name, category, unit, quantity, unit_cost, low_alert, supplier, notes</p>
+              <p className="text-xs">
+                <b>Categories:</b> {CATEGORIES.join(", ")}<br />
+                <b>Units:</b> {UNITS.join(", ")}<br />
+                Only <i>name</i> is required. Header row is auto-skipped.
+              </p>
+            </div>
+            <div>
+              <Label>Items (CSV)</Label>
+              <Textarea
+                rows={12}
+                placeholder={`Rice, dry_goods, kg, 50, 1.20, 10, Local Mart\nCooking Oil, ingredient, L, 20, 3.50, 5, Local Mart\nTomatoes, vegetables, kg, 15, 0.80, 5`}
+                value={bulkText}
+                onChange={e => setBulkText(e.target.value)}
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {bulkText.split(/\r?\n/).filter(l => l.trim()).length} line(s) ready
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDlg(false)} disabled={bulkSaving}>Cancel</Button>
+            <Button onClick={saveBulk} disabled={bulkSaving} className="gap-2">
+              {bulkSaving ? "Saving..." : <><ListPlus size={14} /> Add Items</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
