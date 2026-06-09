@@ -178,7 +178,46 @@ export default function AdminKitchen() {
     setBulkDlg(false); fetchAll();
   };
 
-  // ─── Receipts ───
+  // ─── AI photo identification ───
+  const fileToDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+
+  const handleIdentifyPhoto = async (file: File) => {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) return toast.error("Image must be under 8MB");
+    try {
+      setAiIdentifying(true);
+      setAiSuggestion(null);
+      const dataUrl = await fileToDataUrl(file);
+      setAiPreview(dataUrl);
+      const { data, error } = await supabase.functions.invoke("identify-kitchen-item", {
+        body: { image: dataUrl },
+      });
+      if (error) throw error;
+      if (!data || (data as any).error) throw new Error((data as any)?.error || "AI failed");
+      const s = data as any;
+      setAiSuggestion(s);
+      // Pre-fill what we have so user can verify
+      setItemForm(prev => ({
+        ...prev,
+        name: s.name || prev.name,
+        category: s.category || prev.category,
+        unit: s.unit || prev.unit,
+        notes: [s.brand, s.pack_size, s.container ? `container: ${s.container}` : null, s.notes]
+          .filter(Boolean).join(" · ") || prev.notes,
+      }));
+      toast.success(`Identified: ${s.name || "item"} (${Math.round((s.confidence || 0) * 100)}%) — please verify`);
+    } catch (e) {
+      toast.error((e as Error).message || "Could not identify image");
+    } finally {
+      setAiIdentifying(false);
+    }
+  };
+
   const openReceipt = () => {
     setRxForm({ item_id: items[0]?.id || "", quantity: 0, unit_cost: items[0]?.unit_cost || 0, supplier: items[0]?.supplier || "", delivery_date: new Date().toISOString().split("T")[0], invoice_number: "", notes: "" });
     setRxDlg(true);
