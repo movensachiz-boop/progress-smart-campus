@@ -100,7 +100,7 @@ const sumItems = (items: Item[]) =>
 
 const normDesc = (s: string) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
 
-type PriceMap = Map<string, { price: number; currency: string; unit?: string }>;
+type PriceMap = Map<string, { price: number; currency: string; unit?: string; label: string }>;
 
 const fetchPriceHistory = async (): Promise<PriceMap> => {
   const map: PriceMap = new Map();
@@ -110,10 +110,16 @@ const fetchPriceHistory = async (): Promise<PriceMap> => {
       const cur = r.currency || "USD";
       const items = Array.isArray(r.items) ? r.items : [];
       for (const it of items) {
-        const key = normDesc(it?.description || "");
+        const raw = String(it?.description || "").trim();
+        const key = normDesc(raw);
         const price = Number(it?.unit_price) || 0;
-        if (!key || price <= 0) continue;
-        if (!map.has(key)) map.set(key, { price, currency: cur, unit: it?.unit });
+        if (!key) continue;
+        const existing = map.get(key);
+        if (!existing) {
+          map.set(key, { price, currency: cur, unit: it?.unit, label: raw });
+        } else if (existing.price <= 0 && price > 0) {
+          map.set(key, { price, currency: cur, unit: it?.unit || existing.unit, label: existing.label });
+        }
       }
     }
   };
@@ -127,6 +133,35 @@ const fetchPriceHistory = async (): Promise<PriceMap> => {
   consume(grns.data as any[]);
   consume(reqs.data as any[]);
   return map;
+};
+
+// Fuzzy-find closest known item description (used to auto-correct spelling on blur)
+const findClosestLabel = (query: string, map: PriceMap): string | null => {
+  const q = normDesc(query);
+  if (!q || q.length < 3) return null;
+  if (map.has(q)) return null; // already exact
+  const lev = (a: string, b: string) => {
+    if (a === b) return 0;
+    const dp = Array.from({ length: a.length + 1 }, (_, i) => i);
+    for (let j = 1; j <= b.length; j++) {
+      let prev = dp[0]; dp[0] = j;
+      for (let i = 1; i <= a.length; i++) {
+        const tmp = dp[i];
+        dp[i] = Math.min(dp[i] + 1, dp[i - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+        prev = tmp;
+      }
+    }
+    return dp[a.length];
+  };
+  let best: { key: string; dist: number } | null = null;
+  const maxDist = Math.max(1, Math.floor(q.length * 0.3));
+  for (const key of map.keys()) {
+    if (Math.abs(key.length - q.length) > maxDist) continue;
+    // quick prefix or substring boost
+    const d = lev(q, key);
+    if (d <= maxDist && (!best || d < best.dist)) best = { key, dist: d };
+  }
+  return best ? map.get(best.key)!.label : null;
 };
 
 const applyPriceHistory = (items: Item[], map: PriceMap): { items: Item[]; filled: number } => {
