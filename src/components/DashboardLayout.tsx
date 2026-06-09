@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activityLog";
 import {
   LayoutDashboard, Users, Receipt, Bell, FileText, Settings,
-  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart
+  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart, ChefHat
 } from "lucide-react";
 import pccLogo from "@/assets/pcc-logo.png";
 
@@ -37,6 +37,7 @@ const adminLinks = [
   { label: "Inventory", icon: Package, path: "/admin/inventory" },
   { label: "Procurement", icon: ShoppingCart, path: "/admin/procurement" },
   { label: "Goods Received", icon: Package, path: "/admin/procurement?tab=grn" },
+  { label: "Kitchen Stock", icon: ChefHat, path: "/admin/kitchen" },
   { label: "Settings", icon: Settings, path: "/admin/settings" },
 ];
 
@@ -73,10 +74,12 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
   if (role === "admin") {
     if (actualRole === "cashier") {
       // Hide Dashboard + Settings; allow everything else
-      links = adminLinks.filter(l => l.path !== "/admin" && l.path !== "/admin/settings" && l.path !== "/admin/audit");
+      links = adminLinks.filter(l => l.path !== "/admin" && l.path !== "/admin/settings" && l.path !== "/admin/audit" && l.path !== "/admin/kitchen");
     } else if (actualRole === "timetable_manager") {
       const allowed = ["/admin/timetable", "/admin/timetable/master", "/admin/subjects", "/admin/teachers", "/admin/classes"];
       links = adminLinks.filter(l => allowed.includes(l.path));
+    } else if (actualRole === "kitchen") {
+      links = adminLinks.filter(l => l.path === "/admin/kitchen");
     }
   }
 

@@ -22,12 +22,15 @@ const StaffGuard = ({ children, allow, deny, redirectTo = "/admin/students" }: P
   if (isFullAdmin) return <>{children}</>;
 
   if (allow && allow.includes(role)) return <>{children}</>;
+
+  // Kitchen staff only allowed where explicitly listed in `allow`
+  if (role === "kitchen") return <Navigate to="/admin/kitchen" replace />;
+
   if (deny && deny.includes(role)) {
     const fallback = role === "timetable_manager" ? "/admin/timetable" : redirectTo;
     return <Navigate to={fallback} replace />;
   }
   if (!allow && (!deny || !deny.includes(role))) {
-    // default: cashier OK, timetable_manager only on allowed pages
     if (role === "cashier") return <>{children}</>;
     if (role === "timetable_manager") {
       return <Navigate to="/admin/timetable" replace />;

@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
 
     if (action === "create_staff") {
       const { fullName, password, role } = payload;
-      const allowedRoles = ["admin", "cashier", "timetable_manager", "teacher", "owner"];
+      const allowedRoles = ["admin", "cashier", "timetable_manager", "teacher", "owner", "kitchen"];
       if (!fullName || !password || !role) {
         return new Response(JSON.stringify({ error: "Full name, password, and role are required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
