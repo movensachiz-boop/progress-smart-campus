@@ -418,6 +418,21 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
     setOpen(true);
   };
 
+  const [priceMap, setPriceMap] = useState<PriceMap>(new Map());
+  useEffect(() => {
+    fetchPriceHistory().then(setPriceMap).catch(() => {});
+  }, [data]);
+
+  const autofillPrices = () => {
+    const { items: next, filled } = applyPriceHistory(items, priceMap);
+    if (filled > 0) {
+      setItems(next);
+      toast({ title: `Auto-filled ${filled} price${filled === 1 ? "" : "s"} from history` });
+    } else {
+      toast({ title: "No matching historical prices found" });
+    }
+  };
+
   const handleScan = async (dataUrl: string) => {
     setScanning(true);
     try {
