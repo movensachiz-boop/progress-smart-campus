@@ -20,6 +20,7 @@ import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import { Smartphone } from "lucide-react";
 import PrepaidAccountsTab from "@/components/PrepaidAccountsTab";
+import RequisitionsBackupPanel from "@/components/RequisitionsBackupPanel";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type Item = ProcurementLineItem;
