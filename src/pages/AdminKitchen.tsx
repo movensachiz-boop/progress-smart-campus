@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChefHat, Plus, Pencil, Trash2, FileDown, PackagePlus, PackageMinus, Utensils } from "lucide-react";
+import { ChefHat, Plus, Pencil, Trash2, FileDown, PackagePlus, PackageMinus, Utensils, ListPlus } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import {
   generateKitchenReport, KitchenStockRow, KitchenReceiptRow, KitchenIssueRow, KitchenMealRow,
 } from "@/lib/generateKitchenReport";
@@ -68,6 +69,11 @@ export default function AdminKitchen() {
   const [mealForm, setMealForm] = useState({ meal_name: "", meal_type: "lunch", meal_date: new Date().toISOString().split("T")[0], portions_served: 0, notes: "" });
   const [mealIngs, setMealIngs] = useState<MealIng[]>([]);
 
+  // Bulk item entry
+  const [bulkDlg, setBulkDlg] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+
   const fetchAll = async () => {
     setLoading(true);
     const [it, rx, iss, ml] = await Promise.all([
@@ -121,6 +127,47 @@ export default function AdminKitchen() {
     const { error } = await supabase.from("kitchen_items").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted"); fetchAll();
+  };
+
+  // ─── Bulk add items ───
+  const openBulk = () => {
+    setBulkText("");
+    setBulkDlg(true);
+  };
+  const saveBulk = async () => {
+    const lines = bulkText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) return toast.error("Paste at least one item");
+    const rows: any[] = [];
+    const errors: string[] = [];
+    lines.forEach((line, idx) => {
+      // Skip header row if present
+      if (idx === 0 && /^name\s*,/i.test(line)) return;
+      const parts = line.split(",").map(p => p.trim());
+      const [name, category, unit, qty, cost, threshold, supplier, notes] = parts;
+      if (!name) { errors.push(`Line ${idx + 1}: missing name`); return; }
+      const cat = (category || "ingredient").toLowerCase();
+      const un = (unit || "kg").toLowerCase();
+      if (!CATEGORIES.includes(cat)) { errors.push(`Line ${idx + 1}: invalid category "${category}" (use: ${CATEGORIES.join(", ")})`); return; }
+      if (!UNITS.includes(un)) { errors.push(`Line ${idx + 1}: invalid unit "${unit}" (use: ${UNITS.join(", ")})`); return; }
+      rows.push({
+        name,
+        category: cat,
+        unit: un,
+        stock_quantity: Number(qty) || 0,
+        unit_cost: Number(cost) || 0,
+        low_stock_threshold: Number(threshold) || 5,
+        supplier: supplier || null,
+        notes: notes || null,
+      });
+    });
+    if (errors.length) return toast.error(errors.slice(0, 3).join(" | "));
+    if (rows.length === 0) return toast.error("Nothing to add");
+    setBulkSaving(true);
+    const { error } = await supabase.from("kitchen_items").insert(rows as any);
+    setBulkSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(`${rows.length} items added`);
+    setBulkDlg(false); fetchAll();
   };
 
   // ─── Receipts ───
@@ -271,6 +318,7 @@ export default function AdminKitchen() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={openAddItem} className="gap-2"><Plus size={16} /> Item</Button>
+            <Button variant="outline" onClick={openBulk} className="gap-2"><ListPlus size={16} /> Bulk Add</Button>
             <Button variant="outline" onClick={openReceipt} className="gap-2"><PackagePlus size={16} /> Receive</Button>
             <Button variant="outline" onClick={openIssue} className="gap-2"><PackageMinus size={16} /> Issue</Button>
             <Button onClick={openMeal} className="gap-2"><Utensils size={16} /> Record Meal</Button>
@@ -585,6 +633,43 @@ export default function AdminKitchen() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setMealDlg(false)}>Cancel</Button>
             <Button onClick={saveMeal}>Save Meal & Deduct Ingredients</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Add Items Dialog */}
+      <Dialog open={bulkDlg} onOpenChange={setBulkDlg}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Bulk Add Kitchen Items</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>Paste one item per line as comma-separated values:</p>
+              <p className="font-mono text-xs bg-muted p-2 rounded">name, category, unit, quantity, unit_cost, low_alert, supplier, notes</p>
+              <p className="text-xs">
+                <b>Categories:</b> {CATEGORIES.join(", ")}<br />
+                <b>Units:</b> {UNITS.join(", ")}<br />
+                Only <i>name</i> is required. Header row is auto-skipped.
+              </p>
+            </div>
+            <div>
+              <Label>Items (CSV)</Label>
+              <Textarea
+                rows={12}
+                placeholder={`Rice, dry_goods, kg, 50, 1.20, 10, Local Mart\nCooking Oil, ingredient, L, 20, 3.50, 5, Local Mart\nTomatoes, vegetables, kg, 15, 0.80, 5`}
+                value={bulkText}
+                onChange={e => setBulkText(e.target.value)}
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {bulkText.split(/\r?\n/).filter(l => l.trim()).length} line(s) ready
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDlg(false)} disabled={bulkSaving}>Cancel</Button>
+            <Button onClick={saveBulk} disabled={bulkSaving} className="gap-2">
+              {bulkSaving ? "Saving..." : <><ListPlus size={14} /> Add Items</>}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

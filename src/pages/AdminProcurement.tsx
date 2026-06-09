@@ -20,6 +20,7 @@ import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import { Smartphone } from "lucide-react";
 import PrepaidAccountsTab from "@/components/PrepaidAccountsTab";
+import RequisitionsBackupPanel from "@/components/RequisitionsBackupPanel";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type Item = ProcurementLineItem;
@@ -398,7 +399,8 @@ export default function AdminProcurement() {
             <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="requisitions" className="mt-4">
+          <TabsContent value="requisitions" className="mt-4 space-y-4">
+            <RequisitionsBackupPanel onRestored={fetchAll} />
             <RequisitionsTab data={requisitions} onChange={fetchAll} />
           </TabsContent>
           <TabsContent value="pos" className="mt-4">
