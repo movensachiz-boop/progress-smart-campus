@@ -73,6 +73,8 @@ export default function AdminKitchen() {
   const [bulkDlg, setBulkDlg] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkAiBusy, setBulkAiBusy] = useState(false);
+  const [bulkAiPreview, setBulkAiPreview] = useState<string | null>(null);
 
   // AI photo identification
   const [aiIdentifying, setAiIdentifying] = useState(false);
@@ -142,7 +144,32 @@ export default function AdminKitchen() {
   // ─── Bulk add items ───
   const openBulk = () => {
     setBulkText("");
+    setBulkAiPreview(null);
     setBulkDlg(true);
+  };
+
+  const handleBulkPhoto = async (file: File) => {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) return toast.error("Image must be under 8MB");
+    try {
+      setBulkAiBusy(true);
+      const dataUrl = await fileToDataUrl(file);
+      setBulkAiPreview(dataUrl);
+      const { data, error } = await supabase.functions.invoke("identify-kitchen-list", {
+        body: { image: dataUrl },
+      });
+      if (error) throw error;
+      if (!data || (data as any).error) throw new Error((data as any)?.error || "AI failed");
+      const csv = String((data as any).csv || "");
+      const count = Number((data as any).count || 0);
+      if (!csv) return toast.error("No items detected — try a clearer photo");
+      setBulkText(prev => prev ? `${prev.replace(/\s+$/, "")}\n${csv}` : csv);
+      toast.success(`Extracted ${count} item(s) — please review before saving`);
+    } catch (e) {
+      toast.error((e as Error).message || "Could not read list");
+    } finally {
+      setBulkAiBusy(false);
+    }
   };
   const saveBulk = async () => {
     const lines = bulkText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -742,6 +769,30 @@ export default function AdminKitchen() {
                 <b>Units:</b> {UNITS.join(", ")}<br />
                 Only <i>name</i> is required. Header row is auto-skipped.
               </p>
+            </div>
+            <div className="rounded-md border border-dashed p-3 space-y-2 bg-muted/30">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-xs">
+                  <div className="font-medium flex items-center gap-1"><Sparkles size={12} /> Extract from photo</div>
+                  <div className="text-muted-foreground">Snap a handwritten or printed list — AI fills the CSV below.</div>
+                </div>
+                <label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={bulkAiBusy}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleBulkPhoto(f); e.target.value = ""; }}
+                  />
+                  <span className={`inline-flex items-center gap-1 cursor-pointer border rounded-md px-3 py-1.5 text-xs ${bulkAiBusy ? "opacity-50 pointer-events-none" : "hover:bg-accent"}`}>
+                    {bulkAiBusy ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                    {bulkAiBusy ? "Reading list..." : "Upload list photo"}
+                  </span>
+                </label>
+              </div>
+              {bulkAiPreview && (
+                <img src={bulkAiPreview} alt="List preview" className="max-h-40 rounded border object-contain" />
+              )}
             </div>
             <div>
               <Label>Items (CSV)</Label>
