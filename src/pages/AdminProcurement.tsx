@@ -463,12 +463,17 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
         notes: data.notes || f.notes,
       }));
       if (Array.isArray(data.items) && data.items.length) {
-        setItems(data.items.map((it: any) => ({
+        const raw: Item[] = data.items.map((it: any) => ({
           description: String(it.description || ""),
           quantity: Number(it.quantity) || 1,
           unit: String(it.unit || "pcs"),
           unit_price: Number(it.unit_price) || 0,
-        })));
+        }));
+        const { items: enriched, filled } = applyPriceHistory(raw, priceMap);
+        setItems(enriched);
+        if (filled > 0) {
+          toast({ title: `Auto-filled ${filled} price${filled === 1 ? "" : "s"} from history` });
+        }
       }
       toast({ title: "Scan complete", description: "Please verify the extracted details before saving." });
     } finally {
