@@ -1021,6 +1021,8 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
   const [receiptFiles, setReceiptFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({ received_by: "", received_date: new Date().toISOString().slice(0, 10), notes: "", supplier_name: "" });
+  const [priceMap, setPriceMap] = useState<PriceMap>(new Map());
+  useEffect(() => { fetchPriceHistory().then(setPriceMap).catch(() => {}); }, []);
 
   const onPickPO = (id: string) => {
     setPoId(id);
