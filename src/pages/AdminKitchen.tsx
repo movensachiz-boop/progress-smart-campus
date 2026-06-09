@@ -69,6 +69,11 @@ export default function AdminKitchen() {
   const [mealForm, setMealForm] = useState({ meal_name: "", meal_type: "lunch", meal_date: new Date().toISOString().split("T")[0], portions_served: 0, notes: "" });
   const [mealIngs, setMealIngs] = useState<MealIng[]>([]);
 
+  // Bulk item entry
+  const [bulkDlg, setBulkDlg] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+
   const fetchAll = async () => {
     setLoading(true);
     const [it, rx, iss, ml] = await Promise.all([
