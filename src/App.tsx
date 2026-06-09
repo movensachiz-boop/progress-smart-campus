@@ -81,6 +81,7 @@ const App = () => (
             <Route path="/admin/fees" element={<StaffGuard deny={DENY_TM}><AdminFees /></StaffGuard>} />
             <Route path="/admin/inventory" element={<StaffGuard deny={DENY_TM}><AdminInventory /></StaffGuard>} />
             <Route path="/admin/procurement" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminProcurement /></StaffGuard>} />
+            <Route path="/admin/kitchen" element={<StaffGuard allow={["kitchen"]} deny={DENY_TM_AND_CASHIER}><AdminKitchen /></StaffGuard>} />
             <Route path="/admin/audit" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminAuditTrail /></StaffGuard>} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/attendance" element={<TeacherAttendance />} />
