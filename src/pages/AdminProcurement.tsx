@@ -661,7 +661,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                     Use historical prices
                   </Button>
                 </div>
-                <ItemsEditor items={items} setItems={setItems} currency={form.currency} />
+                <ItemsEditor items={items} setItems={setItems} currency={form.currency} priceMap={priceMap} />
                 <p className="text-xs text-muted-foreground mt-1">
                   Items left at 0 will be auto-filled on save using prices from previous requisitions, POs and GRNs.
                 </p>
@@ -914,7 +914,7 @@ function POsTab({
               </div>
               <div>
                 <Label>Items</Label>
-                <ItemsEditor items={items} setItems={setItems} currency={form.currency} />
+                <ItemsEditor items={items} setItems={setItems} currency={form.currency} priceMap={priceMap} />
               </div>
               <div>
                 <Label>Notes</Label>
@@ -1117,7 +1117,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
               </div>
               <div>
                 <Label>Items Received (with prices)</Label>
-                <ItemsEditor items={items} setItems={setItems} showCost={true} currency={currency} />
+                <ItemsEditor items={items} setItems={setItems} showCost={true} currency={currency} priceMap={priceMap} />
               </div>
               <div>
                 <Label>Upload Receipts / Invoices (evidence)</Label>
