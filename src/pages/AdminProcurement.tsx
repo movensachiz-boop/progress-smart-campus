@@ -948,8 +948,19 @@ function POsTab({
     onChange();
   };
 
-  const downloadPDF = (p: PurchaseOrder) =>
-    generateProcurementDoc({
+  const downloadPDF = async (p: PurchaseOrder) => {
+    const poGrns = grns.filter((g) => g.purchase_order_id === p.id);
+    const allPaths = poGrns.flatMap((g) => g.receipt_urls || []);
+    let receiptLinks: { label: string; url: string }[] = [];
+    if (allPaths.length) {
+      const { data } = await supabase.storage
+        .from("grn-receipts")
+        .createSignedUrls(allPaths, 60 * 60 * 24 * 7);
+      receiptLinks = (data || [])
+        .map((d, i) => d.signedUrl ? { label: `Receipt #${i + 1}`, url: d.signedUrl } : null)
+        .filter(Boolean) as { label: string; url: string }[];
+    }
+    return generateProcurementDoc({
       docType: "PURCHASE ORDER",
       number: p.po_number,
       date: new Date(p.created_at).toLocaleDateString(),
@@ -958,7 +969,9 @@ function POsTab({
       expectedDelivery: p.expected_delivery,
       items: p.items || [],
       notes: p.notes,
+      receiptLinks,
     });
+  };
 
   const [smsPOOpen, setSmsPOOpen] = useState<PurchaseOrder | null>(null);
   const [smsPhone, setSmsPhone] = useState("");
@@ -1427,8 +1440,17 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
   };
 
 
-  const downloadPDF = (g: GRN) => {
+  const downloadPDF = async (g: GRN) => {
     const po = pos.find((p) => p.id === g.purchase_order_id);
+    let receiptLinks: { label: string; url: string }[] = [];
+    if (g.receipt_urls?.length) {
+      const { data } = await supabase.storage
+        .from("grn-receipts")
+        .createSignedUrls(g.receipt_urls, 60 * 60 * 24 * 7);
+      receiptLinks = (data || [])
+        .map((d, i) => d.signedUrl ? { label: `Receipt #${i + 1}`, url: d.signedUrl } : null)
+        .filter(Boolean) as { label: string; url: string }[];
+    }
     return generateProcurementDoc({
       docType: "GOODS RECEIVED NOTE",
       number: g.grn_number,
@@ -1439,6 +1461,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
       poNumber: po?.po_number,
       items: g.items || [],
       notes: g.notes,
+      receiptLinks,
     });
   };
 
