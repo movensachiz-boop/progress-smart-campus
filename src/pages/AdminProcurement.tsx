@@ -1565,7 +1565,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)} disabled={uploading}>Cancel</Button>
-              <Button onClick={submit} disabled={uploading}>{uploading ? "Saving..." : "Confirm & Save GRN"}</Button>
+              <Button onClick={submit} disabled={uploading}>{uploading ? "Saving..." : editingId ? "Save Changes" : "Confirm & Save GRN"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
