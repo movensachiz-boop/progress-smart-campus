@@ -339,6 +339,8 @@ export type Database = {
       }
       goods_received: {
         Row: {
+          cash_given: number | null
+          change_amount: number | null
           created_at: string
           created_by: string | null
           currency: string
@@ -355,6 +357,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cash_given?: number | null
+          change_amount?: number | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -371,6 +375,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cash_given?: number | null
+          change_amount?: number | null
           created_at?: string
           created_by?: string | null
           currency?: string
