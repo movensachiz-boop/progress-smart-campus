@@ -647,6 +647,8 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
     }
     setOpen(false);
     reset();
+    // Refresh price history so the prices we just saved become defaults next time
+    fetchPriceHistory().then(setPriceMap).catch(() => {});
     onChange();
   };
 
