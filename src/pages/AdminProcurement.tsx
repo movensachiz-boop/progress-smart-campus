@@ -185,6 +185,20 @@ const applyPriceHistory = (items: Item[], map: PriceMap): { items: Item[]; fille
   return { items: out, filled };
 };
 
+// Merge any priced items into the live PriceMap so they're used immediately as history
+// (e.g. items just scanned from a receipt update later autofill within the same session).
+const mergePricesIntoMap = (items: Item[], currency: string, map: PriceMap): PriceMap => {
+  const next = new Map(map);
+  for (const it of items) {
+    const raw = String(it.description || "").trim();
+    const key = normDesc(raw);
+    const price = Number(it.unit_price) || 0;
+    if (!key || price <= 0) continue;
+    next.set(key, { price, currency: currency || "USD", unit: it.unit, label: raw });
+  }
+  return next;
+};
+
 function ItemsEditor({
   items,
   setItems,
@@ -567,8 +581,17 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           unit: String(it.unit || "pcs"),
           unit_price: Number(it.unit_price) || 0,
         }));
-        const { items: enriched, filled } = applyPriceHistory(raw, priceMap);
+        // 1) Adopt any prices visible on the scanned doc into the live history first
+        //    so later items in the same scan (and future autofill) reuse them.
+        const mergedMap = mergePricesIntoMap(raw, data.currency || form.currency || "USD", priceMap);
+        setPriceMap(mergedMap);
+        // 2) Then fill any items that still lack a price from history.
+        const { items: enriched, filled } = applyPriceHistory(raw, mergedMap);
         setItems(enriched);
+        const priced = raw.filter((i) => Number(i.unit_price) > 0).length;
+        if (priced > 0) {
+          toast({ title: `Using ${priced} price${priced === 1 ? "" : "s"} from the scan` });
+        }
         if (filled > 0) {
           toast({ title: `Auto-filled ${filled} price${filled === 1 ? "" : "s"} from history` });
         }
@@ -624,6 +647,8 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
     }
     setOpen(false);
     reset();
+    // Refresh price history so the prices we just saved become defaults next time
+    fetchPriceHistory().then(setPriceMap).catch(() => {});
     onChange();
   };
 
