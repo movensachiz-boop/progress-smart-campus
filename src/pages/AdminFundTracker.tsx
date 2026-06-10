@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -189,8 +189,8 @@ const AdminFundTracker = () => {
                   const opened = openFund === f.id;
                   const bal = balanceFor(f);
                   return (
-                    <>
-                      <TableRow key={f.id} className="cursor-pointer" onClick={() => setOpenFund(opened ? null : f.id)}>
+                    <Fragment key={f.id}>
+                      <TableRow className="cursor-pointer" onClick={() => setOpenFund(opened ? null : f.id)}>
                         <TableCell>{opened ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</TableCell>
                         <TableCell className="font-medium">{f.source}</TableCell>
                         <TableCell className="text-xs">{f.reference || "—"}</TableCell>
@@ -244,7 +244,7 @@ const AdminFundTracker = () => {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </TableBody>
