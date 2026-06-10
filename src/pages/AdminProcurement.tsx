@@ -1552,9 +1552,20 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                   accept="image/*,application/pdf"
                   onChange={(e) => setReceiptFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
                 />
+                {existingReceiptUrls.length > 0 && (
+                  <div className="text-xs mt-2 flex flex-wrap gap-1 items-center">
+                    <span className="text-muted-foreground">Existing:</span>
+                    {existingReceiptUrls.map((u, i) => (
+                      <span key={u} className="inline-flex items-center gap-1 rounded border px-2 py-0.5">
+                        <button type="button" className="underline" onClick={() => viewReceipt(u)}>#{i + 1}</button>
+                        <button type="button" className="text-destructive" onClick={() => setExistingReceiptUrls((prev) => prev.filter((x) => x !== u))} title="Remove">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {receiptFiles.length > 0 && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    {receiptFiles.length} file(s) attached: {receiptFiles.map((f) => f.name).join(", ")}
+                    {receiptFiles.length} new file(s) attached: {receiptFiles.map((f) => f.name).join(", ")}
                   </div>
                 )}
               </div>
