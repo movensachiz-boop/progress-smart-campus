@@ -1687,3 +1687,156 @@ function StatusBadge({ status }: { status: string }) {
   };
   return <Badge className={map[status] || "bg-gray-100 text-gray-800"} variant="secondary">{status}</Badge>;
 }
+
+/* ──────── Reports ──────── */
+function ReportsTab({ pos, grns, vouchers }: { pos: PurchaseOrder[]; grns: GRN[]; vouchers: PaymentVoucher[] }) {
+  const [poId, setPoId] = useState("");
+  const [from, setFrom] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
+  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [phone, setPhone] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const selectedPO = pos.find((p) => p.id === poId);
+  const poVouchers = selectedPO ? vouchers.filter((v) => v.purchase_order_id === selectedPO.id) : [];
+  const poGRNs = selectedPO ? grns.filter((g) => g.purchase_order_id === selectedPO.id) : [];
+
+  const filteredPOs = useMemo(() => {
+    const f = new Date(from).getTime();
+    const t = new Date(to).getTime() + 86400000;
+    return pos.filter((p) => {
+      const d = new Date(p.created_at).getTime();
+      return d >= f && d < t;
+    });
+  }, [pos, from, to]);
+  const filteredVouchers = useMemo(() => {
+    const f = new Date(from).getTime();
+    const t = new Date(to).getTime() + 86400000;
+    return vouchers.filter((v) => {
+      const d = new Date(v.payment_date || v.created_at).getTime();
+      return d >= f && d < t;
+    });
+  }, [vouchers, from, to]);
+  const filteredGRNs = useMemo(() => {
+    const f = new Date(from).getTime();
+    const t = new Date(to).getTime() + 86400000;
+    return grns.filter((g) => {
+      const d = new Date(g.received_date || g.created_at).getTime();
+      return d >= f && d < t;
+    });
+  }, [grns, from, to]);
+
+  const downloadPO = async () => {
+    if (!selectedPO) return toast({ title: "Pick a purchase order", variant: "destructive" });
+    await generatePOSpendingReport(selectedPO as any, poGRNs as any, poVouchers as any);
+  };
+
+  const smsPO = async () => {
+    if (!selectedPO) return toast({ title: "Pick a purchase order", variant: "destructive" });
+    if (!phone.trim()) return toast({ title: "Phone required", variant: "destructive" });
+    setSending(true);
+    try {
+      const msg = buildPOSpendingSMS(selectedPO as any, poVouchers as any);
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: { type: "custom", guardianPhone: phone.trim(), studentName: "Finance Director", customMessage: msg },
+      });
+      if (error) throw error;
+      toast({ title: "SMS sent" });
+    } catch (err: any) {
+      toast({ title: "SMS failed", description: err.message, variant: "destructive" });
+    } finally { setSending(false); }
+  };
+
+  const downloadPeriod = async () => {
+    await generatePeriodSpendingReport(from, to, filteredPOs as any, filteredGRNs as any, filteredVouchers as any);
+  };
+
+  const smsPeriod = async () => {
+    if (!phone.trim()) return toast({ title: "Phone required", variant: "destructive" });
+    setSending(true);
+    try {
+      const msg = buildPeriodSpendingSMS(from, to, filteredPOs as any, filteredVouchers as any);
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: { type: "custom", guardianPhone: phone.trim(), studentName: "Finance Director", customMessage: msg },
+      });
+      if (error) throw error;
+      toast({ title: "SMS sent" });
+    } catch (err: any) {
+      toast({ title: "SMS failed", description: err.message, variant: "destructive" });
+    } finally { setSending(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Finance Director Reports</CardTitle>
+          <CardDescription>Show exactly how procurement money was used. PDF + SMS rundown.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label>Finance Director Phone (for SMS)</Label>
+          <Input placeholder="0772000000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Per Purchase Order</CardTitle>
+          <CardDescription>Items bought, payments made, GRN matching, and variance.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Select value={poId} onValueChange={setPoId}>
+            <SelectTrigger><SelectValue placeholder="Select a purchase order" /></SelectTrigger>
+            <SelectContent>
+              {pos.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.po_number} — {p.supplier_name || "—"} — {p.currency} {Number(p.total_amount).toFixed(2)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedPO && (
+            <div className="text-sm text-muted-foreground">
+              PO Total: <b>{selectedPO.currency} {Number(selectedPO.total_amount).toFixed(2)}</b>
+              {" • "}Vouchers: {poVouchers.length} ({selectedPO.currency} {poVouchers.reduce((s, v) => s + Number(v.amount), 0).toFixed(2)})
+              {" • "}GRNs: {poGRNs.length}
+            </div>
+          )}
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={downloadPO} className="gap-2"><FileDown size={14} /> Download PDF</Button>
+            <Button variant="outline" onClick={smsPO} disabled={sending} className="gap-2">
+              {sending ? <Loader2 className="animate-spin" size={14} /> : <Receipt size={14} />} Send SMS
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Per Period</CardTitle>
+          <CardDescription>All POs, vouchers, and goods received between two dates.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>From</Label>
+              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            </div>
+            <div>
+              <Label>To</Label>
+              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            </div>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            POs: {filteredPOs.length} • Vouchers: {filteredVouchers.length} • GRNs: {filteredGRNs.length}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={downloadPeriod} className="gap-2"><FileDown size={14} /> Download PDF</Button>
+            <Button variant="outline" onClick={smsPeriod} disabled={sending} className="gap-2">
+              {sending ? <Loader2 className="animate-spin" size={14} /> : <Receipt size={14} />} Send SMS
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
