@@ -15,6 +15,12 @@ import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, Shoppin
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcurementDoc";
+import {
+  generatePOSpendingReport,
+  generatePeriodSpendingReport,
+  buildPOSpendingSMS,
+  buildPeriodSpendingSMS,
+} from "@/lib/generateProcurementSpendingReport";
 import { generateCombinedRequisitions } from "@/lib/generateCombinedRequisitions";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
@@ -390,13 +396,14 @@ export default function AdminProcurement() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full md:w-auto">
+          <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full md:w-auto">
             <TabsTrigger value="requisitions">Requisitions</TabsTrigger>
             <TabsTrigger value="pos">Purchase Orders</TabsTrigger>
             <TabsTrigger value="grn">Goods Received</TabsTrigger>
             <TabsTrigger value="vouchers">Payment Vouchers</TabsTrigger>
             <TabsTrigger value="prepaid">Prepaid Accounts</TabsTrigger>
             <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requisitions" className="mt-4 space-y-4">
@@ -404,7 +411,7 @@ export default function AdminProcurement() {
             <RequisitionsTab data={requisitions} onChange={fetchAll} />
           </TabsContent>
           <TabsContent value="pos" className="mt-4">
-            <POsTab data={pos} requisitions={requisitions} suppliers={suppliers} onChange={fetchAll} />
+            <POsTab data={pos} requisitions={requisitions} suppliers={suppliers} grns={grns} vouchers={vouchers} onChange={fetchAll} />
           </TabsContent>
           <TabsContent value="grn" className="mt-4">
             <GRNTab data={grns} pos={pos} onChange={fetchAll} />
@@ -417,6 +424,9 @@ export default function AdminProcurement() {
           </TabsContent>
           <TabsContent value="suppliers" className="mt-4">
             <SuppliersTab data={suppliers} onChange={fetchAll} />
+          </TabsContent>
+          <TabsContent value="reports" className="mt-4">
+            <ReportsTab pos={pos} grns={grns} vouchers={vouchers} />
           </TabsContent>
         </Tabs>
       </div>
@@ -847,11 +857,15 @@ function POsTab({
   data,
   requisitions,
   suppliers,
+  grns,
+  vouchers,
   onChange,
 }: {
   data: PurchaseOrder[];
   requisitions: Requisition[];
   suppliers: Supplier[];
+  grns: GRN[];
+  vouchers: PaymentVoucher[];
   onChange: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -911,10 +925,46 @@ function POsTab({
       notes: p.notes,
     });
 
+  const [smsPOOpen, setSmsPOOpen] = useState<PurchaseOrder | null>(null);
+  const [smsPhone, setSmsPhone] = useState("");
+  const [sendingSms, setSendingSms] = useState(false);
+
+  const spendingFor = (p: PurchaseOrder) => ({
+    pVouchers: vouchers.filter((v) => v.purchase_order_id === p.id),
+    pGRNs: grns.filter((g) => g.purchase_order_id === p.id),
+  });
+
+  const downloadSpendingReport = async (p: PurchaseOrder) => {
+    const { pVouchers, pGRNs } = spendingFor(p);
+    await generatePOSpendingReport(p as any, pGRNs as any, pVouchers as any);
+  };
+
+  const sendSpendingSms = async (p: PurchaseOrder) => {
+    if (!smsPhone.trim()) return toast({ title: "Phone required", variant: "destructive" });
+    setSendingSms(true);
+    try {
+      const { pVouchers } = spendingFor(p);
+      const msg = buildPOSpendingSMS(p as any, pVouchers as any);
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: { type: "custom", guardianPhone: smsPhone.trim(), studentName: "Finance Director", customMessage: msg },
+      });
+      if (error) throw error;
+      toast({ title: "SMS sent to Finance Director" });
+      setSmsPOOpen(null); setSmsPhone("");
+    } catch (err: any) {
+      toast({ title: "SMS failed", description: err.message, variant: "destructive" });
+    } finally { setSendingSms(false); }
+  };
+
   const setStatus = async (p: PurchaseOrder, status: string) => {
     const { error } = await supabase.from("purchase_orders").update({ status }).eq("id", p.id);
     if (error) return toast({ title: error.message, variant: "destructive" });
     onChange();
+    if (status === "completed") {
+      try { await downloadSpendingReport(p); } catch {}
+      toast({ title: "Spending report generated", description: "PDF downloaded. SMS the Finance Director below." });
+      setSmsPOOpen(p);
+    }
   };
 
   const remove = async (p: PurchaseOrder) => {
@@ -1024,7 +1074,8 @@ function POsTab({
                       {p.status !== "completed" && (
                         <Button size="sm" variant="outline" onClick={() => setStatus(p, "completed")}>Mark Complete</Button>
                       )}
-                      <Button size="sm" variant="outline" onClick={() => downloadPDF(p)}><FileDown size={14} /></Button>
+                      <Button size="sm" variant="outline" onClick={() => downloadPDF(p)} title="PO Document"><FileDown size={14} /></Button>
+                      <Button size="sm" variant="outline" onClick={() => downloadSpendingReport(p)} title="Spending Report (Finance)"><Receipt size={14} /></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(p)}><Trash2 size={14} /></Button>
                     </div>
                   </TableCell>
@@ -1034,6 +1085,25 @@ function POsTab({
           </Table>
         </div>
       </CardContent>
+
+      <Dialog open={!!smsPOOpen} onOpenChange={(o) => !o && setSmsPOOpen(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>SMS Finance Director — {smsPOOpen?.po_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Finance Director Phone</Label>
+            <Input placeholder="0772000000" value={smsPhone} onChange={(e) => setSmsPhone(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Sends a short procurement rundown showing items bought and total paid.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSmsPOOpen(null)}>Skip</Button>
+            <Button onClick={() => smsPOOpen && sendSpendingSms(smsPOOpen)} disabled={sendingSms}>
+              {sendingSms ? <Loader2 className="animate-spin" size={14} /> : "Send SMS"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -1616,4 +1686,157 @@ function StatusBadge({ status }: { status: string }) {
     completed: "bg-green-100 text-green-800",
   };
   return <Badge className={map[status] || "bg-gray-100 text-gray-800"} variant="secondary">{status}</Badge>;
+}
+
+/* ──────── Reports ──────── */
+function ReportsTab({ pos, grns, vouchers }: { pos: PurchaseOrder[]; grns: GRN[]; vouchers: PaymentVoucher[] }) {
+  const [poId, setPoId] = useState("");
+  const [from, setFrom] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
+  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [phone, setPhone] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const selectedPO = pos.find((p) => p.id === poId);
+  const poVouchers = selectedPO ? vouchers.filter((v) => v.purchase_order_id === selectedPO.id) : [];
+  const poGRNs = selectedPO ? grns.filter((g) => g.purchase_order_id === selectedPO.id) : [];
+
+  const filteredPOs = useMemo(() => {
+    const f = new Date(from).getTime();
+    const t = new Date(to).getTime() + 86400000;
+    return pos.filter((p) => {
+      const d = new Date(p.created_at).getTime();
+      return d >= f && d < t;
+    });
+  }, [pos, from, to]);
+  const filteredVouchers = useMemo(() => {
+    const f = new Date(from).getTime();
+    const t = new Date(to).getTime() + 86400000;
+    return vouchers.filter((v) => {
+      const d = new Date(v.payment_date || v.created_at).getTime();
+      return d >= f && d < t;
+    });
+  }, [vouchers, from, to]);
+  const filteredGRNs = useMemo(() => {
+    const f = new Date(from).getTime();
+    const t = new Date(to).getTime() + 86400000;
+    return grns.filter((g) => {
+      const d = new Date(g.received_date || g.created_at).getTime();
+      return d >= f && d < t;
+    });
+  }, [grns, from, to]);
+
+  const downloadPO = async () => {
+    if (!selectedPO) return toast({ title: "Pick a purchase order", variant: "destructive" });
+    await generatePOSpendingReport(selectedPO as any, poGRNs as any, poVouchers as any);
+  };
+
+  const smsPO = async () => {
+    if (!selectedPO) return toast({ title: "Pick a purchase order", variant: "destructive" });
+    if (!phone.trim()) return toast({ title: "Phone required", variant: "destructive" });
+    setSending(true);
+    try {
+      const msg = buildPOSpendingSMS(selectedPO as any, poVouchers as any);
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: { type: "custom", guardianPhone: phone.trim(), studentName: "Finance Director", customMessage: msg },
+      });
+      if (error) throw error;
+      toast({ title: "SMS sent" });
+    } catch (err: any) {
+      toast({ title: "SMS failed", description: err.message, variant: "destructive" });
+    } finally { setSending(false); }
+  };
+
+  const downloadPeriod = async () => {
+    await generatePeriodSpendingReport(from, to, filteredPOs as any, filteredGRNs as any, filteredVouchers as any);
+  };
+
+  const smsPeriod = async () => {
+    if (!phone.trim()) return toast({ title: "Phone required", variant: "destructive" });
+    setSending(true);
+    try {
+      const msg = buildPeriodSpendingSMS(from, to, filteredPOs as any, filteredVouchers as any);
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: { type: "custom", guardianPhone: phone.trim(), studentName: "Finance Director", customMessage: msg },
+      });
+      if (error) throw error;
+      toast({ title: "SMS sent" });
+    } catch (err: any) {
+      toast({ title: "SMS failed", description: err.message, variant: "destructive" });
+    } finally { setSending(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Finance Director Reports</CardTitle>
+          <CardDescription>Show exactly how procurement money was used. PDF + SMS rundown.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label>Finance Director Phone (for SMS)</Label>
+          <Input placeholder="0772000000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Per Purchase Order</CardTitle>
+          <CardDescription>Items bought, payments made, GRN matching, and variance.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Select value={poId} onValueChange={setPoId}>
+            <SelectTrigger><SelectValue placeholder="Select a purchase order" /></SelectTrigger>
+            <SelectContent>
+              {pos.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.po_number} — {p.supplier_name || "—"} — {p.currency} {Number(p.total_amount).toFixed(2)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedPO && (
+            <div className="text-sm text-muted-foreground">
+              PO Total: <b>{selectedPO.currency} {Number(selectedPO.total_amount).toFixed(2)}</b>
+              {" • "}Vouchers: {poVouchers.length} ({selectedPO.currency} {poVouchers.reduce((s, v) => s + Number(v.amount), 0).toFixed(2)})
+              {" • "}GRNs: {poGRNs.length}
+            </div>
+          )}
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={downloadPO} className="gap-2"><FileDown size={14} /> Download PDF</Button>
+            <Button variant="outline" onClick={smsPO} disabled={sending} className="gap-2">
+              {sending ? <Loader2 className="animate-spin" size={14} /> : <Receipt size={14} />} Send SMS
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Per Period</CardTitle>
+          <CardDescription>All POs, vouchers, and goods received between two dates.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>From</Label>
+              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            </div>
+            <div>
+              <Label>To</Label>
+              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            </div>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            POs: {filteredPOs.length} • Vouchers: {filteredVouchers.length} • GRNs: {filteredGRNs.length}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={downloadPeriod} className="gap-2"><FileDown size={14} /> Download PDF</Button>
+            <Button variant="outline" onClick={smsPeriod} disabled={sending} className="gap-2">
+              {sending ? <Loader2 className="animate-spin" size={14} /> : <Receipt size={14} />} Send SMS
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
