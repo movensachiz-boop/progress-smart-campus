@@ -11,7 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { generateFundRundown } from "@/lib/generateFundRundown";
-import { Plus, FileDown, MessageSquare, Trash2, Wallet, TrendingDown, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, FileDown, MessageSquare, Trash2, Wallet, TrendingDown, ChevronDown, ChevronRight, Camera, Smartphone, Upload, Loader2 } from "lucide-react";
+import CameraCaptureDialog from "@/components/CameraCaptureDialog";
+import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
+import { useRef } from "react";
 
 interface Fund {
   id: string;
@@ -51,6 +54,41 @@ const AdminFundTracker = () => {
   const [eDesc, setEDesc] = useState("");
   const [eCat, setECat] = useState("");
   const [eAmt, setEAmt] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [camOpen, setCamOpen] = useState(false);
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const scanReceipt = async (base64: string) => {
+    setScanning(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await supabase.functions.invoke("extract-fund-expense", {
+        body: { imageBase64: base64 },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (resp.error) throw new Error(resp.error.message || "Scan failed");
+      const ex = resp.data?.expense;
+      if (!ex) throw new Error("Nothing extracted");
+      if (ex.description) setEDesc(ex.description);
+      if (ex.amount) setEAmt(String(ex.amount).replace(/[^0-9.]/g, ""));
+      if (ex.category) setECat(ex.category);
+      toast({ title: "Receipt scanned", description: "Review the values, then Add to subtract from the fund." });
+    } catch (err: any) {
+      toast({ title: "Scan failed", description: err.message, variant: "destructive" });
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => scanReceipt(reader.result as string);
+    reader.readAsDataURL(file);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
   const load = async () => {
     const { data: f } = await supabase.from("funds").select("*").order("received_at", { ascending: false });
@@ -275,6 +313,13 @@ const AdminFundTracker = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Add Expense</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            <div className="flex flex-wrap gap-2 pb-2 border-b">
+              <Button size="sm" variant="outline" disabled={scanning} onClick={() => setCamOpen(true)} className="gap-1"><Camera size={14} /> Camera</Button>
+              <Button size="sm" variant="outline" disabled={scanning} onClick={() => setPhoneOpen(true)} className="gap-1"><Smartphone size={14} /> Phone (QR)</Button>
+              <Button size="sm" variant="outline" disabled={scanning} onClick={() => fileRef.current?.click()} className="gap-1"><Upload size={14} /> Upload</Button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+              {scanning && <span className="text-xs flex items-center gap-1 text-muted-foreground"><Loader2 size={12} className="animate-spin" /> Reading receipt…</span>}
+            </div>
             <div><Label>Description *</Label><Input value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="What was the money used for?" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Amount *</Label><Input type="number" value={eAmt} onChange={(e) => setEAmt(e.target.value)} /></div>
@@ -284,6 +329,20 @@ const AdminFundTracker = () => {
           <DialogFooter><Button onClick={saveExpense}>Add</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CameraCaptureDialog
+        open={camOpen}
+        onOpenChange={setCamOpen}
+        onCapture={scanReceipt}
+        title="Scan Receipt"
+        description="Capture a clear photo of the receipt or till slip."
+      />
+      <PhoneCameraPairDialog
+        open={phoneOpen}
+        onOpenChange={setPhoneOpen}
+        title="Scan Receipt with Phone"
+        onPhotos={async (urls) => { for (const u of urls) { await scanReceipt(u); } }}
+      />
 
       {/* SMS dialog */}
       <Dialog open={!!smsOpen} onOpenChange={(v) => !v && setSmsOpen(null)}>
