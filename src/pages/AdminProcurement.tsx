@@ -1299,11 +1299,37 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     setUploading(false);
     if (error) return toast({ title: error.message, variant: "destructive" });
     if (poId) await supabase.from("purchase_orders").update({ status: "received" }).eq("id", poId);
-    toast({ title: "Goods received recorded", description: createdReqNumber ? `Requisition ${createdReqNumber} auto-created.` : undefined });
+
+    // Auto-record into Fund Tracker if a source fund was selected (or matched by name)
+    let resolvedFundId = fundId;
+    if (!resolvedFundId && form.supplier_name) {
+      const needle = form.supplier_name.trim().toLowerCase();
+      const match = funds.find((f) => f.source.toLowerCase().includes(needle) || needle.includes(f.source.toLowerCase()));
+      if (match) resolvedFundId = match.id;
+    }
+    if (resolvedFundId && grandTotal > 0) {
+      const { error: feErr } = await supabase.from("fund_expenses").insert({
+        fund_id: resolvedFundId,
+        description: `GRN — ${form.supplier_name || po?.supplier_name || "Purchase"}${createdReqNumber ? ` (${createdReqNumber})` : ""}`,
+        category: "procurement",
+        amount: grandTotal,
+        spent_at: new Date(form.received_date).toISOString(),
+      });
+      if (feErr) toast({ title: "Fund tracker update failed", description: feErr.message, variant: "destructive" });
+    }
+
+    toast({
+      title: "Goods received recorded",
+      description: [
+        createdReqNumber ? `Requisition ${createdReqNumber} auto-created.` : null,
+        resolvedFundId ? `Expense posted to fund tracker.` : null,
+      ].filter(Boolean).join(" ") || undefined,
+    });
     setOpen(false);
     reset();
     onChange();
   };
+
 
   const downloadPDF = (g: GRN) => {
     const po = pos.find((p) => p.id === g.purchase_order_id);
