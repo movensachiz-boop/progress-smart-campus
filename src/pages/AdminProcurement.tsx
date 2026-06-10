@@ -1305,7 +1305,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     ].filter(Boolean).join(" • ");
 
     const { error } = await supabase.from("goods_received").insert({
-      purchase_order_id: poId || null,
+      purchase_order_id: poId || createdPoId || null,
       supplier_name: po?.supplier_name || form.supplier_name || null,
       items: items as any,
       received_by: form.received_by || null,
@@ -1331,7 +1331,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     if (resolvedFundId && grandTotal > 0) {
       const { error: feErr } = await supabase.from("fund_expenses").insert({
         fund_id: resolvedFundId,
-        description: `GRN — ${form.supplier_name || po?.supplier_name || "Purchase"}${createdReqNumber ? ` (${createdReqNumber})` : ""}`,
+        description: `GRN — ${form.supplier_name || po?.supplier_name || "Purchase"}${createdPoNumber ? ` (${createdPoNumber})` : createdReqNumber ? ` (${createdReqNumber})` : ""}`,
         category: "procurement",
         amount: grandTotal,
         spent_at: new Date(form.received_date).toISOString(),
@@ -1342,8 +1342,10 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     toast({
       title: "Goods received recorded",
       description: [
+        createdPoNumber ? `PO ${createdPoNumber} auto-created.` : null,
         createdReqNumber ? `Requisition ${createdReqNumber} auto-created.` : null,
         resolvedFundId ? `Expense posted to fund tracker.` : null,
+        receiptFiles.length > 1 ? `${receiptFiles.length} receipts attached.` : null,
       ].filter(Boolean).join(" ") || undefined,
     });
     setOpen(false);
