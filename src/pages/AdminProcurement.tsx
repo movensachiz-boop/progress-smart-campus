@@ -396,13 +396,14 @@ export default function AdminProcurement() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full md:w-auto">
+          <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full md:w-auto">
             <TabsTrigger value="requisitions">Requisitions</TabsTrigger>
             <TabsTrigger value="pos">Purchase Orders</TabsTrigger>
             <TabsTrigger value="grn">Goods Received</TabsTrigger>
             <TabsTrigger value="vouchers">Payment Vouchers</TabsTrigger>
             <TabsTrigger value="prepaid">Prepaid Accounts</TabsTrigger>
             <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requisitions" className="mt-4 space-y-4">
@@ -410,7 +411,7 @@ export default function AdminProcurement() {
             <RequisitionsTab data={requisitions} onChange={fetchAll} />
           </TabsContent>
           <TabsContent value="pos" className="mt-4">
-            <POsTab data={pos} requisitions={requisitions} suppliers={suppliers} onChange={fetchAll} />
+            <POsTab data={pos} requisitions={requisitions} suppliers={suppliers} grns={grns} vouchers={vouchers} onChange={fetchAll} />
           </TabsContent>
           <TabsContent value="grn" className="mt-4">
             <GRNTab data={grns} pos={pos} onChange={fetchAll} />
@@ -423,6 +424,9 @@ export default function AdminProcurement() {
           </TabsContent>
           <TabsContent value="suppliers" className="mt-4">
             <SuppliersTab data={suppliers} onChange={fetchAll} />
+          </TabsContent>
+          <TabsContent value="reports" className="mt-4">
+            <ReportsTab pos={pos} grns={grns} vouchers={vouchers} />
           </TabsContent>
         </Tabs>
       </div>
