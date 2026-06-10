@@ -1074,7 +1074,8 @@ function POsTab({
                       {p.status !== "completed" && (
                         <Button size="sm" variant="outline" onClick={() => setStatus(p, "completed")}>Mark Complete</Button>
                       )}
-                      <Button size="sm" variant="outline" onClick={() => downloadPDF(p)}><FileDown size={14} /></Button>
+                      <Button size="sm" variant="outline" onClick={() => downloadPDF(p)} title="PO Document"><FileDown size={14} /></Button>
+                      <Button size="sm" variant="outline" onClick={() => downloadSpendingReport(p)} title="Spending Report (Finance)"><Receipt size={14} /></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(p)}><Trash2 size={14} /></Button>
                     </div>
                   </TableCell>
@@ -1084,6 +1085,25 @@ function POsTab({
           </Table>
         </div>
       </CardContent>
+
+      <Dialog open={!!smsPOOpen} onOpenChange={(o) => !o && setSmsPOOpen(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>SMS Finance Director — {smsPOOpen?.po_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Finance Director Phone</Label>
+            <Input placeholder="0772000000" value={smsPhone} onChange={(e) => setSmsPhone(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Sends a short procurement rundown showing items bought and total paid.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSmsPOOpen(null)}>Skip</Button>
+            <Button onClick={() => smsPOOpen && sendSpendingSms(smsPOOpen)} disabled={sendingSms}>
+              {sendingSms ? <Loader2 className="animate-spin" size={14} /> : "Send SMS"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
