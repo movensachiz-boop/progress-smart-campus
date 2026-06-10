@@ -61,12 +61,12 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are an OCR assistant. Extract the total spent from a shop receipt, till slip, invoice, or hand-written receipt. Return a single expense entry. Pick the GRAND TOTAL / PAID amount, not subtotals. Infer a short description from the vendor/items, and pick a sensible category from: Food, Groceries, Transport, Fuel, Stationery, Utilities, Maintenance, Cleaning, Equipment, Services, Other. Date in YYYY-MM-DD.`,
+            content: `You are a strict OCR assistant for shop receipts, till slips, invoices, and hand-written receipts. ONLY return values that are clearly visible in THIS image. Do NOT invent, guess, or reuse data from any prior request. If you cannot read a field, leave it empty (except amount). For amount, pick the GRAND TOTAL / PAID amount (not subtotals or change). Infer description from the vendor or itemised lines actually printed on this receipt. Pick a category from: Food, Groceries, Transport, Fuel, Stationery, Utilities, Maintenance, Cleaning, Equipment, Services, Other. Date in YYYY-MM-DD. If the image is blank, unreadable, or not a receipt, return amount as "0" and leave other fields empty.`,
           },
           {
             role: "user",
             content: [
-              { type: "text", text: "Extract expense fields from this receipt image." },
+              { type: "text", text: "Read ONLY this attached image and extract the receipt fields. Ignore any context from earlier conversations." },
               { type: "image_url", image_url: { url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}` } },
             ],
           },
