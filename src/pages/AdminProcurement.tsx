@@ -1397,8 +1397,8 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
             <div className="space-y-3">
               <div className="rounded-md border border-dashed p-3 flex items-center justify-between gap-3 bg-muted/30">
                 <div className="text-sm">
-                  <div className="font-medium flex items-center gap-2"><Camera size={14} /> Scan shop receipt</div>
-                  <div className="text-xs text-muted-foreground">Auto-fills items & prices, attaches photo as evidence, and (if no PO) creates a requisition on save.</div>
+                  <div className="font-medium flex items-center gap-2"><Camera size={14} /> Scan shop receipt(s)</div>
+                  <div className="text-xs text-muted-foreground">Scan multiple receipts — items append together. On save, items become an approved Requisition + Purchase Order automatically.</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button type="button" variant="outline" onClick={() => setScanOpen(true)} disabled={scanning}>
