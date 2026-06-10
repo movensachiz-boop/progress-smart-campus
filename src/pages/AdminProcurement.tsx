@@ -1246,9 +1246,11 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
       receipt_urls.push(path);
     }
 
-    // If no PO and the user opted in, auto-create a requisition (already approved — money was already spent)
+    // If no PO and the user opted in, auto-create an approved requisition + matching PO
     let createdReqId: string | null = null;
     let createdReqNumber: string | null = null;
+    let createdPoId: string | null = null;
+    let createdPoNumber: string | null = null;
     if (!poId && autoCreateReq) {
       const { data: reqRow, error: reqErr } = await supabase
         .from("requisitions")
@@ -1259,7 +1261,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
           items: items as any,
           total_amount: grandTotal,
           currency,
-          status: "approved",
+          status: "ordered",
           approved_at: new Date().toISOString(),
           notes: `Generated from GRN scan on ${form.received_date}. Cash given: ${currency} ${(cashGiven || 0).toFixed(2)}. Change: ${currency} ${change.toFixed(2)}.`,
         })
@@ -1271,6 +1273,27 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
         createdReqId = reqRow.id;
         createdReqNumber = (reqRow as any).requisition_number;
       }
+
+      // Auto-create a Purchase Order capturing the verified receipt items
+      const { data: poRow, error: poErr } = await supabase
+        .from("purchase_orders")
+        .insert({
+          requisition_id: createdReqId,
+          supplier_name: form.supplier_name || null,
+          items: items as any,
+          total_amount: grandTotal,
+          currency,
+          status: "received",
+          notes: `Auto-generated from verified shop receipt on ${form.received_date}.${createdReqNumber ? ` Linked requisition: ${createdReqNumber}.` : ""}`,
+        })
+        .select("id, po_number")
+        .single();
+      if (poErr) {
+        toast({ title: "Could not auto-create purchase order", description: poErr.message, variant: "destructive" });
+      } else if (poRow) {
+        createdPoId = poRow.id;
+        createdPoNumber = (poRow as any).po_number;
+      }
     }
 
     const grnNotes = [
@@ -1278,6 +1301,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
       `Cash given: ${currency} ${(cashGiven || 0).toFixed(2)}`,
       `Change: ${currency} ${change.toFixed(2)}`,
       createdReqNumber ? `Linked requisition: ${createdReqNumber}` : null,
+      createdPoNumber ? `Linked PO: ${createdPoNumber}` : null,
     ].filter(Boolean).join(" • ");
 
     const { error } = await supabase.from("goods_received").insert({
