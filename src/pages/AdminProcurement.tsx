@@ -948,8 +948,19 @@ function POsTab({
     onChange();
   };
 
-  const downloadPDF = (p: PurchaseOrder) =>
-    generateProcurementDoc({
+  const downloadPDF = async (p: PurchaseOrder) => {
+    const poGrns = grns.filter((g) => g.purchase_order_id === p.id);
+    const allPaths = poGrns.flatMap((g) => g.receipt_urls || []);
+    let receiptLinks: { label: string; url: string }[] = [];
+    if (allPaths.length) {
+      const { data } = await supabase.storage
+        .from("grn-receipts")
+        .createSignedUrls(allPaths, 60 * 60 * 24 * 7);
+      receiptLinks = (data || [])
+        .map((d, i) => d.signedUrl ? { label: `Receipt #${i + 1}`, url: d.signedUrl } : null)
+        .filter(Boolean) as { label: string; url: string }[];
+    }
+    return generateProcurementDoc({
       docType: "PURCHASE ORDER",
       number: p.po_number,
       date: new Date(p.created_at).toLocaleDateString(),
@@ -958,7 +969,9 @@ function POsTab({
       expectedDelivery: p.expected_delivery,
       items: p.items || [],
       notes: p.notes,
+      receiptLinks,
     });
+  };
 
   const [smsPOOpen, setSmsPOOpen] = useState<PurchaseOrder | null>(null);
   const [smsPhone, setSmsPhone] = useState("");
