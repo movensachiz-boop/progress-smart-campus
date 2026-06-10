@@ -219,26 +219,6 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
       }
     });
   }
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.5);
-    doc.setTextColor(...primary);
-    doc.text(`Attached Receipts (${data.receiptLinks.length}):`, margin, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    data.receiptLinks.forEach((r, i) => {
-      const label = `${i + 1}. ${r.label}`;
-      doc.setTextColor(...blue);
-      doc.textWithLink(label, margin, y, { url: r.url });
-      // underline
-      const w = doc.getTextWidth(label);
-      doc.setDrawColor(...blue);
-      doc.setLineWidth(0.2);
-      doc.line(margin, y + 0.6, margin + w, y + 0.6);
-      y += 5;
-    });
-    doc.setTextColor(60, 60, 60);
-  }
 
   // Signatures
   y = Math.max(y + 10, ph - 50);
