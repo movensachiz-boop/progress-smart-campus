@@ -199,6 +199,11 @@ const mergePricesIntoMap = (items: Item[], currency: string, map: PriceMap): Pri
   return next;
 };
 
+const viewReceipt = async (path: string) => {
+  const { data: signed } = await supabase.storage.from("grn-receipts").createSignedUrl(path, 300);
+  if (signed?.signedUrl) window.open(signed.signedUrl, "_blank");
+};
+
 function ItemsEditor({
   items,
   setItems,
@@ -1083,12 +1088,13 @@ function POsTab({
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Expected</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Receipts</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No purchase orders</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No purchase orders</TableCell></TableRow>
               )}
               {data.map((p) => (
                 <TableRow key={p.id}>
@@ -1099,6 +1105,20 @@ function POsTab({
                   <TableCell className="text-right font-semibold">{p.currency} {Number(p.total_amount).toFixed(2)}</TableCell>
                   <TableCell>{p.expected_delivery || "—"}</TableCell>
                   <TableCell><StatusBadge status={p.status} /></TableCell>
+                  <TableCell>
+                    {(() => {
+                      const urls = grns.filter((g) => g.purchase_order_id === p.id).flatMap((g) => g.receipt_urls || []);
+                      return urls.length ? (
+                        <div className="flex gap-1 flex-wrap">
+                          {urls.map((u, i) => (
+                            <Button key={i} size="sm" variant="link" className="h-6 px-1 text-xs" onClick={() => viewReceipt(u)}>
+                              <Eye size={12} className="mr-1" /> #{i + 1}
+                            </Button>
+                          ))}
+                        </div>
+                      ) : <span className="text-xs text-muted-foreground">—</span>;
+                    })()}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       {p.status !== "completed" && (
@@ -1422,10 +1442,6 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     });
   };
 
-  const viewReceipt = async (path: string) => {
-    const { data: signed } = await supabase.storage.from("grn-receipts").createSignedUrl(path, 300);
-    if (signed?.signedUrl) window.open(signed.signedUrl, "_blank");
-  };
 
   const remove = async (g: GRN) => {
     if (!confirm(`Delete ${g.grn_number}?`)) return;
@@ -1553,11 +1569,11 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                   onChange={(e) => setReceiptFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
                 />
                 {existingReceiptUrls.length > 0 && (
-                  <div className="text-xs mt-2 flex flex-wrap gap-1 items-center">
+                  <div className="text-xs mt-2 flex flex-wrap gap-2 items-center">
                     <span className="text-muted-foreground">Existing:</span>
                     {existingReceiptUrls.map((u, i) => (
                       <span key={u} className="inline-flex items-center gap-1 rounded border px-2 py-0.5">
-                        <button type="button" className="underline" onClick={() => viewReceipt(u)}>#{i + 1}</button>
+                        <button type="button" className="flex items-center gap-1 text-primary hover:underline" onClick={() => viewReceipt(u)}><Eye size={12} /> View #{i + 1}</button>
                         <button type="button" className="text-destructive" onClick={() => setExistingReceiptUrls((prev) => prev.filter((x) => x !== u))} title="Remove">×</button>
                       </span>
                     ))}
@@ -1636,8 +1652,8 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                     {g.receipt_urls?.length ? (
                       <div className="flex gap-1 flex-wrap">
                         {g.receipt_urls.map((u, i) => (
-                          <Button key={i} size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => viewReceipt(u)}>
-                            #{i + 1}
+                          <Button key={i} size="sm" variant="link" className="h-6 px-1 text-xs" onClick={() => viewReceipt(u)}>
+                            <Eye size={12} className="mr-1" /> #{i + 1}
                           </Button>
                         ))}
                       </div>
