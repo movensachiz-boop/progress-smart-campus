@@ -1252,6 +1252,50 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
       return;
     }
     setUploading(true);
+
+    // Upload any newly added receipts
+    const newReceiptUrls: string[] = [];
+    for (const file of receiptFiles) {
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`;
+      const { error: upErr } = await supabase.storage.from("grn-receipts").upload(path, file);
+      if (upErr) {
+        toast({ title: "Receipt upload failed", description: upErr.message, variant: "destructive" });
+        setUploading(false);
+        return;
+      }
+      newReceiptUrls.push(path);
+    }
+
+    const grandTotal = sumItems(items);
+
+    // ── EDIT MODE ──
+    if (editingId) {
+      const mergedUrls = [...existingReceiptUrls, ...newReceiptUrls];
+      const { error } = await supabase.from("goods_received").update({
+        purchase_order_id: poId || null,
+        supplier_name: form.supplier_name || null,
+        items: items as any,
+        received_by: form.received_by || null,
+        received_date: form.received_date,
+        notes: form.notes || null,
+        total_amount: grandTotal,
+        currency,
+        receipt_urls: mergedUrls,
+        cash_given: cashGiven || 0,
+        change_amount: Number(((cashGiven || 0) - grandTotal).toFixed(2)),
+      } as any).eq("id", editingId);
+      setUploading(false);
+      if (error) return toast({ title: error.message, variant: "destructive" });
+      toast({ title: "GRN updated" });
+      setOpen(false);
+      reset();
+      onChange();
+      return;
+    }
+
+    const po = pos.find((x) => x.id === poId);
+    const receipt_urls = newReceiptUrls;
+
     const po = pos.find((x) => x.id === poId);
     const grandTotal = sumItems(items);
 
