@@ -857,11 +857,15 @@ function POsTab({
   data,
   requisitions,
   suppliers,
+  grns,
+  vouchers,
   onChange,
 }: {
   data: PurchaseOrder[];
   requisitions: Requisition[];
   suppliers: Supplier[];
+  grns: GRN[];
+  vouchers: PaymentVoucher[];
   onChange: () => void;
 }) {
   const [open, setOpen] = useState(false);
