@@ -530,6 +530,9 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
 
   const handleScan = async (dataUrl: string) => {
     setScanning(true);
+    // Reset so we never carry over fields from a previously opened/scanned requisition
+    setForm({ requested_by: "", department: "", purpose: "", currency: "USD", notes: "" });
+    setItems([emptyItem()]);
     try {
       // Upload image to storage
       const blob = await (await fetch(dataUrl)).blob();
@@ -550,13 +553,13 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
         toast({ title: "OCR failed", description: error.message, variant: "destructive" });
         return;
       }
-      setForm((f) => ({
-        requested_by: data.requested_by || f.requested_by,
-        department: data.department || f.department,
-        purpose: data.purpose || f.purpose,
-        currency: data.currency || f.currency,
-        notes: data.notes || f.notes,
-      }));
+      setForm({
+        requested_by: data.requested_by || "",
+        department: data.department || "",
+        purpose: data.purpose || "",
+        currency: data.currency || "USD",
+        notes: data.notes || "",
+      });
       if (Array.isArray(data.items) && data.items.length) {
         const raw: Item[] = data.items.map((it: any) => ({
           description: String(it.description || ""),
@@ -569,6 +572,8 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
         if (filled > 0) {
           toast({ title: `Auto-filled ${filled} price${filled === 1 ? "" : "s"} from history` });
         }
+      } else {
+        setItems([emptyItem()]);
       }
       toast({ title: "Scan complete", description: "Please verify the extracted details before saving." });
     } finally {

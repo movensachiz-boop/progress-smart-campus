@@ -80,16 +80,13 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are an OCR assistant for a school procurement system. Extract requisition details from a photo of a handwritten or printed requisition form. Read carefully. If a field is unclear, give your best guess. If not visible, return empty string or 0.`,
+            content: `You are a strict OCR assistant for a school procurement system. Extract requisition details ONLY from the photo attached in this request. Do NOT carry over, remember, or invent details from any previous requisition, conversation, or example. If a field is not clearly visible in THIS image, return an empty string (or 0 for numbers). If the image is blank, unreadable, or not a requisition form, return an empty items array and empty fields.`,
           },
           {
             role: "user",
             content: [
-              { type: "text", text: "Extract the requisition header and all line items from this requisition form." },
-              {
-                type: "image_url",
-                image_url: { url: imageDataUrl },
-              },
+              { type: "text", text: "Read ONLY the attached image and extract the requisition header and line items. Ignore anything you may have seen before." },
+              { type: "image_url", image_url: { url: imageDataUrl } },
             ],
           },
         ],
