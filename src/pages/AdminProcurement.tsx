@@ -1634,6 +1634,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="outline" onClick={() => openEdit(g)} title="Edit"><Pencil size={14} /></Button>
                       <Button size="sm" variant="outline" onClick={() => downloadPDF(g)}><FileDown size={14} /></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(g)}><Trash2 size={14} /></Button>
                     </div>
