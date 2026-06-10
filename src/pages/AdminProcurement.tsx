@@ -1153,13 +1153,20 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
   const [phonePairOpen, setPhonePairOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [autoCreateReq, setAutoCreateReq] = useState(true);
+  const [funds, setFunds] = useState<Array<{ id: string; source: string; currency: string; amount: number }>>([]);
+  const [fundId, setFundId] = useState<string>("");
   useEffect(() => { fetchPriceHistory().then(setPriceMap).catch(() => {}); }, []);
+  useEffect(() => {
+    supabase.from("funds").select("id, source, currency, amount").order("received_at", { ascending: false })
+      .then(({ data }) => setFunds((data as any) || []));
+  }, [open]);
 
   const reset = () => {
     setPoId(""); setItems([emptyItem()]); setReceiptFiles([]); setCurrency("USD");
     setForm({ received_by: "", received_date: new Date().toISOString().slice(0, 10), notes: "", supplier_name: "" });
-    setCashGiven(0);
+    setCashGiven(0); setFundId("");
   };
+
 
   const onPickPO = (id: string) => {
     setPoId(id);
@@ -1292,11 +1299,37 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     setUploading(false);
     if (error) return toast({ title: error.message, variant: "destructive" });
     if (poId) await supabase.from("purchase_orders").update({ status: "received" }).eq("id", poId);
-    toast({ title: "Goods received recorded", description: createdReqNumber ? `Requisition ${createdReqNumber} auto-created.` : undefined });
+
+    // Auto-record into Fund Tracker if a source fund was selected (or matched by name)
+    let resolvedFundId = fundId;
+    if (!resolvedFundId && form.supplier_name) {
+      const needle = form.supplier_name.trim().toLowerCase();
+      const match = funds.find((f) => f.source.toLowerCase().includes(needle) || needle.includes(f.source.toLowerCase()));
+      if (match) resolvedFundId = match.id;
+    }
+    if (resolvedFundId && grandTotal > 0) {
+      const { error: feErr } = await supabase.from("fund_expenses").insert({
+        fund_id: resolvedFundId,
+        description: `GRN — ${form.supplier_name || po?.supplier_name || "Purchase"}${createdReqNumber ? ` (${createdReqNumber})` : ""}`,
+        category: "procurement",
+        amount: grandTotal,
+        spent_at: new Date(form.received_date).toISOString(),
+      });
+      if (feErr) toast({ title: "Fund tracker update failed", description: feErr.message, variant: "destructive" });
+    }
+
+    toast({
+      title: "Goods received recorded",
+      description: [
+        createdReqNumber ? `Requisition ${createdReqNumber} auto-created.` : null,
+        resolvedFundId ? `Expense posted to fund tracker.` : null,
+      ].filter(Boolean).join(" ") || undefined,
+    });
     setOpen(false);
     reset();
     onChange();
   };
+
 
   const downloadPDF = (g: GRN) => {
     const po = pos.find((p) => p.id === g.purchase_order_id);
@@ -1421,6 +1454,20 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                   </div>
                 </div>
               </div>
+              <div>
+                <Label>Source Fund (Fund Tracker)</Label>
+                <Select value={fundId || "auto"} onValueChange={(v) => setFundId(v === "auto" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Auto-match by supplier name" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto-match by supplier name</SelectItem>
+                    {funds.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>{f.source} — {f.currency} {Number(f.amount).toFixed(2)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-muted-foreground mt-1">An expense equal to the receipt total will be posted to this fund automatically.</div>
+              </div>
+
               <div>
                 <Label>Upload Additional Receipts / Invoices</Label>
                 <Input
