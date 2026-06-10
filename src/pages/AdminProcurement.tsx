@@ -1141,6 +1141,8 @@ function POsTab({
 /* ──────── GRN ──────── */
 function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; onChange: () => void }) {
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [existingReceiptUrls, setExistingReceiptUrls] = useState<string[]>([]);
   const [poId, setPoId] = useState("");
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [currency, setCurrency] = useState("USD");
@@ -1162,10 +1164,30 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
   }, [open]);
 
   const reset = () => {
+    setEditingId(null); setExistingReceiptUrls([]);
     setPoId(""); setItems([emptyItem()]); setReceiptFiles([]); setCurrency("USD");
     setForm({ received_by: "", received_date: new Date().toISOString().slice(0, 10), notes: "", supplier_name: "" });
     setCashGiven(0); setFundId("");
   };
+
+  const openEdit = (g: GRN) => {
+    setEditingId(g.id);
+    setPoId(g.purchase_order_id || "");
+    setItems(g.items?.length ? (g.items as Item[]) : [emptyItem()]);
+    setCurrency(g.currency || "USD");
+    setForm({
+      received_by: g.received_by || "",
+      received_date: g.received_date ? new Date(g.received_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      notes: g.notes || "",
+      supplier_name: g.supplier_name || "",
+    });
+    setCashGiven(Number((g as any).cash_given) || 0);
+    setExistingReceiptUrls(g.receipt_urls || []);
+    setReceiptFiles([]);
+    setFundId("");
+    setOpen(true);
+  };
+
 
 
   const onPickPO = (id: string) => {
@@ -1230,11 +1252,9 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
       return;
     }
     setUploading(true);
-    const po = pos.find((x) => x.id === poId);
-    const grandTotal = sumItems(items);
 
-    // Upload receipts first
-    const receipt_urls: string[] = [];
+    // Upload any newly added receipts
+    const newReceiptUrls: string[] = [];
     for (const file of receiptFiles) {
       const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`;
       const { error: upErr } = await supabase.storage.from("grn-receipts").upload(path, file);
@@ -1243,8 +1263,41 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
         setUploading(false);
         return;
       }
-      receipt_urls.push(path);
+      newReceiptUrls.push(path);
     }
+
+    const grandTotal = sumItems(items);
+
+    // ── EDIT MODE ──
+    if (editingId) {
+      const mergedUrls = [...existingReceiptUrls, ...newReceiptUrls];
+      const { error } = await supabase.from("goods_received").update({
+        purchase_order_id: poId || null,
+        supplier_name: form.supplier_name || null,
+        items: items as any,
+        received_by: form.received_by || null,
+        received_date: form.received_date,
+        notes: form.notes || null,
+        total_amount: grandTotal,
+        currency,
+        receipt_urls: mergedUrls,
+        cash_given: cashGiven || 0,
+        change_amount: Number(((cashGiven || 0) - grandTotal).toFixed(2)),
+      } as any).eq("id", editingId);
+      setUploading(false);
+      if (error) return toast({ title: error.message, variant: "destructive" });
+      toast({ title: "GRN updated" });
+      setOpen(false);
+      reset();
+      onChange();
+      return;
+    }
+
+    const po = pos.find((x) => x.id === poId);
+    const receipt_urls = newReceiptUrls;
+
+    const change = Number(((cashGiven || 0) - grandTotal).toFixed(2));
+
 
     // If no PO and the user opted in, auto-create an approved requisition + matching PO
     let createdReqId: string | null = null;
@@ -1393,7 +1446,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
           <DialogTrigger asChild><Button onClick={reset}><Plus size={16} /> New GRN</Button></DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Record Goods Received</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Edit Goods Received Note" : "Record Goods Received"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="rounded-md border border-dashed p-3 flex items-center justify-between gap-3 bg-muted/30">
                 <div className="text-sm">
@@ -1499,9 +1552,20 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                   accept="image/*,application/pdf"
                   onChange={(e) => setReceiptFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
                 />
+                {existingReceiptUrls.length > 0 && (
+                  <div className="text-xs mt-2 flex flex-wrap gap-1 items-center">
+                    <span className="text-muted-foreground">Existing:</span>
+                    {existingReceiptUrls.map((u, i) => (
+                      <span key={u} className="inline-flex items-center gap-1 rounded border px-2 py-0.5">
+                        <button type="button" className="underline" onClick={() => viewReceipt(u)}>#{i + 1}</button>
+                        <button type="button" className="text-destructive" onClick={() => setExistingReceiptUrls((prev) => prev.filter((x) => x !== u))} title="Remove">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {receiptFiles.length > 0 && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    {receiptFiles.length} file(s) attached: {receiptFiles.map((f) => f.name).join(", ")}
+                    {receiptFiles.length} new file(s) attached: {receiptFiles.map((f) => f.name).join(", ")}
                   </div>
                 )}
               </div>
@@ -1512,7 +1576,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)} disabled={uploading}>Cancel</Button>
-              <Button onClick={submit} disabled={uploading}>{uploading ? "Saving..." : "Confirm & Save GRN"}</Button>
+              <Button onClick={submit} disabled={uploading}>{uploading ? "Saving..." : editingId ? "Save Changes" : "Confirm & Save GRN"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1581,6 +1645,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="outline" onClick={() => openEdit(g)} title="Edit"><Pencil size={14} /></Button>
                       <Button size="sm" variant="outline" onClick={() => downloadPDF(g)}><FileDown size={14} /></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(g)}><Trash2 size={14} /></Button>
                     </div>
