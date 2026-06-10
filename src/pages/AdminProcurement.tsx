@@ -1153,13 +1153,20 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
   const [phonePairOpen, setPhonePairOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [autoCreateReq, setAutoCreateReq] = useState(true);
+  const [funds, setFunds] = useState<Array<{ id: string; source: string; currency: string; amount: number }>>([]);
+  const [fundId, setFundId] = useState<string>("");
   useEffect(() => { fetchPriceHistory().then(setPriceMap).catch(() => {}); }, []);
+  useEffect(() => {
+    supabase.from("funds").select("id, source, currency, amount").order("received_at", { ascending: false })
+      .then(({ data }) => setFunds((data as any) || []));
+  }, [open]);
 
   const reset = () => {
     setPoId(""); setItems([emptyItem()]); setReceiptFiles([]); setCurrency("USD");
     setForm({ received_by: "", received_date: new Date().toISOString().slice(0, 10), notes: "", supplier_name: "" });
-    setCashGiven(0);
+    setCashGiven(0); setFundId("");
   };
+
 
   const onPickPO = (id: string) => {
     setPoId(id);
