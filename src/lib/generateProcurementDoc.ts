@@ -179,15 +179,40 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
     y += 5 + lines.length * 4;
   }
 
+  // Signatures
+  y = Math.max(y + 10, ph - 50);
+  const colW = (pw - 2 * margin) / 3;
+  const sigLabels = data.docType === "PAYMENT VOUCHER"
+    ? ["Paid By (Handover)", "Received By", "Authorized By"]
+    : ["Prepared By", "Approved By", "Received / Issued By"];
+  sigLabels.forEach((label, i) => {
+    const x = margin + i * colW + 5;
+    doc.setDrawColor(120, 120, 120);
+    doc.line(x, y, x + colW - 10, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 80);
+    doc.text(label, x, y + 4);
+    doc.text("Signature & Date", x, y + 8);
+  });
+
+  // Footer (page 1)
+  doc.setFontSize(7.5);
+  doc.setTextColor(120, 120, 120);
+  doc.text(
+    `Generated ${new Date().toLocaleString()} • Progress Christian Centre Procurement`,
+    pw / 2,
+    ph - 10,
+    { align: "center" }
+  );
+
   // Receipt links (on a new page)
   if (data.receiptLinks && data.receiptLinks.length) {
     doc.addPage();
-    // Border on new page
     doc.setDrawColor(...blue);
     doc.setLineWidth(0.6);
     doc.rect(8, 8, pw - 16, ph - 16);
     y = margin;
-    // Title bar
     doc.setFillColor(...blue);
     doc.rect(margin, y, pw - 2 * margin, 9, "F");
     doc.setFont("helvetica", "bold");
@@ -218,34 +243,15 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
         y = margin;
       }
     });
+    doc.setFontSize(7.5);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `Generated ${new Date().toLocaleString()} • Progress Christian Centre Procurement`,
+      pw / 2,
+      ph - 10,
+      { align: "center" }
+    );
   }
-
-  // Signatures
-  y = Math.max(y + 10, ph - 50);
-  const colW = (pw - 2 * margin) / 3;
-  const sigLabels = data.docType === "PAYMENT VOUCHER"
-    ? ["Paid By (Handover)", "Received By", "Authorized By"]
-    : ["Prepared By", "Approved By", "Received / Issued By"];
-  sigLabels.forEach((label, i) => {
-    const x = margin + i * colW + 5;
-    doc.setDrawColor(120, 120, 120);
-    doc.line(x, y, x + colW - 10, y);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
-    doc.text(label, x, y + 4);
-    doc.text("Signature & Date", x, y + 8);
-  });
-
-  // Footer
-  doc.setFontSize(7.5);
-  doc.setTextColor(120, 120, 120);
-  doc.text(
-    `Generated ${new Date().toLocaleString()} • Progress Christian Centre Procurement`,
-    pw / 2,
-    ph - 10,
-    { align: "center" }
-  );
 
   doc.save(`${data.docType.replace(/\s+/g, "_")}_${data.number}.pdf`);
 };
