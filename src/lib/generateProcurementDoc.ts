@@ -31,6 +31,7 @@ export interface ProcurementDocData {
   // Common
   items: ProcurementLineItem[];
   notes?: string;
+  receiptLinks?: { label: string; url: string }[];
 }
 
 export const generateProcurementDoc = async (data: ProcurementDocData) => {
