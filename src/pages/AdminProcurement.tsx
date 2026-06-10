@@ -1388,7 +1388,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Goods Received Notes</CardTitle>
-          <CardDescription>Scan a shop receipt to auto-fill items, record cash given and change, and auto-create a requisition.</CardDescription>
+          <CardDescription>Scan one or more shop receipts to auto-fill items. On confirmation, an approved Requisition and a matching Purchase Order are auto-created and the expense is posted to the Fund Tracker.</CardDescription>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
           <DialogTrigger asChild><Button onClick={reset}><Plus size={16} /> New GRN</Button></DialogTrigger>
