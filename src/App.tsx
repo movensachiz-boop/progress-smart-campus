@@ -37,6 +37,7 @@ import AdminAuditTrail from "./pages/AdminAuditTrail";
 import AdminInventory from "./pages/AdminInventory";
 import AdminProcurement from "./pages/AdminProcurement";
 import AdminKitchen from "./pages/AdminKitchen";
+import AdminFundTracker from "./pages/AdminFundTracker";
 import StudentInventory from "./pages/StudentInventory";
 import StaffGuard from "./components/StaffGuard";
 import PhoneScan from "./pages/PhoneScan";
@@ -83,6 +84,7 @@ const App = () => (
             <Route path="/admin/procurement" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminProcurement /></StaffGuard>} />
             <Route path="/admin/kitchen" element={<StaffGuard allow={["kitchen"]} deny={DENY_TM_AND_CASHIER}><AdminKitchen /></StaffGuard>} />
             <Route path="/admin/audit" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminAuditTrail /></StaffGuard>} />
+            <Route path="/admin/funds" element={<StaffGuard deny={DENY_TM}><AdminFundTracker /></StaffGuard>} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/attendance" element={<TeacherAttendance />} />
             <Route path="/teacher/roster" element={<TeacherClassRoster />} />
