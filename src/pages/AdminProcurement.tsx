@@ -1455,6 +1455,20 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                 </div>
               </div>
               <div>
+                <Label>Source Fund (Fund Tracker)</Label>
+                <Select value={fundId || "auto"} onValueChange={(v) => setFundId(v === "auto" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Auto-match by supplier name" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto-match by supplier name</SelectItem>
+                    {funds.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>{f.source} — {f.currency} {Number(f.amount).toFixed(2)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-muted-foreground mt-1">An expense equal to the receipt total will be posted to this fund automatically.</div>
+              </div>
+
+              <div>
                 <Label>Upload Additional Receipts / Invoices</Label>
                 <Input
                   type="file"
