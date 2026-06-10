@@ -925,10 +925,46 @@ function POsTab({
       notes: p.notes,
     });
 
+  const [smsPOOpen, setSmsPOOpen] = useState<PurchaseOrder | null>(null);
+  const [smsPhone, setSmsPhone] = useState("");
+  const [sendingSms, setSendingSms] = useState(false);
+
+  const spendingFor = (p: PurchaseOrder) => ({
+    pVouchers: vouchers.filter((v) => v.purchase_order_id === p.id),
+    pGRNs: grns.filter((g) => g.purchase_order_id === p.id),
+  });
+
+  const downloadSpendingReport = async (p: PurchaseOrder) => {
+    const { pVouchers, pGRNs } = spendingFor(p);
+    await generatePOSpendingReport(p as any, pGRNs as any, pVouchers as any);
+  };
+
+  const sendSpendingSms = async (p: PurchaseOrder) => {
+    if (!smsPhone.trim()) return toast({ title: "Phone required", variant: "destructive" });
+    setSendingSms(true);
+    try {
+      const { pVouchers } = spendingFor(p);
+      const msg = buildPOSpendingSMS(p as any, pVouchers as any);
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: { type: "custom", guardianPhone: smsPhone.trim(), studentName: "Finance Director", customMessage: msg },
+      });
+      if (error) throw error;
+      toast({ title: "SMS sent to Finance Director" });
+      setSmsPOOpen(null); setSmsPhone("");
+    } catch (err: any) {
+      toast({ title: "SMS failed", description: err.message, variant: "destructive" });
+    } finally { setSendingSms(false); }
+  };
+
   const setStatus = async (p: PurchaseOrder, status: string) => {
     const { error } = await supabase.from("purchase_orders").update({ status }).eq("id", p.id);
     if (error) return toast({ title: error.message, variant: "destructive" });
     onChange();
+    if (status === "completed") {
+      try { await downloadSpendingReport(p); } catch {}
+      toast({ title: "Spending report generated", description: "PDF downloaded. SMS the Finance Director below." });
+      setSmsPOOpen(p);
+    }
   };
 
   const remove = async (p: PurchaseOrder) => {
