@@ -1427,8 +1427,17 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
   };
 
 
-  const downloadPDF = (g: GRN) => {
+  const downloadPDF = async (g: GRN) => {
     const po = pos.find((p) => p.id === g.purchase_order_id);
+    let receiptLinks: { label: string; url: string }[] = [];
+    if (g.receipt_urls?.length) {
+      const { data } = await supabase.storage
+        .from("grn-receipts")
+        .createSignedUrls(g.receipt_urls, 60 * 60 * 24 * 7);
+      receiptLinks = (data || [])
+        .map((d, i) => d.signedUrl ? { label: `Receipt #${i + 1}`, url: d.signedUrl } : null)
+        .filter(Boolean) as { label: string; url: string }[];
+    }
     return generateProcurementDoc({
       docType: "GOODS RECEIVED NOTE",
       number: g.grn_number,
@@ -1439,6 +1448,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
       poNumber: po?.po_number,
       items: g.items || [],
       notes: g.notes,
+      receiptLinks,
     });
   };
 
