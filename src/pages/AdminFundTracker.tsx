@@ -61,6 +61,10 @@ const AdminFundTracker = () => {
 
   const scanReceipt = async (base64: string) => {
     setScanning(true);
+    // Clear previous values so stale data from earlier scans never leaks through
+    setEDesc("");
+    setECat("");
+    setEAmt("");
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const resp = await supabase.functions.invoke("extract-fund-expense", {
@@ -70,9 +74,9 @@ const AdminFundTracker = () => {
       if (resp.error) throw new Error(resp.error.message || "Scan failed");
       const ex = resp.data?.expense;
       if (!ex) throw new Error("Nothing extracted");
-      if (ex.description) setEDesc(ex.description);
-      if (ex.amount) setEAmt(String(ex.amount).replace(/[^0-9.]/g, ""));
-      if (ex.category) setECat(ex.category);
+      setEDesc(ex.description || (ex.vendor ? `Purchase at ${ex.vendor}` : ""));
+      setEAmt(ex.amount ? String(ex.amount).replace(/[^0-9.]/g, "") : "");
+      setECat(ex.category || "");
       toast({ title: "Receipt scanned", description: "Review the values, then Add to subtract from the fund." });
     } catch (err: any) {
       toast({ title: "Scan failed", description: err.message, variant: "destructive" });
