@@ -1446,7 +1446,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
           <DialogTrigger asChild><Button onClick={reset}><Plus size={16} /> New GRN</Button></DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Record Goods Received</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Edit Goods Received Note" : "Record Goods Received"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="rounded-md border border-dashed p-3 flex items-center justify-between gap-3 bg-muted/30">
                 <div className="text-sm">
