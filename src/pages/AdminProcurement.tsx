@@ -185,6 +185,20 @@ const applyPriceHistory = (items: Item[], map: PriceMap): { items: Item[]; fille
   return { items: out, filled };
 };
 
+// Merge any priced items into the live PriceMap so they're used immediately as history
+// (e.g. items just scanned from a receipt update later autofill within the same session).
+const mergePricesIntoMap = (items: Item[], currency: string, map: PriceMap): PriceMap => {
+  const next = new Map(map);
+  for (const it of items) {
+    const raw = String(it.description || "").trim();
+    const key = normDesc(raw);
+    const price = Number(it.unit_price) || 0;
+    if (!key || price <= 0) continue;
+    next.set(key, { price, currency: currency || "USD", unit: it.unit, label: raw });
+  }
+  return next;
+};
+
 function ItemsEditor({
   items,
   setItems,
