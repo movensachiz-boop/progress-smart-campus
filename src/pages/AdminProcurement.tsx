@@ -1426,7 +1426,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                   </div>
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={autoCreateReq} onCheckedChange={(v) => setAutoCreateReq(Boolean(v))} />
-                    Auto-create an approved requisition from this receipt
+                    Auto-create approved Requisition + Purchase Order from these receipts
                   </label>
                 </>
               )}
