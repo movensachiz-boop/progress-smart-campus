@@ -581,8 +581,17 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           unit: String(it.unit || "pcs"),
           unit_price: Number(it.unit_price) || 0,
         }));
-        const { items: enriched, filled } = applyPriceHistory(raw, priceMap);
+        // 1) Adopt any prices visible on the scanned doc into the live history first
+        //    so later items in the same scan (and future autofill) reuse them.
+        const mergedMap = mergePricesIntoMap(raw, data.currency || form.currency || "USD", priceMap);
+        setPriceMap(mergedMap);
+        // 2) Then fill any items that still lack a price from history.
+        const { items: enriched, filled } = applyPriceHistory(raw, mergedMap);
         setItems(enriched);
+        const priced = raw.filter((i) => Number(i.unit_price) > 0).length;
+        if (priced > 0) {
+          toast({ title: `Using ${priced} price${priced === 1 ? "" : "s"} from the scan` });
+        }
         if (filled > 0) {
           toast({ title: `Auto-filled ${filled} price${filled === 1 ? "" : "s"} from history` });
         }
