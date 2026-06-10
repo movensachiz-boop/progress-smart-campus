@@ -1296,21 +1296,8 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     const po = pos.find((x) => x.id === poId);
     const receipt_urls = newReceiptUrls;
 
-    const po = pos.find((x) => x.id === poId);
-    const grandTotal = sumItems(items);
+    const change = Number(((cashGiven || 0) - grandTotal).toFixed(2));
 
-    // Upload receipts first
-    const receipt_urls: string[] = [];
-    for (const file of receiptFiles) {
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`;
-      const { error: upErr } = await supabase.storage.from("grn-receipts").upload(path, file);
-      if (upErr) {
-        toast({ title: "Receipt upload failed", description: upErr.message, variant: "destructive" });
-        setUploading(false);
-        return;
-      }
-      receipt_urls.push(path);
-    }
 
     // If no PO and the user opted in, auto-create an approved requisition + matching PO
     let createdReqId: string | null = null;
