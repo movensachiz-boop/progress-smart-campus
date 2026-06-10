@@ -1141,6 +1141,8 @@ function POsTab({
 /* ──────── GRN ──────── */
 function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; onChange: () => void }) {
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [existingReceiptUrls, setExistingReceiptUrls] = useState<string[]>([]);
   const [poId, setPoId] = useState("");
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [currency, setCurrency] = useState("USD");
@@ -1162,10 +1164,30 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
   }, [open]);
 
   const reset = () => {
+    setEditingId(null); setExistingReceiptUrls([]);
     setPoId(""); setItems([emptyItem()]); setReceiptFiles([]); setCurrency("USD");
     setForm({ received_by: "", received_date: new Date().toISOString().slice(0, 10), notes: "", supplier_name: "" });
     setCashGiven(0); setFundId("");
   };
+
+  const openEdit = (g: GRN) => {
+    setEditingId(g.id);
+    setPoId(g.purchase_order_id || "");
+    setItems(g.items?.length ? (g.items as Item[]) : [emptyItem()]);
+    setCurrency(g.currency || "USD");
+    setForm({
+      received_by: g.received_by || "",
+      received_date: g.received_date ? new Date(g.received_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      notes: g.notes || "",
+      supplier_name: g.supplier_name || "",
+    });
+    setCashGiven(Number((g as any).cash_given) || 0);
+    setExistingReceiptUrls(g.receipt_urls || []);
+    setReceiptFiles([]);
+    setFundId("");
+    setOpen(true);
+  };
+
 
 
   const onPickPO = (id: string) => {
