@@ -179,30 +179,6 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
     y += 5 + lines.length * 4;
   }
 
-  // Receipt links
-  if (data.receiptLinks && data.receiptLinks.length) {
-    y += 2;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.5);
-    doc.setTextColor(...primary);
-    doc.text(`Attached Receipts (${data.receiptLinks.length}):`, margin, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    data.receiptLinks.forEach((r, i) => {
-      const label = `${i + 1}. ${r.label}`;
-      doc.setTextColor(...blue);
-      doc.textWithLink(label, margin, y, { url: r.url });
-      // underline
-      const w = doc.getTextWidth(label);
-      doc.setDrawColor(...blue);
-      doc.setLineWidth(0.2);
-      doc.line(margin, y + 0.6, margin + w, y + 0.6);
-      y += 5;
-    });
-    doc.setTextColor(60, 60, 60);
-  }
-
   // Signatures
   y = Math.max(y + 10, ph - 50);
   const colW = (pw - 2 * margin) / 3;
@@ -220,7 +196,7 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
     doc.text("Signature & Date", x, y + 8);
   });
 
-  // Footer
+  // Footer (page 1)
   doc.setFontSize(7.5);
   doc.setTextColor(120, 120, 120);
   doc.text(
@@ -229,6 +205,53 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
     ph - 10,
     { align: "center" }
   );
+
+  // Receipt links (on a new page)
+  if (data.receiptLinks && data.receiptLinks.length) {
+    doc.addPage();
+    doc.setDrawColor(...blue);
+    doc.setLineWidth(0.6);
+    doc.rect(8, 8, pw - 16, ph - 16);
+    y = margin;
+    doc.setFillColor(...blue);
+    doc.rect(margin, y, pw - 2 * margin, 9, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`ATTACHED RECEIPTS (${data.receiptLinks.length})`, pw / 2, y + 6, { align: "center" });
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text("Click any link below to open the original scanned receipt. Links are valid for 7 days.", margin, y);
+    y += 8;
+    doc.setFontSize(10);
+    data.receiptLinks.forEach((r, i) => {
+      const label = `${i + 1}. ${r.label}`;
+      doc.setTextColor(...blue);
+      doc.textWithLink(label, margin, y, { url: r.url });
+      const w = doc.getTextWidth(label);
+      doc.setDrawColor(...blue);
+      doc.setLineWidth(0.2);
+      doc.line(margin, y + 0.6, margin + w, y + 0.6);
+      y += 6;
+      if (y > ph - 20) {
+        doc.addPage();
+        doc.setDrawColor(...blue);
+        doc.setLineWidth(0.6);
+        doc.rect(8, 8, pw - 16, ph - 16);
+        y = margin;
+      }
+    });
+    doc.setFontSize(7.5);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `Generated ${new Date().toLocaleString()} • Progress Christian Centre Procurement`,
+      pw / 2,
+      ph - 10,
+      { align: "center" }
+    );
+  }
 
   doc.save(`${data.docType.replace(/\s+/g, "_")}_${data.number}.pdf`);
 };
