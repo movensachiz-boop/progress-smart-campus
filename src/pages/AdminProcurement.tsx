@@ -1147,8 +1147,19 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
   const [receiptFiles, setReceiptFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({ received_by: "", received_date: new Date().toISOString().slice(0, 10), notes: "", supplier_name: "" });
+  const [cashGiven, setCashGiven] = useState<number>(0);
   const [priceMap, setPriceMap] = useState<PriceMap>(new Map());
+  const [scanOpen, setScanOpen] = useState(false);
+  const [phonePairOpen, setPhonePairOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [autoCreateReq, setAutoCreateReq] = useState(true);
   useEffect(() => { fetchPriceHistory().then(setPriceMap).catch(() => {}); }, []);
+
+  const reset = () => {
+    setPoId(""); setItems([emptyItem()]); setReceiptFiles([]); setCurrency("USD");
+    setForm({ received_by: "", received_date: new Date().toISOString().slice(0, 10), notes: "", supplier_name: "" });
+    setCashGiven(0);
+  };
 
   const onPickPO = (id: string) => {
     setPoId(id);
@@ -1160,6 +1171,55 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     }
   };
 
+  const total = useMemo(() => sumItems(items), [items]);
+  const change = useMemo(() => Number(((cashGiven || 0) - total).toFixed(2)), [cashGiven, total]);
+
+  const handleScanReceipt = async (dataUrl: string) => {
+    setScanning(true);
+    // Reset to avoid bleed-over from any previous form state
+    setItems([emptyItem()]);
+    try {
+      // Convert dataURL to a File for receipt evidence upload on save
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `receipt-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
+      setReceiptFiles((prev) => [...prev, file]);
+
+      // OCR — send base64 directly so we don't need a special bucket
+      const { data, error } = await supabase.functions.invoke("extract-requisition", {
+        body: { imageBase64: dataUrl },
+      });
+      if (error) {
+        toast({ title: "OCR failed", description: error.message, variant: "destructive" });
+        return;
+      }
+      if (data.currency) setCurrency(data.currency);
+      if (data.requested_by && !form.received_by) {
+        setForm((f) => ({ ...f, received_by: f.received_by || "" }));
+      }
+      if (!form.supplier_name && data.department) {
+        // best-effort: some receipts have vendor in 'department'
+        setForm((f) => ({ ...f, supplier_name: f.supplier_name || data.department }));
+      }
+      if (Array.isArray(data.items) && data.items.length) {
+        const raw: Item[] = data.items.map((it: any) => ({
+          description: String(it.description || ""),
+          quantity: Number(it.quantity) || 1,
+          unit: String(it.unit || "pcs"),
+          unit_price: Number(it.unit_price) || 0,
+        }));
+        const mergedMap = mergePricesIntoMap(raw, data.currency || currency || "USD", priceMap);
+        setPriceMap(mergedMap);
+        const { items: enriched } = applyPriceHistory(raw, mergedMap);
+        setItems(enriched);
+        toast({ title: `Scanned ${raw.length} item${raw.length === 1 ? "" : "s"}`, description: "Verify, enter cash given, and save." });
+      } else {
+        toast({ title: "No items detected", description: "Try a clearer photo or enter items manually.", variant: "destructive" });
+      }
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const submit = async () => {
     if (items.some((i) => !i.description.trim())) {
       toast({ title: "All items need a description", variant: "destructive" });
@@ -1167,7 +1227,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     }
     setUploading(true);
     const po = pos.find((x) => x.id === poId);
-    const total = sumItems(items);
+    const grandTotal = sumItems(items);
 
     // Upload receipts first
     const receipt_urls: string[] = [];
@@ -1182,24 +1242,59 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
       receipt_urls.push(path);
     }
 
+    // If no PO and the user opted in, auto-create a requisition (already approved — money was already spent)
+    let createdReqId: string | null = null;
+    let createdReqNumber: string | null = null;
+    if (!poId && autoCreateReq) {
+      const { data: reqRow, error: reqErr } = await supabase
+        .from("requisitions")
+        .insert({
+          requested_by: form.received_by || "Procurement",
+          department: form.supplier_name || null,
+          purpose: `Auto-created from shop receipt — ${form.supplier_name || "purchase"}`,
+          items: items as any,
+          total_amount: grandTotal,
+          currency,
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          notes: `Generated from GRN scan on ${form.received_date}. Cash given: ${currency} ${(cashGiven || 0).toFixed(2)}. Change: ${currency} ${change.toFixed(2)}.`,
+        })
+        .select("id, requisition_number")
+        .single();
+      if (reqErr) {
+        toast({ title: "Could not auto-create requisition", description: reqErr.message, variant: "destructive" });
+      } else if (reqRow) {
+        createdReqId = reqRow.id;
+        createdReqNumber = (reqRow as any).requisition_number;
+      }
+    }
+
+    const grnNotes = [
+      form.notes?.trim() || null,
+      `Cash given: ${currency} ${(cashGiven || 0).toFixed(2)}`,
+      `Change: ${currency} ${change.toFixed(2)}`,
+      createdReqNumber ? `Linked requisition: ${createdReqNumber}` : null,
+    ].filter(Boolean).join(" • ");
+
     const { error } = await supabase.from("goods_received").insert({
       purchase_order_id: poId || null,
       supplier_name: po?.supplier_name || form.supplier_name || null,
       items: items as any,
       received_by: form.received_by || null,
       received_date: form.received_date,
-      notes: form.notes || null,
-      total_amount: total,
+      notes: grnNotes,
+      total_amount: grandTotal,
       currency,
       receipt_urls,
-    });
+      cash_given: cashGiven || 0,
+      change_amount: change,
+    } as any);
     setUploading(false);
     if (error) return toast({ title: error.message, variant: "destructive" });
     if (poId) await supabase.from("purchase_orders").update({ status: "received" }).eq("id", poId);
-    toast({ title: "Goods received recorded" });
+    toast({ title: "Goods received recorded", description: createdReqNumber ? `Requisition ${createdReqNumber} auto-created.` : undefined });
     setOpen(false);
-    setPoId(""); setItems([emptyItem()]); setReceiptFiles([]); setCurrency("USD");
-    setForm({ received_by: "", received_date: new Date().toISOString().slice(0, 10), notes: "", supplier_name: "" });
+    reset();
     onChange();
   };
 
@@ -1237,13 +1332,27 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Goods Received Notes</CardTitle>
-          <CardDescription>Record deliveries with pricing and upload receipt evidence</CardDescription>
+          <CardDescription>Scan a shop receipt to auto-fill items, record cash given and change, and auto-create a requisition.</CardDescription>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus size={16} /> New GRN</Button></DialogTrigger>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+          <DialogTrigger asChild><Button onClick={reset}><Plus size={16} /> New GRN</Button></DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Record Goods Received</DialogTitle></DialogHeader>
             <div className="space-y-3">
+              <div className="rounded-md border border-dashed p-3 flex items-center justify-between gap-3 bg-muted/30">
+                <div className="text-sm">
+                  <div className="font-medium flex items-center gap-2"><Camera size={14} /> Scan shop receipt</div>
+                  <div className="text-xs text-muted-foreground">Auto-fills items & prices, attaches photo as evidence, and (if no PO) creates a requisition on save.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => setScanOpen(true)} disabled={scanning}>
+                    {scanning ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />} Scan
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setPhonePairOpen(true)} disabled={scanning} title="Scan QR with phone for fast camera capture">
+                    <Smartphone size={14} /> Use Phone
+                  </Button>
+                </div>
+              </div>
               <div>
                 <Label>Purchase Order (optional)</Label>
                 <Select value={poId} onValueChange={onPickPO}>
@@ -1254,10 +1363,16 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                 </Select>
               </div>
               {!poId && (
-                <div>
-                  <Label>Supplier Name</Label>
-                  <Input value={form.supplier_name} onChange={(e) => setForm({ ...form, supplier_name: e.target.value })} />
-                </div>
+                <>
+                  <div>
+                    <Label>Supplier / Shop Name</Label>
+                    <Input value={form.supplier_name} onChange={(e) => setForm({ ...form, supplier_name: e.target.value })} placeholder="e.g. OK Supermarket" />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={autoCreateReq} onCheckedChange={(v) => setAutoCreateReq(Boolean(v))} />
+                    Auto-create an approved requisition from this receipt
+                  </label>
+                </>
               )}
               <div className="grid grid-cols-3 gap-3">
                 <div>
@@ -1281,20 +1396,42 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                 </div>
               </div>
               <div>
-                <Label>Items Received (with prices)</Label>
+                <Label>Items Received (with prices) {scanning && <span className="text-xs text-muted-foreground">(scanning…)</span>}</Label>
                 <ItemsEditor items={items} setItems={setItems} showCost={true} currency={currency} priceMap={priceMap} />
               </div>
+              <div className="grid grid-cols-3 gap-3 rounded-md border p-3 bg-muted/20">
+                <div>
+                  <Label>Receipt Total</Label>
+                  <div className="h-10 flex items-center font-semibold">{currency} {total.toFixed(2)}</div>
+                </div>
+                <div>
+                  <Label>Cash Given to Buyer</Label>
+                  <Input
+                    type="number" min="0" step="0.01"
+                    value={cashGiven || ""}
+                    onChange={(e) => setCashGiven(Number(e.target.value))}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label>Change</Label>
+                  <div className={`h-10 flex items-center font-semibold ${change < 0 ? "text-destructive" : "text-primary"}`}>
+                    {currency} {change.toFixed(2)}
+                    {change < 0 && <span className="ml-2 text-xs">(shortfall)</span>}
+                  </div>
+                </div>
+              </div>
               <div>
-                <Label>Upload Receipts / Invoices (evidence)</Label>
+                <Label>Upload Additional Receipts / Invoices</Label>
                 <Input
                   type="file"
                   multiple
                   accept="image/*,application/pdf"
-                  onChange={(e) => setReceiptFiles(Array.from(e.target.files || []))}
+                  onChange={(e) => setReceiptFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
                 />
                 {receiptFiles.length > 0 && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    {receiptFiles.length} file(s) selected: {receiptFiles.map((f) => f.name).join(", ")}
+                    {receiptFiles.length} file(s) attached: {receiptFiles.map((f) => f.name).join(", ")}
                   </div>
                 )}
               </div>
@@ -1305,10 +1442,23 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)} disabled={uploading}>Cancel</Button>
-              <Button onClick={submit} disabled={uploading}>{uploading ? "Saving..." : "Save GRN"}</Button>
+              <Button onClick={submit} disabled={uploading}>{uploading ? "Saving..." : "Confirm & Save GRN"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <CameraCaptureDialog
+          open={scanOpen}
+          onOpenChange={setScanOpen}
+          onCapture={handleScanReceipt}
+          title="Scan Shop Receipt"
+          description="Capture a clear photo of the till slip or invoice."
+        />
+        <PhoneCameraPairDialog
+          open={phonePairOpen}
+          onOpenChange={setPhonePairOpen}
+          onPhotos={async (photos) => { for (const p of photos) await handleScanReceipt(p); }}
+          title="Use Phone Camera for Receipt"
+        />
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto rounded-md border">
@@ -1321,13 +1471,14 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                 <TableHead>Received By</TableHead>
                 <TableHead>Items</TableHead>
                 <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Cash / Change</TableHead>
                 <TableHead>Receipts</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No goods received yet</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No goods received yet</TableCell></TableRow>
               )}
               {data.map((g) => (
                 <TableRow key={g.id}>
@@ -1338,6 +1489,14 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
                   <TableCell>{(g.items || []).length}</TableCell>
                   <TableCell className="text-right font-medium">
                     {g.currency || "USD"} {Number(g.total_amount || 0).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right text-xs">
+                    {(g as any).cash_given != null ? (
+                      <>
+                        <div>Cash: {g.currency || "USD"} {Number((g as any).cash_given || 0).toFixed(2)}</div>
+                        <div className="text-muted-foreground">Change: {g.currency || "USD"} {Number((g as any).change_amount || 0).toFixed(2)}</div>
+                      </>
+                    ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
                     {g.receipt_urls?.length ? (
@@ -1365,6 +1524,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
     </Card>
   );
 }
+
 
 /* ──────── Suppliers ──────── */
 function SuppliersTab({ data, onChange }: { data: Supplier[]; onChange: () => void }) {
