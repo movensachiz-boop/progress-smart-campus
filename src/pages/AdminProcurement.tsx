@@ -1183,15 +1183,12 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
 
   const handleScanReceipt = async (dataUrl: string) => {
     setScanning(true);
-    // Reset to avoid bleed-over from any previous form state
-    setItems([emptyItem()]);
     try {
       // Convert dataURL to a File for receipt evidence upload on save
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `receipt-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
       setReceiptFiles((prev) => [...prev, file]);
 
-      // OCR — send base64 directly so we don't need a special bucket
       const { data, error } = await supabase.functions.invoke("extract-requisition", {
         body: { imageBase64: dataUrl },
       });
@@ -1200,11 +1197,7 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
         return;
       }
       if (data.currency) setCurrency(data.currency);
-      if (data.requested_by && !form.received_by) {
-        setForm((f) => ({ ...f, received_by: f.received_by || "" }));
-      }
       if (!form.supplier_name && data.department) {
-        // best-effort: some receipts have vendor in 'department'
         setForm((f) => ({ ...f, supplier_name: f.supplier_name || data.department }));
       }
       if (Array.isArray(data.items) && data.items.length) {
@@ -1217,8 +1210,12 @@ function GRNTab({ data, pos, onChange }: { data: GRN[]; pos: PurchaseOrder[]; on
         const mergedMap = mergePricesIntoMap(raw, data.currency || currency || "USD", priceMap);
         setPriceMap(mergedMap);
         const { items: enriched } = applyPriceHistory(raw, mergedMap);
-        setItems(enriched);
-        toast({ title: `Scanned ${raw.length} item${raw.length === 1 ? "" : "s"}`, description: "Verify, enter cash given, and save." });
+        // Append across multiple receipts (drop initial empty placeholder)
+        setItems((prev) => {
+          const kept = prev.filter((i) => i.description.trim());
+          return [...kept, ...enriched];
+        });
+        toast({ title: `Added ${raw.length} item${raw.length === 1 ? "" : "s"} from receipt`, description: "Scan another receipt or verify and save." });
       } else {
         toast({ title: "No items detected", description: "Try a clearer photo or enter items manually.", variant: "destructive" });
       }
