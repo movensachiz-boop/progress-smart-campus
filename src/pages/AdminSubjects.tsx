@@ -91,7 +91,9 @@ export default function AdminSubjects() {
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{s.code}</Badge>
             <span className="text-[10px] text-muted-foreground">{s.periodsPerWeek}/wk</span>
             {s.isCompulsory && <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Core</Badge>}
+            {s.isCommon && <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-accent/40 text-accent-foreground">Common</Badge>}
           </div>
+
           <div className="flex gap-0.5 mt-1">
             {s.forms.sort().map(f => (
               <span key={f} className="w-5 h-5 text-[10px] rounded bg-muted flex items-center justify-center text-muted-foreground">{f}</span>
