@@ -7,8 +7,8 @@ import { useTimetable } from "@/context/TimetableContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DayOfWeek } from "@/types/school";
 
-const days: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const dayLabels = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5"];
+const days: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const dayLabels = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6"];
 
 const subjectColor = (type: string) => {
   if (type === "break" || type === "lunch") return "bg-muted text-muted-foreground";

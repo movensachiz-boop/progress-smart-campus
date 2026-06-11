@@ -12,7 +12,7 @@ import PhoneCameraPairDialog from '@/components/PhoneCameraPairDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 } from '@/lib/utils';
 
-const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function AdminTimetableGenerate() {
   const { teachers, setTeachers, subjects, setSubjects, classes, setClasses, config, setConfig, generateTimetable, timetable } = useTimetable();
