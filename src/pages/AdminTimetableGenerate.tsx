@@ -15,7 +15,7 @@ import { v4 } from '@/lib/utils';
 const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 export default function AdminTimetableGenerate() {
-  const { teachers, setTeachers, subjects, classes, setClasses, config, setConfig, generateTimetable, timetable } = useTimetable();
+  const { teachers, setTeachers, subjects, setSubjects, classes, setClasses, config, setConfig, generateTimetable, timetable } = useTimetable();
   const [generating, setGenerating] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [importing, setImporting] = useState(false);
