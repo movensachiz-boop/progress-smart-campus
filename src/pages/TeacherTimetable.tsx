@@ -9,8 +9,8 @@ import { useTimetable } from "@/context/TimetableContext";
 import { DayOfWeek } from "@/types/school";
 import { CalendarDays, Clock } from "lucide-react";
 
-const days: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const dayLabels = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5"];
+const days: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const dayLabels = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6"];
 
 const slotColor = (type: string) => {
   if (type === "break" || type === "lunch") return "bg-muted text-muted-foreground";
