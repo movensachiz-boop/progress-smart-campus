@@ -15,9 +15,149 @@ import { v4 } from '@/lib/utils';
 const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 export default function AdminTimetableGenerate() {
-  const { teachers, subjects, classes, setClasses, config, setConfig, generateTimetable, timetable } = useTimetable();
+  const { teachers, setTeachers, subjects, classes, setClasses, config, setConfig, generateTimetable, timetable } = useTimetable();
   const [generating, setGenerating] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const navigate = useNavigate();
+
+  // Normalise a raw class string from OCR ("2 Orange", "Upper 6", "3 leo") to canonical class id.
+  // We try a fuzzy lookup against existing classes (by id, stream code, or stream display name).
+  const STREAM_ALIASES: Record<string, string> = {
+    orange: 'G1', shark: 'G2', virgo: 'G22', leo: 'Blue',
+    pluto: 'G1', jupiter: 'G2', neptune: 'G22',
+    gold: 'G1', silver: 'G2', bronze: 'G22', platinum: 'Blue',
+    'upper 6': '6S', 'lower 6': '5S',
+  };
+  const resolveClassId = (raw: string): string | null => {
+    if (!raw) return null;
+    const cleaned = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+    // Direct id match
+    const direct = classes.find(c => c.id.toLowerCase() === cleaned.replace(/\s/g, ''));
+    if (direct) return direct.id;
+    const upperLower = STREAM_ALIASES[cleaned];
+    if (upperLower) return classes.find(c => c.id.toLowerCase() === upperLower.toLowerCase())?.id || null;
+    const m = cleaned.match(/^(\d)\s*(.+)$/);
+    if (m) {
+      const form = m[1];
+      const streamWord = m[2].trim();
+      const aliased = STREAM_ALIASES[streamWord] || streamWord;
+      const candidate = `${form}${aliased}`;
+      const hit = classes.find(c => c.id.toLowerCase() === candidate.toLowerCase());
+      if (hit) return hit.id;
+      // last try: same form, stream contains
+      const fuzzy = classes.find(c => c.form === Number(form) && (c.stream.toLowerCase() === streamWord || c.id.toLowerCase().includes(streamWord)));
+      if (fuzzy) return fuzzy.id;
+    }
+    return null;
+  };
+
+  const resolveSubjectId = (raw: string): string | null => {
+    if (!raw) return null;
+    const q = raw.trim().toLowerCase();
+    // Exact name or code match
+    let hit = subjects.find(s => s.name.toLowerCase() === q || s.code.toLowerCase() === q);
+    if (hit) return hit.id;
+    // Common aliases
+    const aliases: Record<string, string> = {
+      'english language': 'english', 'english': 'english',
+      'literature in english': 'literature', 'literature': 'literature',
+      'shona language': 'shona', 'french language': 'french',
+      'combined science': 'combined science', 'maths': 'mathematics',
+    };
+    const norm = aliases[q] || q;
+    hit = subjects.find(s => s.name.toLowerCase() === norm || s.name.toLowerCase().includes(norm) || norm.includes(s.name.toLowerCase()));
+    return hit?.id || null;
+  };
+
+  const handleScannedPhotos = async (dataUrls: string[]) => {
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-teacher-allocation', { body: { images: dataUrls } });
+      if (error) throw error;
+      const rows: Array<{ teacher_name: string; max_periods?: number; subject: string; classes: string[] }> = data?.rows || [];
+      if (!rows.length) { toast.error('No teacher rows detected'); return; }
+
+      // Group rows by teacher
+      const byTeacher = new Map<string, { name: string; max: number; entries: Array<{ subjectId: string; classIds: string[] }> }>();
+      const unknownSubjects = new Set<string>();
+      const unknownClasses = new Set<string>();
+      for (const r of rows) {
+        const subjId = resolveSubjectId(r.subject);
+        if (!subjId) { unknownSubjects.add(r.subject); continue; }
+        const cIds: string[] = [];
+        for (const raw of (r.classes || [])) {
+          const cid = resolveClassId(raw);
+          if (cid) cIds.push(cid); else unknownClasses.add(raw);
+        }
+        const key = r.teacher_name.trim().toUpperCase();
+        if (!byTeacher.has(key)) byTeacher.set(key, { name: r.teacher_name.trim(), max: Number(r.max_periods) || 0, entries: [] });
+        const slot = byTeacher.get(key)!;
+        if (Number(r.max_periods) > slot.max) slot.max = Number(r.max_periods);
+        slot.entries.push({ subjectId: subjId, classIds: cIds });
+      }
+
+      // Merge into existing teachers (match by name, case-insensitive)
+      const next: Teacher[] = [...teachers];
+      let added = 0, updated = 0;
+      byTeacher.forEach(({ name, max, entries }) => {
+        // Merge entries by subject
+        const assignmentMap = new Map<string, Set<string>>();
+        entries.forEach(e => {
+          if (!assignmentMap.has(e.subjectId)) assignmentMap.set(e.subjectId, new Set());
+          e.classIds.forEach(c => assignmentMap.get(e.subjectId)!.add(c));
+        });
+        const assignments: TeacherClassAssignment[] = [...assignmentMap.entries()].map(([sid, set]) => ({ subjectId: sid, classIds: [...set] }));
+        const subjectIds = [...assignmentMap.keys()];
+        const formsSet = new Set<FormLevel>();
+        assignments.forEach(a => a.classIds.forEach(cid => {
+          const cls = classes.find(c => c.id === cid);
+          if (cls) formsSet.add(cls.form);
+        }));
+        const forms = [...formsSet];
+
+        const idx = next.findIndex(t => `${t.name}`.trim().toLowerCase() === name.toLowerCase());
+        if (idx >= 0) {
+          const existing = next[idx];
+          // Merge: union of subjectIds and assignments
+          const mergedAssignmentMap = new Map<string, Set<string>>();
+          existing.assignments.forEach(a => mergedAssignmentMap.set(a.subjectId, new Set(a.classIds)));
+          assignments.forEach(a => {
+            if (!mergedAssignmentMap.has(a.subjectId)) mergedAssignmentMap.set(a.subjectId, new Set());
+            a.classIds.forEach(c => mergedAssignmentMap.get(a.subjectId)!.add(c));
+          });
+          const mergedAssignments: TeacherClassAssignment[] = [...mergedAssignmentMap.entries()].map(([sid, set]) => ({ subjectId: sid, classIds: [...set] }));
+          next[idx] = {
+            ...existing,
+            subjectIds: [...new Set([...existing.subjectIds, ...subjectIds])],
+            assignments: mergedAssignments,
+            forms: [...new Set([...existing.forms, ...forms])] as FormLevel[],
+            maxPeriodsPerWeek: max > 0 ? max : existing.maxPeriodsPerWeek,
+          };
+          updated++;
+        } else {
+          // Derive a title from "CHUCHU CE" style → keep raw name; default title.
+          next.push({
+            id: v4(), name, title: 'Mr.',
+            subjectIds, assignments, forms,
+            maxPeriodsPerWeek: max > 0 ? max : 28,
+          });
+          added++;
+        }
+      });
+
+      setTeachers(next);
+      const warnBits = [];
+      if (unknownSubjects.size) warnBits.push(`${unknownSubjects.size} subject(s) unmatched: ${[...unknownSubjects].slice(0, 3).join(', ')}`);
+      if (unknownClasses.size) warnBits.push(`${unknownClasses.size} class(es) unmatched: ${[...unknownClasses].slice(0, 3).join(', ')}`);
+      toast.success(`Imported — ${added} added, ${updated} updated${warnBits.length ? `. ${warnBits.join(' · ')}` : ''}`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to import teacher allocation');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const toggleSportsDay = (day: DayOfWeek) => {
     const has = config.sportsDays.includes(day);
