@@ -18,18 +18,18 @@ export default function AdminSubjects() {
   const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
   const [form, setForm] = useState({
     name: '', code: '', forms: [] as FormLevel[], learningAreas: [] as LearningArea[],
-    periodsPerWeek: 4, isCompulsory: false,
+    periodsPerWeek: 4, isCompulsory: false, isCommon: false,
   });
 
   const openNew = () => {
     setEditing(null);
-    setForm({ name: '', code: '', forms: [], learningAreas: [], periodsPerWeek: 4, isCompulsory: false });
+    setForm({ name: '', code: '', forms: [], learningAreas: [], periodsPerWeek: 4, isCompulsory: false, isCommon: false });
     setDialogOpen(true);
   };
 
   const openEdit = (s: Subject) => {
     setEditing(s);
-    setForm({ name: s.name, code: s.code, forms: [...s.forms], learningAreas: s.learningAreas ? [...s.learningAreas] : [], periodsPerWeek: s.periodsPerWeek, isCompulsory: s.isCompulsory });
+    setForm({ name: s.name, code: s.code, forms: [...s.forms], learningAreas: s.learningAreas ? [...s.learningAreas] : [], periodsPerWeek: s.periodsPerWeek, isCompulsory: s.isCompulsory, isCommon: !!s.isCommon });
     setDialogOpen(true);
   };
 
@@ -45,6 +45,7 @@ export default function AdminSubjects() {
       id: editing?.id || v4(), name: form.name, code: form.code, forms: form.forms,
       learningAreas: form.learningAreas.length > 0 ? form.learningAreas : undefined,
       periodsPerWeek: form.periodsPerWeek, isCompulsory: form.isCompulsory,
+      isCommon: form.isCommon,
     };
     if (editing) {
       setSubjects(subjects.map(s => s.id === editing.id ? subjectData : s));
@@ -55,6 +56,7 @@ export default function AdminSubjects() {
     }
     setDialogOpen(false);
   };
+
 
   const handleDelete = () => {
     if (!deleteTarget) return;
