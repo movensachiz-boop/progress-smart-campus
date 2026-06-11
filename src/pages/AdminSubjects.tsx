@@ -174,6 +174,18 @@ export default function AdminSubjects() {
                   </label>
                 </div>
               </div>
+              <div className="rounded-md border border-dashed border-accent/40 bg-accent/5 p-3">
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={form.isCommon} onChange={e => setForm(f => ({ ...f, isCommon: e.target.checked }))} className="rounded mt-0.5" />
+                  <span>
+                    <span className="font-medium">Common subject (Form 3 & 4)</span>
+                    <span className="block text-[11px] text-muted-foreground mt-0.5">
+                      All streams of Form 3 (and Form 4) attend this subject together as one combined class — the timetable will place it in the same period across every stream.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
               <div>
                 <label className="text-xs text-muted-foreground mb-2 block">Forms</label>
                 <div className="flex gap-1.5">
