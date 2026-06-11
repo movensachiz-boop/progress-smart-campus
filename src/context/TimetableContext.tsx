@@ -273,6 +273,38 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
+    // Form 1: Agriculture and Computer Science are combined across ALL Form 1 streams
+    // (G1, G2, G22, Blue) into a single shared session per period. Pick one teacher per subject.
+    (() => {
+      const form1Classes = classes.filter(c => c.form === 1);
+      if (form1Classes.length < 2) return;
+      const targetCodes = ['AGR', 'CS'];
+      targetCodes.forEach(code => {
+        const subj = subjects.find(s => (s.code || '').toUpperCase() === code);
+        if (!subj) return;
+        const eligibleClasses = form1Classes.filter(c => (classSubjectIds[c.id] || []).includes(subj.id));
+        if (eligibleClasses.length < 2) return;
+        const teacherCoverage = teachers
+          .map(t => ({
+            t,
+            covered: eligibleClasses.filter(c =>
+              t.assignments.some(a => a.subjectId === subj.id && a.classIds.some(cid => matchesClass(cid, c.id)))
+            ).length,
+          }))
+          .filter(x => x.covered > 0)
+          .sort((a, b) => b.covered - a.covered);
+        const chosen = teacherCoverage[0]?.t;
+        if (!chosen) return;
+        const groupIds = eligibleClasses.map(c => c.id);
+        groupIds.forEach(cid => {
+          if (!combineGroups[cid]) combineGroups[cid] = {};
+          combineGroups[cid][subj.id] = { teacherId: chosen.id, groupClassIds: groupIds };
+        });
+      });
+    })();
+
+
+
 
     const isPreMarkedFree = (classId: string, day: DayOfWeek, slot: number) =>
       freeSlots[classId]?.has(`${day}-${slot}`);
