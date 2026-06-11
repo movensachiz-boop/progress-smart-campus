@@ -287,6 +287,9 @@ export default function AdminTimetableGenerate() {
             <p className="text-sm text-muted-foreground mb-6">
               The system will create optimized timetables for all {classes.length} classes, ensuring no teacher clashes and proper break enforcement.
             </p>
+            <Button onClick={() => setScanOpen(true)} variant="outline" size="lg" className="w-full mb-2" disabled={importing}>
+              {importing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Importing teachers…</> : <><Smartphone className="w-4 h-4 mr-2" /><ScanLine className="w-4 h-4 mr-2" /> Scan Teacher Allocation (Phone)</>}
+            </Button>
             <Button onClick={syncSubjectsFromTeachers} variant="outline" size="lg" className="w-full mb-2">
               <RefreshCw className="w-4 h-4 mr-2" /> Sync Class Subjects from Teachers
             </Button>
@@ -294,6 +297,14 @@ export default function AdminTimetableGenerate() {
               {generating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : 'Generate Timetable'}
             </Button>
           </div>
+
+          <PhoneCameraPairDialog
+            open={scanOpen}
+            onOpenChange={setScanOpen}
+            onPhotos={handleScannedPhotos}
+            title="Scan Teacher Allocation Sheet"
+          />
+
 
           {timetable && (
             <div className="bg-card rounded-xl border p-6">
