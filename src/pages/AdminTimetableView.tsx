@@ -53,11 +53,15 @@ export default function AdminTimetableView() {
     if (slot.type === 'lunch') return { label: 'LUNCH', className: 'bg-warning/20 text-warning-foreground', editable: false };
     if (slot.type === 'sports') return { label: 'SPORTS', className: 'bg-success/20 text-success', editable: false };
     const subject = subjects.find(s => s.id === slot.subjectId);
+    const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
     const teacher = teachers.find(t => t.id === slot.teacherId);
+    const pairedTeacher = slot.pairedTeacherId ? teachers.find(t => t.id === slot.pairedTeacherId) : undefined;
     const isConflict = timetable?.conflicts.some(c => c.slots.includes(slot.id));
+    const label = paired && subject ? `${subject.code}/${paired.code}` : (subject?.code || 'Free');
+    const teacherLabel = paired && teacher && pairedTeacher ? `${teacher.name} / ${pairedTeacher.name}` : teacher?.name;
     return {
-      label: subject?.code || 'Free',
-      sublabel: viewMode === 'class' ? teacher?.name : classes.find(c => c.id === slot.classId)?.id,
+      label,
+      sublabel: viewMode === 'class' ? teacherLabel : classes.find(c => c.id === slot.classId)?.id,
       className: isConflict ? 'bg-destructive/20 text-destructive border border-destructive/30' : subject ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
       isConflict, editable: true,
       combinedCount: slot.combinedClassIds?.length || 0,
