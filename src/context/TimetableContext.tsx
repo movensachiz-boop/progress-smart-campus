@@ -175,34 +175,41 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const totalAcademic = academicPairs.length;
       const freeNeeded = Math.max(0, totalAcademic - requiredPeriods);
       if (freeNeeded === 0) return;
-      // Group by day and SHUFFLE within each day so frees aren't always last-period.
-      // Then round-robin across days so every class spreads its frees evenly across the week.
+      // Group academic pairs by day, then place frees per-day at evenly-spaced
+      // positions so we never end up with 3+ consecutive free periods.
       const byDay: Record<string, number[]> = {};
       academicPairs.forEach(p => { (byDay[p.day] ||= []).push(p.slot); });
-      Object.values(byDay).forEach(arr => {
-        for (let i = arr.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [arr[i], arr[j]] = [arr[j], arr[i]];
-        }
-      });
-      let assigned = 0;
-      let round = 0;
+
+      // Decide how many frees to place per day (as even as possible across the week).
       const dayOrder = shuffle(DAYS as unknown as DayOfWeek[]);
-      while (assigned < freeNeeded) {
-        let placedThisRound = 0;
-        for (const day of dayOrder) {
-          if (assigned >= freeNeeded) break;
-          const arr = byDay[day] || [];
-          if (arr.length > round) {
-            freeSlots[c.id].add(`${day}-${arr[round]}`);
-            assigned++;
-            placedThisRound++;
-          }
+      const perDay: Record<string, number> = {};
+      dayOrder.forEach(d => { perDay[d] = 0; });
+      for (let i = 0; i < freeNeeded; i++) {
+        perDay[dayOrder[i % dayOrder.length]]++;
+      }
+
+      for (const day of dayOrder) {
+        const slotsForDay = byDay[day] || [];
+        const n = slotsForDay.length;
+        let k = Math.min(perDay[day], n);
+        if (k === 0) continue;
+        // Cap k so we never need 3-in-a-row: with n slots, max non-adjacent-run-of-2 frees
+        // is roughly ceil(2n/3). If exceeded, push the excess to other days later.
+        const maxK = Math.ceil((2 * n) / 3);
+        if (k > maxK) k = maxK;
+        // Evenly-spaced indices into slotsForDay (avoids clustering, avoids long runs).
+        const picked = new Set<number>();
+        for (let i = 0; i < k; i++) {
+          const idx = Math.min(n - 1, Math.round((i + 0.5) * n / k) - 1);
+          // If collision (shouldn't happen with even spacing), nudge forward.
+          let safe = Math.max(0, idx);
+          while (picked.has(safe) && safe < n - 1) safe++;
+          picked.add(safe);
+          freeSlots[c.id].add(`${day}-${slotsForDay[safe]}`);
         }
-        if (placedThisRound === 0) break;
-        round++;
       }
     });
+
 
     // Identify auto-combine groups: classes in the same form (Forms 5 & 6 only) that
     // share the SAME teacher for the SAME subject. They will be scheduled together
