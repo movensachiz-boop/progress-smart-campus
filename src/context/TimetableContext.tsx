@@ -105,6 +105,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // Subjects eligible for an automatic double period somewhere in the week:
     // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects).
     const doubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
+    // "Always double" subjects: every placement must be part of a double period.
+    // Covers core sciences + Agriculture by code, and ALL A-level (forms 5/6) subjects.
+    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR']);
+    const mustDouble = (s: Subject, form: number | undefined) =>
+      form === 5 || form === 6 || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
     const classSubjectDayDoubled: Record<string, boolean> = {};
     // All compulsory (core) subjects should appear EVERY day for each class.
     const dailySubjectIds = new Set(subjects.filter(s => s.isCompulsory).map(s => s.id));
