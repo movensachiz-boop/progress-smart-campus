@@ -105,6 +105,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // Subjects eligible for an automatic double period somewhere in the week:
     // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects).
     const doubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
+    // "Always double" subjects: every placement must be part of a double period.
+    // Covers core sciences + Agriculture by code, and ALL A-level (forms 5/6) subjects.
+    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR']);
+    const mustDouble = (s: Subject, form: number | undefined) =>
+      form === 5 || form === 6 || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
     const classSubjectDayDoubled: Record<string, boolean> = {};
     // All compulsory (core) subjects should appear EVERY day for each class.
     const dailySubjectIds = new Set(subjects.filter(s => s.isCompulsory).map(s => s.id));
@@ -453,6 +458,26 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             if (availableTeachers.length > 0) {
               const teacher = availableTeachers.sort((a, b) => (teacherLoad[a.id] || 0) - (teacherLoad[b.id] || 0))[0];
 
+              // Enforce "always double" for sciences/agriculture and all A-level subjects.
+              // If 2+ periods remain, this placement MUST be paired with the next slot.
+              // If only 1 period remains (odd ppw, e.g. Agriculture = 5), allow a single.
+              const remainingThisSubject = ppwFor(subject, cls.form) - (classSubjectCount[cls.id][subject.id] || 0);
+              const requireDouble = mustDouble(subject, cls.form) && remainingThisSubject >= 2;
+              if (requireDouble) {
+                const nextSlotChk = slot + 1;
+                const alreadyTodayChk = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
+                const dayDoubledChk = classSubjectDayDoubled[`${cls.id}-${subject.id}-${day}`];
+                const canDouble = nextSlotChk <= totalSlots
+                  && !isNonAcademic(day, nextSlotChk)
+                  && !preAssigned[`${cls.id}-${day}-${nextSlotChk}`]
+                  && !isPreMarkedFree(cls.id, day, nextSlotChk)
+                  && !teacherSchedule[teacher.id]?.[`${day}-${nextSlotChk}`]
+                  && (teacherLoad[teacher.id] || 0) + 1 < teacher.maxPeriodsPerWeek
+                  && alreadyTodayChk === 0
+                  && !dayDoubledChk;
+                if (!canDouble) continue;
+              }
+
               // Auto-combine: if this class is in a combine-group for this subject with this
               // teacher, schedule all sibling classes in the same period as a combined lesson.
               const grp = combineGroups[cls.id]?.[subject.id];
@@ -467,6 +492,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     return (classSubjectIds[cid] || []).includes(subject.id);
                   })
                 : [cls.id];
+
 
               const others = groupMembers.filter(id => id !== cls.id);
               slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, teacherId: teacher.id, type: 'lesson', combinedClassIds: others });
@@ -491,7 +517,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
               const alreadyTodayCount = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
               if (
-                doubleEligible.has(subject.id) && !classSubjectDayDoubled[doubleKey] &&
+                (doubleEligible.has(subject.id) || mustDouble(subject, cls.form)) &&
+                !classSubjectDayDoubled[doubleKey] &&
                 alreadyTodayCount < 2 && nextSlot <= totalSlots &&
                 !isNonAcademic(day, nextSlot) && !preAssigned[`${cls.id}-${day}-${nextSlot}`] &&
                 (classSubjectCount[cls.id][subject.id] || 0) < ppwFor(subject, cls.form) &&
