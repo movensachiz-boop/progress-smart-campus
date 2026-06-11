@@ -24,6 +24,8 @@ export interface Subject {
   learningAreas?: LearningArea[];
   periodsPerWeek: number;
   isCompulsory: boolean;
+  /** When true, all streams of Forms 3 & 4 attend this subject as a single combined class. */
+  isCommon?: boolean;
 }
 
 export interface TeacherClassAssignment {
