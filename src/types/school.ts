@@ -1,6 +1,6 @@
 export type FormLevel = 1 | 2 | 3 | 4 | 5 | 6;
 export type LearningArea = 'Sciences' | 'Commercials' | 'Arts';
-export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday';
+export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 
 export interface SchoolConfig {
   schoolName: string;
