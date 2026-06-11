@@ -172,7 +172,7 @@ export default function AdminTimetableGenerate() {
         const subjectIds = [...assignmentMap.keys()];
         const formsSet = new Set<FormLevel>();
         assignments.forEach(a => a.classIds.forEach(cid => {
-          const cls = classes.find(c => c.id === cid);
+          const cls = nextClasses.find(c => c.id === cid);
           if (cls) formsSet.add(cls.form);
         }));
         const forms = [...formsSet];
