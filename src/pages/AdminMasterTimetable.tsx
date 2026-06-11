@@ -193,9 +193,9 @@ export default function AdminMasterTimetable() {
           </Button>
         </div>
 
-        {DAYS.map(day => (
+        {DAYS.map((day, i) => (
           <div key={day} className="space-y-2">
-            <h3 className="text-lg font-semibold text-foreground">{day}</h3>
+            <h3 className="text-lg font-semibold text-foreground">Day {i + 1}</h3>
             <div className="bg-card rounded-xl border overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead>

@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
 import { CalendarDays, Clock } from "lucide-react";
 
-const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
+const days = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5"] as const;
 
 const slotColor = (type: string) => {
   if (type === "break" || type === "lunch") return "bg-muted text-muted-foreground";
