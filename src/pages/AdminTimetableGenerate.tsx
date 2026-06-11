@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar, Loader2, CheckCircle, AlertTriangle, RefreshCw, Settings as SettingsIcon, Smartphone, ScanLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import type { DayOfWeek, Teacher, TeacherClassAssignment, FormLevel } from '@/types/school';
+import type { DayOfWeek, Teacher, TeacherClassAssignment, FormLevel, Subject } from '@/types/school';
 import TimetableBackupPanel from '@/components/TimetableBackupPanel';
 import PhoneCameraPairDialog from '@/components/PhoneCameraPairDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +15,7 @@ import { v4 } from '@/lib/utils';
 const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 export default function AdminTimetableGenerate() {
-  const { teachers, setTeachers, subjects, classes, setClasses, config, setConfig, generateTimetable, timetable } = useTimetable();
+  const { teachers, setTeachers, subjects, setSubjects, classes, setClasses, config, setConfig, generateTimetable, timetable } = useTimetable();
   const [generating, setGenerating] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -78,16 +78,76 @@ export default function AdminTimetableGenerate() {
       const rows: Array<{ teacher_name: string; max_periods?: number; subject: string; classes: string[] }> = data?.rows || [];
       if (!rows.length) { toast.error('No teacher rows detected'); return; }
 
+      // Working copies — we auto-create subjects and classes that don't yet exist.
+      const nextSubjects: Subject[] = [...subjects];
+      const nextClasses = [...classes];
+      let newSubjectCount = 0;
+      let newClassCount = 0;
+
+      const findOrCreateSubject = (raw: string): string => {
+        const q = (raw || '').trim();
+        if (!q) return '';
+        const ql = q.toLowerCase();
+        const existing = nextSubjects.find(s =>
+          s.name.toLowerCase() === ql || s.code.toLowerCase() === ql ||
+          s.name.toLowerCase().includes(ql) || ql.includes(s.name.toLowerCase())
+        );
+        if (existing) return existing.id;
+        const code = q.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 4) || q.slice(0, 3).toUpperCase();
+        const created: Subject = {
+          id: v4(),
+          name: q,
+          code,
+          forms: [1, 2, 3, 4, 5, 6],
+          periodsPerWeek: 5,
+          isCompulsory: false,
+        };
+        nextSubjects.push(created);
+        newSubjectCount++;
+        return created.id;
+      };
+
+      const findOrCreateClass = (raw: string): string | null => {
+        if (!raw) return null;
+        const cleaned = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+        const direct = nextClasses.find(c => c.id.toLowerCase() === cleaned.replace(/\s/g, ''));
+        if (direct) return direct.id;
+        const upperLower = STREAM_ALIASES[cleaned];
+        if (upperLower) {
+          const hit = nextClasses.find(c => c.id.toLowerCase() === upperLower.toLowerCase());
+          if (hit) return hit.id;
+        }
+        const m = cleaned.match(/^(\d)\s*(.+)$/);
+        if (m) {
+          const form = Number(m[1]) as FormLevel;
+          const streamWord = m[2].trim();
+          const aliased = STREAM_ALIASES[streamWord] || streamWord;
+          const candidate = `${form}${aliased}`;
+          const hit = nextClasses.find(c => c.id.toLowerCase() === candidate.toLowerCase());
+          if (hit) return hit.id;
+          const fuzzy = nextClasses.find(c => c.form === form && (c.stream.toLowerCase() === streamWord || c.id.toLowerCase().includes(streamWord)));
+          if (fuzzy) return fuzzy.id;
+          // Auto-create the class — capitalize stream nicely
+          const stream = aliased.replace(/\b\w/g, ch => ch.toUpperCase());
+          const newId = `${form}${stream.replace(/\s/g, '')}`;
+          const created = { id: newId, form, stream, subjectIds: [] as string[] };
+          nextClasses.push(created);
+          newClassCount++;
+          return newId;
+        }
+        // Upper/Lower 6 fallback handled by STREAM_ALIASES above
+        return null;
+      };
+
       // Group rows by teacher
       const byTeacher = new Map<string, { name: string; max: number; entries: Array<{ subjectId: string; classIds: string[] }> }>();
-      const unknownSubjects = new Set<string>();
       const unknownClasses = new Set<string>();
       for (const r of rows) {
-        const subjId = resolveSubjectId(r.subject);
-        if (!subjId) { unknownSubjects.add(r.subject); continue; }
+        const subjId = findOrCreateSubject(r.subject);
+        if (!subjId) continue;
         const cIds: string[] = [];
         for (const raw of (r.classes || [])) {
-          const cid = resolveClassId(raw);
+          const cid = findOrCreateClass(raw);
           if (cid) cIds.push(cid); else unknownClasses.add(raw);
         }
         const key = r.teacher_name.trim().toUpperCase();
@@ -96,6 +156,7 @@ export default function AdminTimetableGenerate() {
         if (Number(r.max_periods) > slot.max) slot.max = Number(r.max_periods);
         slot.entries.push({ subjectId: subjId, classIds: cIds });
       }
+
 
       // Merge into existing teachers (match by name, case-insensitive)
       const next: Teacher[] = [...teachers];
@@ -111,7 +172,7 @@ export default function AdminTimetableGenerate() {
         const subjectIds = [...assignmentMap.keys()];
         const formsSet = new Set<FormLevel>();
         assignments.forEach(a => a.classIds.forEach(cid => {
-          const cls = classes.find(c => c.id === cid);
+          const cls = nextClasses.find(c => c.id === cid);
           if (cls) formsSet.add(cls.form);
         }));
         const forms = [...formsSet];
@@ -146,11 +207,14 @@ export default function AdminTimetableGenerate() {
         }
       });
 
+      if (newSubjectCount) setSubjects(nextSubjects);
+      if (newClassCount) setClasses(nextClasses);
       setTeachers(next);
-      const warnBits = [];
-      if (unknownSubjects.size) warnBits.push(`${unknownSubjects.size} subject(s) unmatched: ${[...unknownSubjects].slice(0, 3).join(', ')}`);
+      const warnBits: string[] = [];
+      if (newSubjectCount) warnBits.push(`${newSubjectCount} new subject(s) added`);
+      if (newClassCount) warnBits.push(`${newClassCount} new class(es) added`);
       if (unknownClasses.size) warnBits.push(`${unknownClasses.size} class(es) unmatched: ${[...unknownClasses].slice(0, 3).join(', ')}`);
-      toast.success(`Imported — ${added} added, ${updated} updated${warnBits.length ? `. ${warnBits.join(' · ')}` : ''}`);
+      toast.success(`Imported — ${added} teacher(s) added, ${updated} updated${warnBits.length ? `. ${warnBits.join(' · ')}` : ''}`);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || 'Failed to import teacher allocation');
