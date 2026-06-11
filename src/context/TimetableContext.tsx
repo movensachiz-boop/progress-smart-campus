@@ -175,34 +175,41 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const totalAcademic = academicPairs.length;
       const freeNeeded = Math.max(0, totalAcademic - requiredPeriods);
       if (freeNeeded === 0) return;
-      // Group by day and SHUFFLE within each day so frees aren't always last-period.
-      // Then round-robin across days so every class spreads its frees evenly across the week.
+      // Group academic pairs by day, then place frees per-day at evenly-spaced
+      // positions so we never end up with 3+ consecutive free periods.
       const byDay: Record<string, number[]> = {};
       academicPairs.forEach(p => { (byDay[p.day] ||= []).push(p.slot); });
-      Object.values(byDay).forEach(arr => {
-        for (let i = arr.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [arr[i], arr[j]] = [arr[j], arr[i]];
-        }
-      });
-      let assigned = 0;
-      let round = 0;
+
+      // Decide how many frees to place per day (as even as possible across the week).
       const dayOrder = shuffle(DAYS as unknown as DayOfWeek[]);
-      while (assigned < freeNeeded) {
-        let placedThisRound = 0;
-        for (const day of dayOrder) {
-          if (assigned >= freeNeeded) break;
-          const arr = byDay[day] || [];
-          if (arr.length > round) {
-            freeSlots[c.id].add(`${day}-${arr[round]}`);
-            assigned++;
-            placedThisRound++;
-          }
+      const perDay: Record<string, number> = {};
+      dayOrder.forEach(d => { perDay[d] = 0; });
+      for (let i = 0; i < freeNeeded; i++) {
+        perDay[dayOrder[i % dayOrder.length]]++;
+      }
+
+      for (const day of dayOrder) {
+        const slotsForDay = byDay[day] || [];
+        const n = slotsForDay.length;
+        let k = Math.min(perDay[day], n);
+        if (k === 0) continue;
+        // Cap k so we never need 3-in-a-row: with n slots, max non-adjacent-run-of-2 frees
+        // is roughly ceil(2n/3). If exceeded, push the excess to other days later.
+        const maxK = Math.ceil((2 * n) / 3);
+        if (k > maxK) k = maxK;
+        // Evenly-spaced indices into slotsForDay (avoids clustering, avoids long runs).
+        const picked = new Set<number>();
+        for (let i = 0; i < k; i++) {
+          const idx = Math.min(n - 1, Math.round((i + 0.5) * n / k) - 1);
+          // If collision (shouldn't happen with even spacing), nudge forward.
+          let safe = Math.max(0, idx);
+          while (picked.has(safe) && safe < n - 1) safe++;
+          picked.add(safe);
+          freeSlots[c.id].add(`${day}-${slotsForDay[safe]}`);
         }
-        if (placedThisRound === 0) break;
-        round++;
       }
     });
+
 
     // Identify auto-combine groups: classes in the same form (Forms 5 & 6 only) that
     // share the SAME teacher for the SAME subject. They will be scheduled together
@@ -211,7 +218,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const combineGroups: Record<string, Record<string, { teacherId: string; groupClassIds: string[] }>> = {};
     teachers.forEach(t => {
       t.assignments.forEach(a => {
-        // Group this teacher's assigned classes by form (only Forms 5 & 6 combine)
+        // Group this teacher's assigned classes by form (only Forms 5 & 6 combine here)
         const byForm: Record<number, string[]> = {};
         a.classIds.forEach(rawCid => {
           const cls = classes.find(c => matchesClass(rawCid, c.id));
@@ -227,6 +234,36 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         });
       });
     });
+
+    // Forms 3 & 4: subjects marked `isCommon` are taught as a single combined session
+    // across ALL streams of that form. Pick one designated teacher per (form, subject).
+    const commonSubjectIds = new Set(subjects.filter(s => s.isCommon).map(s => s.id));
+    ([3, 4] as const).forEach(formLevel => {
+      const formClasses = classes.filter(c => c.form === formLevel);
+      if (formClasses.length < 2) return;
+      commonSubjectIds.forEach(subjId => {
+        const eligibleClasses = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subjId));
+        if (eligibleClasses.length < 2) return;
+        // Pick the teacher who covers the most of these classes for this subject; fallback to first match.
+        const teacherCoverage = teachers
+          .map(t => ({
+            t,
+            covered: eligibleClasses.filter(c =>
+              t.assignments.some(a => a.subjectId === subjId && a.classIds.some(cid => matchesClass(cid, c.id)))
+            ).length,
+          }))
+          .filter(x => x.covered > 0)
+          .sort((a, b) => b.covered - a.covered);
+        const chosen = teacherCoverage[0]?.t;
+        if (!chosen) return;
+        const groupIds = eligibleClasses.map(c => c.id);
+        groupIds.forEach(cid => {
+          if (!combineGroups[cid]) combineGroups[cid] = {};
+          combineGroups[cid][subjId] = { teacherId: chosen.id, groupClassIds: groupIds };
+        });
+      });
+    });
+
 
     const isPreMarkedFree = (classId: string, day: DayOfWeek, slot: number) =>
       freeSlots[classId]?.has(`${day}-${slot}`);
