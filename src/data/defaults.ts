@@ -12,7 +12,7 @@ export const defaultConfig: SchoolConfig = {
   lunchAfterPeriod: 8,
   lunchDuration: 60,
   sportsDays: ['Saturday'],
-  sportsStartPeriod: 7,
+  sportsStartPeriod: 1,
   periodsPerDay: 11,
 };
 
