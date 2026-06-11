@@ -41,7 +41,9 @@ export default function AdminTimetableView() {
 
   const filteredSlots = useMemo(() => {
     if (!timetable || !selectedId) return [];
-    return viewMode === 'class' ? timetable.slots.filter(s => s.classId === selectedId) : timetable.slots.filter(s => s.teacherId === selectedId);
+    return viewMode === 'class'
+      ? timetable.slots.filter(s => s.classId === selectedId)
+      : timetable.slots.filter(s => s.teacherId === selectedId || s.pairedTeacherId === selectedId);
   }, [timetable, selectedId, viewMode]);
 
   const getSlot = (day: DayOfWeek, period: number) => filteredSlots.find(s => s.day === day && s.period === period);
