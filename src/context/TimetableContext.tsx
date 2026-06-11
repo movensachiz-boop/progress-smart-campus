@@ -517,8 +517,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
               const alreadyTodayCount = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
               if (
-                doubleEligible.has(subject.id) && !classSubjectDayDoubled[doubleKey] &&
-                alreadyTodayCount < 2 && nextSlot <= totalSlots &&
+                (doubleEligible.has(subject.id) || mustDouble(subject, cls.form)) &&
+                !classSubjectDayDoubled[doubleKey] &&
                 !isNonAcademic(day, nextSlot) && !preAssigned[`${cls.id}-${day}-${nextSlot}`] &&
                 (classSubjectCount[cls.id][subject.id] || 0) < ppwFor(subject, cls.form) &&
                 !teacherSchedule[teacher.id]?.[`${day}-${nextSlot}`] &&
