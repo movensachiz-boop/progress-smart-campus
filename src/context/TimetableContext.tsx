@@ -521,8 +521,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
 
               const others = groupMembers.filter(id => id !== cls.id);
-              slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, teacherId: teacher.id, type: 'lesson', combinedClassIds: others });
+              const newSlot: TimetableSlot = { id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, teacherId: teacher.id, type: 'lesson', combinedClassIds: others };
+              slots.push(newSlot);
               recordSubjectSlot(cls.id, day, subject.id, slot, teacher.id, teacher);
+              tryPairSlot(newSlot, cls, day, slot, subject);
 
               // Pre-assign sibling classes for this same period (so the outer per-class loop
               // for this slot will emit them as combined). Their teacherLoad is NOT incremented
