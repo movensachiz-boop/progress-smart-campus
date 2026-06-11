@@ -207,11 +207,14 @@ export default function AdminTimetableGenerate() {
         }
       });
 
+      if (newSubjectCount) setSubjects(nextSubjects);
+      if (newClassCount) setClasses(nextClasses);
       setTeachers(next);
-      const warnBits = [];
-      if (unknownSubjects.size) warnBits.push(`${unknownSubjects.size} subject(s) unmatched: ${[...unknownSubjects].slice(0, 3).join(', ')}`);
+      const warnBits: string[] = [];
+      if (newSubjectCount) warnBits.push(`${newSubjectCount} new subject(s) added`);
+      if (newClassCount) warnBits.push(`${newClassCount} new class(es) added`);
       if (unknownClasses.size) warnBits.push(`${unknownClasses.size} class(es) unmatched: ${[...unknownClasses].slice(0, 3).join(', ')}`);
-      toast.success(`Imported — ${added} added, ${updated} updated${warnBits.length ? `. ${warnBits.join(' · ')}` : ''}`);
+      toast.success(`Imported — ${added} teacher(s) added, ${updated} updated${warnBits.length ? `. ${warnBits.join(' · ')}` : ''}`);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || 'Failed to import teacher allocation');
