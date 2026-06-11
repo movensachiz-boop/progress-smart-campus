@@ -1,6 +1,6 @@
 import { SchoolConfig, Subject, SchoolClass, DayOfWeek, FormLevel, LearningArea } from '@/types/school';
 
-export const DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+export const DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export const defaultConfig: SchoolConfig = {
   schoolName: 'Progress Christian College',
@@ -11,7 +11,7 @@ export const defaultConfig: SchoolConfig = {
   morningBreakDuration: 20,
   lunchAfterPeriod: 8,
   lunchDuration: 60,
-  sportsDays: ['Wednesday'],
+  sportsDays: ['Saturday'],
   sportsStartPeriod: 7,
   periodsPerDay: 11,
 };
