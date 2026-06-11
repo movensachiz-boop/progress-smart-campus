@@ -112,10 +112,12 @@ const StudentTimetable = () => {
                             );
                           }
                           const subj = subjects.find(s => s.id === slot.subjectId);
+                          const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
+                          const label = paired && subj ? `${subj.name} / ${paired.name}` : (subj?.name || "Free");
                           return (
                             <td key={i} className="p-3">
                               <Badge variant="secondary" className={subjectColor("lesson")}>
-                                {subj?.name || "Free"}
+                                {label}
                               </Badge>
                             </td>
                           );
