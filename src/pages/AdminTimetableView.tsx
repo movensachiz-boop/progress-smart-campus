@@ -161,8 +161,8 @@ export default function AdminTimetableView() {
               <thead>
                 <tr>
                   <th className="text-left p-3 text-xs font-semibold text-muted-foreground border-b w-28">Time</th>
-                  {DAYS.map(day => (
-                    <th key={day} className="text-left p-3 text-xs font-semibold text-muted-foreground border-b">{day}</th>
+                  {DAYS.map((day, i) => (
+                    <th key={day} className="text-left p-3 text-xs font-semibold text-muted-foreground border-b">Day {i + 1}</th>
                   ))}
                 </tr>
               </thead>

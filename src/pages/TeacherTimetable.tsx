@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
+import { DayOfWeek } from "@/types/school";
 import { CalendarDays, Clock } from "lucide-react";
 
-const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
+const days: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const dayLabels = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5"];
 
 const slotColor = (type: string) => {
   if (type === "break" || type === "lunch") return "bg-muted text-muted-foreground";
@@ -169,8 +171,8 @@ export default function TeacherTimetable() {
                 <thead>
                   <tr className="bg-secondary">
                     <th className="text-left p-3 font-semibold text-foreground">Time</th>
-                    {days.map(d => (
-                      <th key={d} className="text-left p-3 font-semibold text-foreground">{d}</th>
+                    {days.map((d, i) => (
+                      <th key={d} className="text-left p-3 font-semibold text-foreground">{dayLabels[i]}</th>
                     ))}
                   </tr>
                 </thead>

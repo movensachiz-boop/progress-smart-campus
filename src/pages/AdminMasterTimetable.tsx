@@ -108,9 +108,10 @@ export default function AdminMasterTimetable() {
     // One table per day
     let startY = 45;
     for (const day of DAYS) {
+      const dayNum = DAYS.indexOf(day) + 1;
       doc.setFontSize(11);
       doc.setTextColor(0, 51, 102);
-      doc.text(day, 14, startY);
+      doc.text(`Day ${dayNum}`, 14, startY);
       startY += 2;
 
       const headers = ['Period / Time', ...sortedClasses.map(c => `${c.form}${c.stream}`)];
@@ -192,9 +193,9 @@ export default function AdminMasterTimetable() {
           </Button>
         </div>
 
-        {DAYS.map(day => (
+        {DAYS.map((day, i) => (
           <div key={day} className="space-y-2">
-            <h3 className="text-lg font-semibold text-foreground">{day}</h3>
+            <h3 className="text-lg font-semibold text-foreground">Day {i + 1}</h3>
             <div className="bg-card rounded-xl border overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead>
