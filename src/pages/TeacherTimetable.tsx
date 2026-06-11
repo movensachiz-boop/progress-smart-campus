@@ -66,7 +66,7 @@ export default function TeacherTimetable() {
   };
 
   // Get all slots assigned to this teacher
-  const teacherSlots = timetable?.slots.filter(s => s.teacherId === teacherId) || [];
+  const teacherSlots = timetable?.slots.filter(s => s.teacherId === teacherId || s.pairedTeacherId === teacherId) || [];
   const periods = [...new Set(
     (timetable?.slots || []).map(s => s.period)
   )].sort((a, b) => a - b);
