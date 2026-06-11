@@ -123,7 +123,9 @@ export default function AdminMasterTimetable() {
           if (slot.type === 'lunch') return 'LUNCH';
           if (slot.type === 'sports') return 'SPORTS';
           const sub = subjects.find(s => s.id === slot.subjectId);
-          return sub?.code || '—';
+          const pSub = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
+          if (!sub) return '—';
+          return pSub ? `${sub.code}/${pSub.code}` : sub.code;
         })];
       });
 
