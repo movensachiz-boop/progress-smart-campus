@@ -458,6 +458,26 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             if (availableTeachers.length > 0) {
               const teacher = availableTeachers.sort((a, b) => (teacherLoad[a.id] || 0) - (teacherLoad[b.id] || 0))[0];
 
+              // Enforce "always double" for sciences/agriculture and all A-level subjects.
+              // If 2+ periods remain, this placement MUST be paired with the next slot.
+              // If only 1 period remains (odd ppw, e.g. Agriculture = 5), allow a single.
+              const remainingThisSubject = ppwFor(subject, cls.form) - (classSubjectCount[cls.id][subject.id] || 0);
+              const requireDouble = mustDouble(subject, cls.form) && remainingThisSubject >= 2;
+              if (requireDouble) {
+                const nextSlotChk = slot + 1;
+                const alreadyTodayChk = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
+                const dayDoubledChk = classSubjectDayDoubled[`${cls.id}-${subject.id}-${day}`];
+                const canDouble = nextSlotChk <= totalSlots
+                  && !isNonAcademic(day, nextSlotChk)
+                  && !preAssigned[`${cls.id}-${day}-${nextSlotChk}`]
+                  && !isPreMarkedFree(cls.id, day, nextSlotChk)
+                  && !teacherSchedule[teacher.id]?.[`${day}-${nextSlotChk}`]
+                  && (teacherLoad[teacher.id] || 0) + 1 < teacher.maxPeriodsPerWeek
+                  && alreadyTodayChk === 0
+                  && !dayDoubledChk;
+                if (!canDouble) continue;
+              }
+
               // Auto-combine: if this class is in a combine-group for this subject with this
               // teacher, schedule all sibling classes in the same period as a combined lesson.
               const grp = combineGroups[cls.id]?.[subject.id];
@@ -472,6 +492,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     return (classSubjectIds[cid] || []).includes(subject.id);
                   })
                 : [cls.id];
+
 
               const others = groupMembers.filter(id => id !== cls.id);
               slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, teacherId: teacher.id, type: 'lesson', combinedClassIds: others });
