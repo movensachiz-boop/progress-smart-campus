@@ -16,16 +16,18 @@ export const defaultConfig: SchoolConfig = {
   periodsPerDay: 11,
 };
 
+// O-level languages and sciences are scheduled at 6 periods/week (one double in the week).
+// A-level subjects (forms 5/6) are automatically scheduled at 8 periods/week at generation time.
 export const defaultSubjects: Subject[] = [
   { id: 's1', name: 'Mathematics', code: 'MATH', forms: [1,2,3,4,5,6], periodsPerWeek: 6, isCompulsory: true },
   { id: 's2', name: 'English', code: 'ENG', forms: [1,2,3,4,5,6], periodsPerWeek: 6, isCompulsory: true },
-  { id: 's3', name: 'Literature', code: 'LIT', forms: [1,2,3,4,5,6], periodsPerWeek: 4, isCompulsory: false, learningAreas: ['Arts'] },
+  { id: 's3', name: 'Literature', code: 'LIT', forms: [1,2,3,4,5,6], periodsPerWeek: 6, isCompulsory: false, learningAreas: ['Arts'] },
   { id: 's4', name: 'History', code: 'HIS', forms: [1,2,3,4,5,6], periodsPerWeek: 3, isCompulsory: false, learningAreas: ['Arts'] },
-  { id: 's5', name: 'Shona', code: 'SHO', forms: [1,2,3,4], periodsPerWeek: 4, isCompulsory: true },
-  { id: 's6', name: 'Ndebele', code: 'NDE', forms: [1,2,3,4], periodsPerWeek: 4, isCompulsory: false },
-  { id: 's7', name: 'Physics', code: 'PHY', forms: [3,4,5,6], periodsPerWeek: 5, isCompulsory: false, learningAreas: ['Sciences'] },
-  { id: 's8', name: 'Chemistry', code: 'CHE', forms: [3,4,5,6], periodsPerWeek: 5, isCompulsory: false, learningAreas: ['Sciences'] },
-  { id: 's9', name: 'Biology', code: 'BIO', forms: [1,2,3,4,5,6], periodsPerWeek: 5, isCompulsory: false, learningAreas: ['Sciences'] },
+  { id: 's5', name: 'Shona', code: 'SHO', forms: [1,2,3,4], periodsPerWeek: 6, isCompulsory: true },
+  { id: 's6', name: 'Ndebele', code: 'NDE', forms: [1,2,3,4], periodsPerWeek: 6, isCompulsory: false },
+  { id: 's7', name: 'Physics', code: 'PHY', forms: [3,4,5,6], periodsPerWeek: 6, isCompulsory: false, learningAreas: ['Sciences'] },
+  { id: 's8', name: 'Chemistry', code: 'CHE', forms: [3,4,5,6], periodsPerWeek: 6, isCompulsory: false, learningAreas: ['Sciences'] },
+  { id: 's9', name: 'Biology', code: 'BIO', forms: [1,2,3,4,5,6], periodsPerWeek: 6, isCompulsory: false, learningAreas: ['Sciences'] },
   { id: 's10', name: 'Crop Science', code: 'CROP', forms: [1,2,3,4], periodsPerWeek: 3, isCompulsory: false },
   { id: 's11', name: 'Computer Science', code: 'CS', forms: [1,2,3,4,5,6], periodsPerWeek: 3, isCompulsory: false },
   { id: 's12', name: 'Agriculture', code: 'AGR', forms: [1,2,3,4], periodsPerWeek: 3, isCompulsory: false },
