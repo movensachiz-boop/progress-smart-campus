@@ -334,6 +334,32 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    // Elective pairing: Agriculture and Computer Science are taught in parallel — same
+    // class slot, two teachers, students split by elective choice. Display label = "AGR/CS".
+    const PARTNER_CODES: Record<string, string> = { AGR: 'CS', CS: 'AGR' };
+    const tryPairSlot = (
+      slotObj: TimetableSlot, cls: SchoolClass, day: DayOfWeek, slotIdx: number, subject: Subject
+    ) => {
+      const code = (subject.code || '').toUpperCase();
+      const partnerCode = PARTNER_CODES[code];
+      if (!partnerCode) return;
+      const partner = subjects.find(s => (s.code || '').toUpperCase() === partnerCode);
+      if (!partner) return;
+      if (!(classSubjectIds[cls.id] || []).includes(partner.id)) return;
+      if ((classSubjectCount[cls.id][partner.id] || 0) >= ppwFor(partner, cls.form)) return;
+      const partnerTeachers = teachers.filter(t =>
+        t.assignments.some(a => a.subjectId === partner.id && a.classIds.some(cid => matchesClass(cid, cls.id)))
+        && (teacherLoad[t.id] || 0) < t.maxPeriodsPerWeek
+        && !teacherSchedule[t.id]?.[`${day}-${slotIdx}`]
+      );
+      if (partnerTeachers.length === 0) return;
+      const pt = partnerTeachers.sort((a, b) => (teacherLoad[a.id] || 0) - (teacherLoad[b.id] || 0))[0];
+      slotObj.pairedSubjectId = partner.id;
+      slotObj.pairedTeacherId = pt.id;
+      recordSubjectSlot(cls.id, day, partner.id, slotIdx, pt.id, pt);
+    };
+
+
     for (const day of DAYS) {
       let academicPeriod = 0;
       for (let slot = 1; slot <= totalSlots; slot++) {
@@ -495,8 +521,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
 
               const others = groupMembers.filter(id => id !== cls.id);
-              slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, teacherId: teacher.id, type: 'lesson', combinedClassIds: others });
+              const newSlot: TimetableSlot = { id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, teacherId: teacher.id, type: 'lesson', combinedClassIds: others };
+              slots.push(newSlot);
               recordSubjectSlot(cls.id, day, subject.id, slot, teacher.id, teacher);
+              tryPairSlot(newSlot, cls, day, slot, subject);
 
               // Pre-assign sibling classes for this same period (so the outer per-class loop
               // for this slot will emit them as combined). Their teacherLoad is NOT incremented

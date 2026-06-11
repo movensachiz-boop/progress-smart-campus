@@ -60,6 +60,9 @@ export interface TimetableSlot {
   teacherId?: string;
   type: 'lesson' | 'break' | 'lunch' | 'sports';
   combinedClassIds?: string[]; // other class IDs taught jointly in this period
+  /** Subject taught in parallel in the same slot (e.g. Agriculture / Computer Science elective pair). */
+  pairedSubjectId?: string;
+  pairedTeacherId?: string;
 }
 
 export interface TimetableConflict {
