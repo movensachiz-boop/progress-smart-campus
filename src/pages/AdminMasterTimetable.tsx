@@ -56,10 +56,8 @@ export default function AdminMasterTimetable() {
     if (slot.type === 'sports') return 'SPORTS';
     const subject = subjects.find(s => s.id === slot.subjectId);
     const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
-    const teacher = teachers.find(t => t.id === slot.teacherId);
     if (!subject) return '—';
-    const code = paired ? `${subject.code}/${paired.code}` : subject.code;
-    return `${code}${teacher ? `\n${teacher.name.split(' ').pop()}` : ''}`;
+    return paired ? `${subject.code}/${paired.code}` : subject.code;
   };
 
   const getSlotStyle = (classId: string, day: DayOfWeek, period: number) => {
