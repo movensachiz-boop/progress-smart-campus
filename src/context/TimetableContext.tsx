@@ -608,10 +608,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           }
 
           if (!assigned && candidateSubjects.length > 0) {
-            const subject = candidateSubjects[0];
-            slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, type: 'lesson' });
-            recordSubjectSlot(cls.id, day, subject.id, slot);
-            assigned = true;
+            // Never place a must-double subject (CHE/PHY/BIO/CLS/AGR + all A-level) as an
+            // unpaired single via fallback unless only 1 period remains (handles odd ppw like AGR=5).
+            const fallbackPool = candidateSubjects.filter(s => {
+              if (!mustDouble(s, cls.form)) return true;
+              const remaining = ppwFor(s, cls.form) - (classSubjectCount[cls.id][s.id] || 0);
+              return remaining <= 1;
+            });
+            if (fallbackPool.length > 0) {
+              const subject = fallbackPool[0];
+              slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, type: 'lesson' });
+              recordSubjectSlot(cls.id, day, subject.id, slot);
+              assigned = true;
+            }
           }
           if (!assigned) {
             slots.push({ id: v4(), day, period: slot, classId: cls.id, type: 'lesson' });
