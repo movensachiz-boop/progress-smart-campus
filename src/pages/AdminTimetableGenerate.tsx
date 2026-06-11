@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar, Loader2, CheckCircle, AlertTriangle, RefreshCw, Settings as SettingsIcon, Smartphone, ScanLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import type { DayOfWeek, Teacher, TeacherClassAssignment, FormLevel } from '@/types/school';
+import type { DayOfWeek, Teacher, TeacherClassAssignment, FormLevel, Subject } from '@/types/school';
 import TimetableBackupPanel from '@/components/TimetableBackupPanel';
 import PhoneCameraPairDialog from '@/components/PhoneCameraPairDialog';
 import { supabase } from '@/integrations/supabase/client';
