@@ -6,7 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const days = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5"] as const;
+const days: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const dayLabels = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5"];
 
 const subjectColor = (type: string) => {
   if (type === "break" || type === "lunch") return "bg-muted text-muted-foreground";
