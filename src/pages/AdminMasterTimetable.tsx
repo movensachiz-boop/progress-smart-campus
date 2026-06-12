@@ -126,7 +126,9 @@ export default function AdminMasterTimetable() {
           const sub = subjects.find(s => s.id === slot.subjectId);
           const pSub = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
           if (!sub) return '—';
-          return pSub ? `${sub.code}/${pSub.code}` : sub.code;
+          if (!pSub) return sub.code;
+          const compFirst = ['COMP', 'CS'].includes((pSub.code || '').toUpperCase());
+          return compFirst ? `${pSub.code}/${sub.code}` : `${sub.code}/${pSub.code}`;
         })];
       });
 
