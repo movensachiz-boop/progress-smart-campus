@@ -70,10 +70,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const breakSlot = config.morningBreakAfterPeriod + 1;
     const lunchSlot = config.lunchAfterPeriod + 2;
 
+    const STRICT_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO']);
+    const isStrictDouble = (s: Subject) => STRICT_DOUBLE_CODES.has((s.code || '').toUpperCase());
     // A-level (forms 5/6) classes get 8 periods/week per subject regardless of the subject's
-    // configured periodsPerWeek. O-level uses the subject's configured value.
-    const ppwFor = (subject: Subject, classForm: number | undefined) =>
-      (classForm === 5 || classForm === 6) ? 8 : subject.periodsPerWeek;
+    // configured periodsPerWeek. O-level uses the subject's configured value; strict sciences
+    // are rounded up to an even count so they can never be forced into a single session.
+    const ppwFor = (subject: Subject, classForm: number | undefined) => {
+      const base = (classForm === 5 || classForm === 6) ? 8 : subject.periodsPerWeek;
+      return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
+    };
     // Subjects eligible for an automatic double period somewhere in the week:
     // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects).
     const doubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
