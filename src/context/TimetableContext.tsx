@@ -335,7 +335,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     // Elective pairing: Agriculture and Computer Science are taught in parallel — same
     // class slot, two teachers, students split by elective choice. Display label = "AGR/CS".
-    const PARTNER_CODES: Record<string, string> = { AGR: 'CS', CS: 'AGR' };
+    const PARTNER_CODES: Record<string, string> = { AGR: 'CS', CS: 'AGR', AGRI: 'COMP', COMP: 'AGRI' };
     const tryPairSlot = (
       slotObj: TimetableSlot, cls: SchoolClass, day: DayOfWeek, slotIdx: number, subject: Subject
     ) => {
