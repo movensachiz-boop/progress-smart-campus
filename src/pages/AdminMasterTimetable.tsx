@@ -57,7 +57,9 @@ export default function AdminMasterTimetable() {
     const subject = subjects.find(s => s.id === slot.subjectId);
     const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
     if (!subject) return '—';
-    return paired ? `${subject.code}/${paired.code}` : subject.code;
+    if (!paired) return subject.code;
+    const compFirst = ['COMP', 'CS'].includes((paired.code || '').toUpperCase());
+    return compFirst ? `${paired.code}/${subject.code}` : `${subject.code}/${paired.code}`;
   };
 
   const getSlotStyle = (classId: string, day: DayOfWeek, period: number) => {
@@ -124,7 +126,9 @@ export default function AdminMasterTimetable() {
           const sub = subjects.find(s => s.id === slot.subjectId);
           const pSub = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
           if (!sub) return '—';
-          return pSub ? `${sub.code}/${pSub.code}` : sub.code;
+          if (!pSub) return sub.code;
+          const compFirst = ['COMP', 'CS'].includes((pSub.code || '').toUpperCase());
+          return compFirst ? `${pSub.code}/${sub.code}` : `${sub.code}/${pSub.code}`;
         })];
       });
 

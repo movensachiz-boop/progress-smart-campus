@@ -84,7 +84,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const doubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
     // "Always double" subjects: every placement must be part of a double period.
     // Covers core sciences + Agriculture by code, and ALL A-level (forms 5/6) subjects.
-    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR']);
+    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP']);
     const mustDouble = (s: Subject, form: number | undefined) =>
       form === 5 || form === 6 || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
     const classSubjectDayDoubled: Record<string, boolean> = {};
@@ -245,7 +245,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     (() => {
       const form1Classes = classes.filter(c => c.form === 1);
       if (form1Classes.length < 2) return;
-      const targetCodes = ['AGR', 'CS'];
+      const targetCodes = ['AGR', 'AGRI', 'CS', 'COMP'];
       targetCodes.forEach(code => {
         const subj = subjects.find(s => (s.code || '').toUpperCase() === code);
         if (!subj) return;
@@ -335,7 +335,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     // Elective pairing: Agriculture and Computer Science are taught in parallel — same
     // class slot, two teachers, students split by elective choice. Display label = "AGR/CS".
-    const PARTNER_CODES: Record<string, string> = { AGR: 'CS', CS: 'AGR' };
+    const PARTNER_CODES: Record<string, string> = { AGR: 'CS', CS: 'AGR', AGRI: 'COMP', COMP: 'AGRI' };
     const tryPairSlot = (
       slotObj: TimetableSlot, cls: SchoolClass, day: DayOfWeek, slotIdx: number, subject: Subject
     ) => {

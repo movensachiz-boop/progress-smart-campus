@@ -216,7 +216,10 @@ export default function TeacherTimetable() {
                           const subj = subjects.find(s => s.id === slot.subjectId);
                           const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
                           const cls = classes.find(c => c.id === slot.classId);
-                          const label = paired && subj ? `${subj.name} / ${paired.name}` : (subj?.name || "Lesson");
+                          const compFirst = paired && subj && ['COMP', 'CS'].includes((paired.code || '').toUpperCase());
+                          const label = paired && subj
+                            ? (compFirst ? `${paired.name} / ${subj.name}` : `${subj.name} / ${paired.name}`)
+                            : (subj?.name || "Lesson");
                           return (
                             <td key={i} className="p-3">
                               <div className="space-y-1">
