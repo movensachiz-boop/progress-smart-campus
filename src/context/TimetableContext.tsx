@@ -116,21 +116,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const matchesClass = (assignedId: string, classId: string) =>
       assignedId === classId || canonicalClassId(assignedId) === classId;
 
-    // Auto-derive each class's subjects from teacher assignments.
-    // A class only gets a subject scheduled if at least one teacher is assigned to teach
-    // that subject to that class. Falls back to the class's configured subjectIds when no
-    // teacher assignments exist for the class (keeps legacy behavior).
+    // Respect the class subject allocation exactly. Teacher assignments decide who can teach
+    // a selected subject, but they must not silently re-add subjects removed from a class.
     const classSubjectIds: Record<string, string[]> = {};
     classes.forEach(c => {
-      const fromTeachers = new Set<string>();
-      teachers.forEach(t => {
-        t.assignments.forEach(a => {
-          if (a.classIds.some(cid => matchesClass(cid, c.id)) && subjects.some(s => s.id === a.subjectId)) {
-            fromTeachers.add(a.subjectId);
-          }
-        });
-      });
-      classSubjectIds[c.id] = fromTeachers.size > 0 ? [...fromTeachers] : [...c.subjectIds];
+      classSubjectIds[c.id] = [...c.subjectIds].filter(sId => subjects.some(s => s.id === sId));
       classSubjectCount[c.id] = {};
       classSubjectIds[c.id].forEach(sId => { classSubjectCount[c.id][sId] = 0; });
     });
