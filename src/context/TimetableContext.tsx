@@ -84,7 +84,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const doubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
     // "Always double" subjects: every placement must be part of a double period.
     // Covers core sciences + Agriculture by code, and ALL A-level (forms 5/6) subjects.
-    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR']);
+    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP']);
     const mustDouble = (s: Subject, form: number | undefined) =>
       form === 5 || form === 6 || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
     const classSubjectDayDoubled: Record<string, boolean> = {};
