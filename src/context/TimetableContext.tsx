@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, TimetableConflict, DayOfWeek } from '@/types/school';
 import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefaultTeachers, DAYS } from '@/data/defaults';
 import { v4 } from '@/lib/utils';
@@ -33,47 +33,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [classes, _setClasses] = useState<SchoolClass[]>(() => loadLS('tt_classes', generateDefaultClasses()));
   const [timetable, setTimetable] = useState<Timetable | null>(() => loadLS<Timetable | null>('tt_timetable', null));
 
-  const setConfig = (v: SchoolConfig) => { _setConfig(v); try { localStorage.setItem('tt_config', JSON.stringify(v)); } catch {} };
-  const setSubjects = (v: Subject[]) => { _setSubjects(v); try { localStorage.setItem('tt_subjects', JSON.stringify(v)); } catch {} };
-  const setTeachers = (v: Teacher[]) => { _setTeachers(v); try { localStorage.setItem('tt_teachers', JSON.stringify(v)); } catch {} };
-  const setClasses = (v: SchoolClass[]) => { _setClasses(v); try { localStorage.setItem('tt_classes', JSON.stringify(v)); } catch {} };
+  const persistTimetable = (v: Timetable | null) => {
+    setTimetable(v);
+    try {
+      if (v) localStorage.setItem('tt_timetable', JSON.stringify(v));
+      else localStorage.removeItem('tt_timetable');
+    } catch {}
+  };
+  const invalidateTimetable = () => persistTimetable(null);
 
-  // Strict sync: each class's subjectIds = exactly the subjects that have a teacher
-  // registered to teach that class. Subjects with no assigned teacher are removed.
-  useEffect(() => {
-    const STREAM_ALIASES: Record<string, string> = {
-      gold: 'G1', silver: 'G2', bronze: 'G22', platinum: 'Blue',
-    };
-    const canonicalClassId = (raw: string): string => {
-      if (!raw) return raw;
-      const m = String(raw).trim().match(/^(\d+)\s*(.+)$/);
-      if (!m) return raw;
-      const canonical = STREAM_ALIASES[m[2].trim().toLowerCase()] || m[2].trim();
-      return `${m[1]}${canonical}`;
-    };
-    let changed = false;
-    const next = classes.map(c => {
-      const fromTeachers = new Set<string>();
-      teachers.forEach(t => {
-        t.assignments.forEach(a => {
-          if (a.classIds.some(cid => cid === c.id || canonicalClassId(cid) === c.id)
-              && subjects.some(s => s.id === a.subjectId)) {
-            fromTeachers.add(a.subjectId);
-          }
-        });
-      });
-      const replaced = [...fromTeachers];
-      const same = replaced.length === c.subjectIds.length && replaced.every(id => c.subjectIds.includes(id));
-      if (same) return c;
-      changed = true;
-      return { ...c, subjectIds: replaced };
-    });
-    if (changed) {
-      _setClasses(next);
-      try { localStorage.setItem('tt_classes', JSON.stringify(next)); } catch {}
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teachers, subjects]);
+  const setConfig = (v: SchoolConfig) => { _setConfig(v); try { localStorage.setItem('tt_config', JSON.stringify(v)); } catch {} invalidateTimetable(); };
+  const setSubjects = (v: Subject[]) => { _setSubjects(v); try { localStorage.setItem('tt_subjects', JSON.stringify(v)); } catch {} invalidateTimetable(); };
+  const setTeachers = (v: Teacher[]) => { _setTeachers(v); try { localStorage.setItem('tt_teachers', JSON.stringify(v)); } catch {} invalidateTimetable(); };
+  const setClasses = (v: SchoolClass[]) => { _setClasses(v); try { localStorage.setItem('tt_classes', JSON.stringify(v)); } catch {} invalidateTimetable(); };
 
   const isSportsPeriod = useCallback((day: DayOfWeek, period: number) => {
     return config.sportsDays.includes(day) && period >= config.sportsStartPeriod;
@@ -98,10 +70,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const breakSlot = config.morningBreakAfterPeriod + 1;
     const lunchSlot = config.lunchAfterPeriod + 2;
 
+    const STRICT_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO']);
+    const isStrictDouble = (s: Subject) => STRICT_DOUBLE_CODES.has((s.code || '').toUpperCase());
     // A-level (forms 5/6) classes get 8 periods/week per subject regardless of the subject's
-    // configured periodsPerWeek. O-level uses the subject's configured value.
-    const ppwFor = (subject: Subject, classForm: number | undefined) =>
-      (classForm === 5 || classForm === 6) ? 8 : subject.periodsPerWeek;
+    // configured periodsPerWeek. O-level uses the subject's configured value; strict sciences
+    // are rounded up to an even count so they can never be forced into a single session.
+    const ppwFor = (subject: Subject, classForm: number | undefined) => {
+      const base = (classForm === 5 || classForm === 6) ? 8 : subject.periodsPerWeek;
+      return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
+    };
     // Subjects eligible for an automatic double period somewhere in the week:
     // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects).
     const doubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
@@ -139,21 +116,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const matchesClass = (assignedId: string, classId: string) =>
       assignedId === classId || canonicalClassId(assignedId) === classId;
 
-    // Auto-derive each class's subjects from teacher assignments.
-    // A class only gets a subject scheduled if at least one teacher is assigned to teach
-    // that subject to that class. Falls back to the class's configured subjectIds when no
-    // teacher assignments exist for the class (keeps legacy behavior).
+    // Respect the class subject allocation exactly. Teacher assignments decide who can teach
+    // a selected subject, but they must not silently re-add subjects removed from a class.
     const classSubjectIds: Record<string, string[]> = {};
     classes.forEach(c => {
-      const fromTeachers = new Set<string>();
-      teachers.forEach(t => {
-        t.assignments.forEach(a => {
-          if (a.classIds.some(cid => matchesClass(cid, c.id)) && subjects.some(s => s.id === a.subjectId)) {
-            fromTeachers.add(a.subjectId);
-          }
-        });
-      });
-      classSubjectIds[c.id] = fromTeachers.size > 0 ? [...fromTeachers] : [...c.subjectIds];
+      classSubjectIds[c.id] = [...c.subjectIds].filter(sId => subjects.some(s => s.id === sId));
       classSubjectCount[c.id] = {};
       classSubjectIds[c.id].forEach(sId => { classSubjectCount[c.id][sId] = 0; });
     });
@@ -631,7 +598,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const newTimetable: Timetable = { id: v4(), slots, conflicts: [], generatedAt: new Date().toISOString() };
     newTimetable.conflicts = detectConflicts(slots);
-    setTimetable(newTimetable);
+    persistTimetable(newTimetable);
   }, [config, subjects, teachers, classes, isSportsPeriod]);
 
   const detectConflicts = (slots: TimetableSlot[]): TimetableConflict[] => {
@@ -692,7 +659,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         return { ...s, combinedClassIds: [] };
       });
     }
-    setTimetable({ ...timetable, slots: newSlots, conflicts: detectConflicts(newSlots) });
+    persistTimetable({ ...timetable, slots: newSlots, conflicts: detectConflicts(newSlots) });
   }, [timetable, teachers]);
 
   return (
