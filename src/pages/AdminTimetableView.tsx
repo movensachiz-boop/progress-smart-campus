@@ -57,7 +57,10 @@ export default function AdminTimetableView() {
     const subject = subjects.find(s => s.id === slot.subjectId);
     const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
     const isConflict = timetable?.conflicts.some(c => c.slots.includes(slot.id));
-    const label = paired && subject ? `${subject.code}/${paired.code}` : (subject?.code || 'Free');
+    const compFirst = paired && subject && ['COMP', 'CS'].includes((paired.code || '').toUpperCase());
+    const label = paired && subject
+      ? (compFirst ? `${paired.code}/${subject.code}` : `${subject.code}/${paired.code}`)
+      : (subject?.code || 'Free');
     return {
       label,
       sublabel: viewMode === 'class' ? undefined : classes.find(c => c.id === slot.classId)?.id,
