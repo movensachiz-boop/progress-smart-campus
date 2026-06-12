@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, TimetableConflict, DayOfWeek } from '@/types/school';
 import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefaultTeachers, DAYS } from '@/data/defaults';
 import { v4 } from '@/lib/utils';
@@ -33,47 +33,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [classes, _setClasses] = useState<SchoolClass[]>(() => loadLS('tt_classes', generateDefaultClasses()));
   const [timetable, setTimetable] = useState<Timetable | null>(() => loadLS<Timetable | null>('tt_timetable', null));
 
-  const setConfig = (v: SchoolConfig) => { _setConfig(v); try { localStorage.setItem('tt_config', JSON.stringify(v)); } catch {} };
-  const setSubjects = (v: Subject[]) => { _setSubjects(v); try { localStorage.setItem('tt_subjects', JSON.stringify(v)); } catch {} };
-  const setTeachers = (v: Teacher[]) => { _setTeachers(v); try { localStorage.setItem('tt_teachers', JSON.stringify(v)); } catch {} };
-  const setClasses = (v: SchoolClass[]) => { _setClasses(v); try { localStorage.setItem('tt_classes', JSON.stringify(v)); } catch {} };
+  const persistTimetable = (v: Timetable | null) => {
+    setTimetable(v);
+    try {
+      if (v) localStorage.setItem('tt_timetable', JSON.stringify(v));
+      else localStorage.removeItem('tt_timetable');
+    } catch {}
+  };
+  const invalidateTimetable = () => persistTimetable(null);
 
-  // Strict sync: each class's subjectIds = exactly the subjects that have a teacher
-  // registered to teach that class. Subjects with no assigned teacher are removed.
-  useEffect(() => {
-    const STREAM_ALIASES: Record<string, string> = {
-      gold: 'G1', silver: 'G2', bronze: 'G22', platinum: 'Blue',
-    };
-    const canonicalClassId = (raw: string): string => {
-      if (!raw) return raw;
-      const m = String(raw).trim().match(/^(\d+)\s*(.+)$/);
-      if (!m) return raw;
-      const canonical = STREAM_ALIASES[m[2].trim().toLowerCase()] || m[2].trim();
-      return `${m[1]}${canonical}`;
-    };
-    let changed = false;
-    const next = classes.map(c => {
-      const fromTeachers = new Set<string>();
-      teachers.forEach(t => {
-        t.assignments.forEach(a => {
-          if (a.classIds.some(cid => cid === c.id || canonicalClassId(cid) === c.id)
-              && subjects.some(s => s.id === a.subjectId)) {
-            fromTeachers.add(a.subjectId);
-          }
-        });
-      });
-      const replaced = [...fromTeachers];
-      const same = replaced.length === c.subjectIds.length && replaced.every(id => c.subjectIds.includes(id));
-      if (same) return c;
-      changed = true;
-      return { ...c, subjectIds: replaced };
-    });
-    if (changed) {
-      _setClasses(next);
-      try { localStorage.setItem('tt_classes', JSON.stringify(next)); } catch {}
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teachers, subjects]);
+  const setConfig = (v: SchoolConfig) => { _setConfig(v); try { localStorage.setItem('tt_config', JSON.stringify(v)); } catch {} invalidateTimetable(); };
+  const setSubjects = (v: Subject[]) => { _setSubjects(v); try { localStorage.setItem('tt_subjects', JSON.stringify(v)); } catch {} invalidateTimetable(); };
+  const setTeachers = (v: Teacher[]) => { _setTeachers(v); try { localStorage.setItem('tt_teachers', JSON.stringify(v)); } catch {} invalidateTimetable(); };
+  const setClasses = (v: SchoolClass[]) => { _setClasses(v); try { localStorage.setItem('tt_classes', JSON.stringify(v)); } catch {} invalidateTimetable(); };
 
   const isSportsPeriod = useCallback((day: DayOfWeek, period: number) => {
     return config.sportsDays.includes(day) && period >= config.sportsStartPeriod;
