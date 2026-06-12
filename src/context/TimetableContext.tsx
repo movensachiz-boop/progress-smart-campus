@@ -245,7 +245,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     (() => {
       const form1Classes = classes.filter(c => c.form === 1);
       if (form1Classes.length < 2) return;
-      const targetCodes = ['AGR', 'CS'];
+      const targetCodes = ['AGR', 'AGRI', 'CS', 'COMP'];
       targetCodes.forEach(code => {
         const subj = subjects.find(s => (s.code || '').toUpperCase() === code);
         if (!subj) return;
