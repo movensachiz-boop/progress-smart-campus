@@ -608,7 +608,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const newTimetable: Timetable = { id: v4(), slots, conflicts: [], generatedAt: new Date().toISOString() };
     newTimetable.conflicts = detectConflicts(slots);
-    setTimetable(newTimetable);
+    persistTimetable(newTimetable);
   }, [config, subjects, teachers, classes, isSportsPeriod]);
 
   const detectConflicts = (slots: TimetableSlot[]): TimetableConflict[] => {
@@ -669,7 +669,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         return { ...s, combinedClassIds: [] };
       });
     }
-    setTimetable({ ...timetable, slots: newSlots, conflicts: detectConflicts(newSlots) });
+    persistTimetable({ ...timetable, slots: newSlots, conflicts: detectConflicts(newSlots) });
   }, [timetable, teachers]);
 
   return (
