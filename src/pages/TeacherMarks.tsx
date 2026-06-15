@@ -332,13 +332,13 @@ const TeacherMarks = () => {
                     {studentSubs.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No subjects assigned for this student's form/stream. Click "+ Subject" to add one.</p>
                     ) : (
-                      <div className="overflow-auto max-h-[400px] border rounded-md">
-                        <table className="w-full caption-bottom text-sm">
+                      <div className="relative overflow-auto max-h-[400px] border rounded-md">
+                        <table className="w-full min-w-[420px] table-fixed caption-bottom text-sm border-separate border-spacing-0">
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="sticky left-0 top-0 bg-background/95 backdrop-blur-sm z-30 min-w-[180px]">Subject</TableHead>
-                              <TableHead className="sticky top-0 bg-background/95 backdrop-blur-sm z-20 w-28 text-center">Mark</TableHead>
-                              <TableHead className="sticky top-0 bg-background/95 backdrop-blur-sm z-20 w-20 text-center">Grade</TableHead>
+                              <TableHead className="sticky left-0 top-0 bg-background z-50 w-[220px] min-w-[220px] border-r shadow-sm">Subject</TableHead>
+                              <TableHead className="sticky top-0 bg-background z-40 w-28 text-center shadow-sm">Mark</TableHead>
+                              <TableHead className="sticky top-0 bg-background z-40 w-20 text-center shadow-sm">Grade</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -347,7 +347,7 @@ const TeacherMarks = () => {
                               const grade = m != null ? computeGrade(m, level) : "";
                               return (
                                 <TableRow key={code}>
-                                  <TableCell className="sticky left-0 bg-background/95 z-10 border-r min-w-[180px]">
+                                  <TableCell className="sticky left-0 bg-background z-30 w-[220px] min-w-[220px] border-r shadow-sm">
                                     <span className="font-medium">{code}</span>
                                     <span className="ml-2 text-xs text-muted-foreground">{name}</span>
                                   </TableCell>
