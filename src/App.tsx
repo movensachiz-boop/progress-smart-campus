@@ -97,6 +97,11 @@ const App = () => (
             <Route path="/teacher/announcements" element={<AnnouncementsPage role="teacher" />} />
             <Route path="/owner" element={<OwnerDashboard />} />
             <Route path="/verify" element={<VerifyReceipt />} />
+            <Route path="/verify-report/:examId/:studentId" element={<VerifyReport />} />
+            <Route path="/scan-marks/:examId" element={<ScanMarks />} />
+            <Route path="/admin/exams" element={<StaffGuard deny={DENY_TM}><AdminExams /></StaffGuard>} />
+            <Route path="/teacher/marks" element={<TeacherMarks />} />
+            <Route path="/student/results" element={<StudentReports />} />
             <Route path="/phone-scan/:sessionId" element={<PhoneScan />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
