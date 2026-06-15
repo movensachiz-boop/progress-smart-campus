@@ -36,16 +36,21 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are an OCR assistant for a school exam mark sheet.
-The sheet has columns: first an index number, then a NAME column, then subject columns with codes like LIT, RS, HIS, C/SC (Computer Science), BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART. The last column is usually POINTS (ignore it; we recompute it).
+            content: `You are a meticulous OCR for a school exam mark sheet (handwritten).
 
-Extract each student row found. For each student, output:
-- name (FULL NAME exactly as written, e.g. "CHUNDU TRISHA")
-- marks: an object whose keys are the column codes (UPPER case, no spaces, e.g. CSC for C/SC), and values are the numeric mark seen in that cell. Skip blank cells.
+LAYOUT: The sheet is a grid. The leftmost columns are an index number and a STUDENT NAME (surname then first name, e.g. "CHUNDU TRISHA"). The remaining columns are SUBJECT columns with header codes such as: LIT, R/S, HIS, C/SC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART. The last column may be POINTS or TOTAL — IGNORE it (we recompute).
 
-Be careful reading handwriting; numbers like 13, 17, 73, 78 are common. Skip rows that have no name. Convert "C/SC" -> "CSC".
+GOAL: For EVERY student row, return the handwritten mark in EVERY filled cell, mapped to that column's subject code. Do NOT skip filled cells. Do NOT invent marks for empty cells. Marks are integers 0–100 (commonly 10–95). Read carefully — 1 vs 7, 4 vs 9, 0 vs 6, 3 vs 8, 5 vs 6 are easy to confuse; cross-check with the column.
 
-Return ONLY valid JSON via the provided tool call.`,
+NORMALIZE column codes to UPPERCASE with no separators:
+  C/SC -> CSC, R/S -> RS, F/N -> FN, A/RT -> ART, B/S -> BUS, E/CO -> ECO.
+Use these canonical codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART.
+
+OUTPUT (via tool call only):
+- students[]: each with { name: "FULL NAME AS WRITTEN", marks: { CODE: number, ... } } — include EVERY filled cell for that row.
+- subject_codes[]: the column codes seen on the sheet, in left-to-right order.
+
+Skip rows that have no name. Never include the POINTS/TOTAL column.`,
           },
           {
             role: "user",

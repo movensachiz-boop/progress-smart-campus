@@ -68,6 +68,26 @@ export const SUBJECT_CODES: Record<string, string> = {
 
 export const normalizeSubjectCode = (raw: string): string => {
   const c = raw.trim().toUpperCase().replace(/\s+/g, "");
-  if (c === "C/SC" || c === "COMP" || c === "COMPSC") return "CSC";
-  return c;
+  // Strip slashes/dots/dashes for variants like C/SC, R/S, C.S, F-N
+  const stripped = c.replace(/[\/\.\-]/g, "");
+  const map: Record<string, string> = {
+    CSC: "CSC", CCS: "CSC", COMP: "CSC", COMPSC: "CSC", COMPUTER: "CSC", COMPSCI: "CSC",
+    RS: "RS", RE: "RS", RELIGIOUS: "RS", RELIGION: "RS",
+    LIT: "LIT", LITERATURE: "LIT",
+    BIO: "BIO", BIOLOGY: "BIO",
+    CHE: "CHE", CHEM: "CHE", CHEMISTRY: "CHE",
+    MAT: "MAT", MATH: "MAT", MATHS: "MAT", MATHEMATICS: "MAT",
+    ACC: "ACC", ACCOUNTS: "ACC", ACCOUNTING: "ACC",
+    PHY: "PHY", PHYSICS: "PHY",
+    GEO: "GEO", GEOGRAPHY: "GEO",
+    BUS: "BUS", BUSINESS: "BUS",
+    ECO: "ECO", ECONOMICS: "ECO",
+    ENG: "ENG", ENGLISH: "ENG",
+    SHO: "SHO", SHONA: "SHO",
+    HIS: "HIS", HISTORY: "HIS",
+    AGR: "AGR", AGRIC: "AGR", AGRICULTURE: "AGR",
+    FN: "FN", FOOD: "FN", FOODNUTRITION: "FN",
+    ART: "ART",
+  };
+  return map[stripped] || stripped;
 };
