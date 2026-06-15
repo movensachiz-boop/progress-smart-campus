@@ -548,24 +548,27 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             if (availableTeachers.length > 0) {
               const teacher = availableTeachers.sort((a, b) => (teacherLoad[a.id] || 0) - (teacherLoad[b.id] || 0))[0];
 
-              // Enforce "always double" for sciences/agriculture and all A-level subjects.
-              // If 2+ periods remain, this placement MUST be paired with the next slot.
-              // If only 1 period remains (odd ppw, e.g. Agriculture = 5), allow a single.
+              // Enforce required block size (double for sciences, quad for A-level).
+              // If fewer periods remain than the block, allow a shorter placement.
               const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
-              const requireDouble = mustDouble(subject, cls.form) && remainingThisSubject >= 2;
-              if (requireDouble) {
-                const nextSlotChk = slot + 1;
+              const block = blockSize(subject, cls.form);
+              const requireBlock = block > 1 && remainingThisSubject >= block;
+              if (requireBlock) {
                 const alreadyTodayChk = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
                 const dayDoubledChk = classSubjectDayDoubled[`${cls.id}-${subject.id}-${day}`];
-                const canDouble = nextSlotChk <= totalSlots
-                  && !isNonAcademic(day, nextSlotChk)
-                  && !preAssigned[`${cls.id}-${day}-${nextSlotChk}`]
-                  && !isPreMarkedFree(cls.id, day, nextSlotChk)
-                  && !teacherSchedule[teacher.id]?.[`${day}-${nextSlotChk}`]
-                  && (teacherLoad[teacher.id] || 0) + 1 < teacher.maxPeriodsPerWeek
-                  && alreadyTodayChk === 0
-                  && !dayDoubledChk;
-                if (!canDouble) continue;
+                if (alreadyTodayChk !== 0 || dayDoubledChk) { continue; }
+                let canBlock = true;
+                for (let k = 1; k < block; k++) {
+                  const ns = slot + k;
+                  if (ns > totalSlots
+                    || isNonAcademic(day, ns)
+                    || preAssigned[`${cls.id}-${day}-${ns}`]
+                    || isPreMarkedFree(cls.id, day, ns)
+                    || teacherSchedule[teacher.id]?.[`${day}-${ns}`]
+                    || (teacherLoad[teacher.id] || 0) + k >= teacher.maxPeriodsPerWeek
+                  ) { canBlock = false; break; }
+                }
+                if (!canBlock) continue;
               }
 
               // Auto-combine: if this class is in a combine-group for this subject with this
