@@ -45,14 +45,14 @@ const renderPage = (
   logo: string,
   input: TargetsFormInput,
 ) => {
-  const navy: [number, number, number] = [0, 51, 102];
-  const gold: [number, number, number] = [255, 215, 0];
+  const black: [number, number, number] = [0, 0, 0];
+  const gray: [number, number, number] = [80, 80, 80];
   const pageW = 297;
   const pageH = 210;
 
-  doc.setFillColor(...navy);
+  doc.setFillColor(...black);
   doc.rect(0, 0, pageW, 30, "F");
-  doc.setFillColor(...gold);
+  doc.setFillColor(...gray);
   doc.rect(0, 30, pageW, 1.2, "F");
 
   if (logo) {
@@ -68,7 +68,7 @@ const renderPage = (
   doc.text("LOT E Bonnyvale, Shurugwi Road  •  Tel: 2255629", 34, 18);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.setTextColor(...gold);
+  doc.setTextColor(255, 255, 255);
   doc.text("STUDENT ACADEMIC TARGETS FORM", 34, 25);
 
   doc.setFontSize(9);
@@ -114,7 +114,7 @@ const renderPage = (
     body,
     theme: "grid",
     styles: { fontSize: 9.5, cellPadding: 3, valign: "middle", minCellHeight: input.level === "O" ? 12 : 22, lineColor: [0, 0, 0], lineWidth: 0.2 },
-    headStyles: { fillColor: navy, textColor: 255, fontSize: 9, halign: "center" },
+    headStyles: { fillColor: black, textColor: 255, fontSize: 9, halign: "center" },
     columnStyles: {
       0: { cellWidth: 40 },
       1: { cellWidth: 24, halign: "center" },
