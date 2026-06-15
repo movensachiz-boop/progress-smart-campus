@@ -2,19 +2,28 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import pccLogo from "@/assets/pcc-logo.png";
 
-export interface TargetsFormInput {
+export interface TargetsStudent {
   studentName?: string;
   regNo?: string;
   form?: string;
   stream?: string;
+}
+
+export interface TargetsFormInput extends TargetsStudent {
   term?: string;
   year?: string;
   level: "O" | "A";
-  subjects?: string[]; // optional pre-filled subject names
+  subjects?: string[];
 }
 
-const O_DEFAULT = ["", "", "", "", "", "", "", "", "", ""]; // 10 blank rows
-const A_DEFAULT = ["", "", "", ""]; // 4 blank rows
+export interface TargetsBatchInput {
+  level: "O" | "A";
+  term?: string;
+  year?: string;
+  subjects?: string[];
+  students: TargetsStudent[];
+  className?: string; // used for file name
+}
 
 const loadImage = (src: string): Promise<string> =>
   new Promise((resolve) => {
@@ -31,26 +40,25 @@ const loadImage = (src: string): Promise<string> =>
     img.src = src;
   });
 
-export const generateTargetsForm = async (input: TargetsFormInput) => {
-  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
+const renderPage = (
+  doc: jsPDF,
+  logo: string,
+  input: TargetsFormInput,
+) => {
   const navy: [number, number, number] = [0, 51, 102];
   const gold: [number, number, number] = [255, 215, 0];
   const pageW = 297;
   const pageH = 210;
 
-  // Header bar
   doc.setFillColor(...navy);
   doc.rect(0, 0, pageW, 30, "F");
   doc.setFillColor(...gold);
   doc.rect(0, 30, pageW, 1.2, "F");
 
-  // Logo
-  try {
-    const logo = await loadImage(pccLogo);
-    if (logo) doc.addImage(logo, "PNG", 8, 4, 22, 22);
-  } catch {}
+  if (logo) {
+    try { doc.addImage(logo, "PNG", 8, 4, 22, 22); } catch {}
+  }
 
-  // School name + address
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -69,7 +77,6 @@ export const generateTargetsForm = async (input: TargetsFormInput) => {
   doc.text(`${input.level} LEVEL`, pageW - 10, 12, { align: "right" });
   doc.text(new Date().toLocaleDateString(), pageW - 10, 18, { align: "right" });
 
-  // Student info block
   doc.setTextColor(0, 0, 0);
   let y = 40;
   const labelVal = (label: string, val: string, x: number, w: number) => {
@@ -90,7 +97,6 @@ export const generateTargetsForm = async (input: TargetsFormInput) => {
   labelVal("DATE:", "", 180, 290);
   y += 8;
 
-  // Instructions
   doc.setFillColor(245, 247, 250);
   doc.rect(10, y, pageW - 20, 10, "F");
   doc.setFont("helvetica", "italic");
@@ -104,40 +110,17 @@ export const generateTargetsForm = async (input: TargetsFormInput) => {
   );
   y += 14;
 
-  // Table
-  const rows = (input.subjects && input.subjects.length
-    ? input.subjects
-    : input.level === "O"
-    ? O_DEFAULT
-    : A_DEFAULT
-  ).slice(0, input.level === "O" ? 10 : 4);
+  const rowCount = input.level === "O" ? 10 : 4;
+  const subs = (input.subjects || []).slice(0, rowCount);
+  const filled = [...subs, ...Array(Math.max(0, rowCount - subs.length)).fill("")];
 
-  const filled = rows.length < (input.level === "O" ? 10 : 4)
-    ? [...rows, ...Array((input.level === "O" ? 10 : 4) - rows.length).fill("")]
-    : rows;
-
-  const body = filled.map((s, i) => [
-    String(i + 1),
-    s,
-    "", // previous grade
-    "", // current mark
-    "", // target mark
-    "", // target grade
-    "", // strategies
-    "", // teacher signature
-  ]);
+  const body = filled.map((s, i) => [String(i + 1), s, "", "", "", "", "", ""]);
 
   autoTable(doc, {
     startY: y,
     head: [[
-      "#",
-      "SUBJECT",
-      "PREV. GRADE",
-      "CURRENT MARK",
-      "TARGET MARK",
-      "TARGET GRADE",
-      "STRATEGIES TO ACHIEVE TARGET",
-      "TEACHER'S SIGNATURE",
+      "#", "SUBJECT", "PREV. GRADE", "CURRENT MARK", "TARGET MARK",
+      "TARGET GRADE", "STRATEGIES TO ACHIEVE TARGET", "TEACHER'S SIGNATURE",
     ]],
     body,
     theme: "grid",
@@ -156,7 +139,6 @@ export const generateTargetsForm = async (input: TargetsFormInput) => {
     margin: { left: 10, right: 10 },
   });
 
-  // Signatures footer
   const finalY = (doc as any).lastAutoTable.finalY + 8;
   const sigY = Math.min(finalY, pageH - 22);
   const sigLine = (label: string, x: number, w: number) => {
@@ -171,7 +153,6 @@ export const generateTargetsForm = async (input: TargetsFormInput) => {
   sigLine("Parent / Guardian Signature / Date", 165, 70);
   sigLine("Principal Signature / Date", 245, 42);
 
-  // Footer brand
   doc.setFont("helvetica", "italic");
   doc.setFontSize(7.5);
   doc.setTextColor(120, 120, 120);
@@ -181,6 +162,32 @@ export const generateTargetsForm = async (input: TargetsFormInput) => {
     pageH - 6,
     { align: "center" }
   );
+};
 
+export const generateTargetsForm = async (input: TargetsFormInput) => {
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
+  const logo = await loadImage(pccLogo).catch(() => "");
+  renderPage(doc, logo, input);
   doc.save(`Targets-Form-${input.level}Level-${(input.studentName || "Student").replace(/\s+/g, "_")}.pdf`);
+};
+
+export const generateTargetsFormBatch = async (input: TargetsBatchInput) => {
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
+  const logo = await loadImage(pccLogo).catch(() => "");
+  const students = input.students.length ? input.students : [{} as TargetsStudent];
+  students.forEach((s, idx) => {
+    if (idx > 0) doc.addPage("a4", "landscape");
+    renderPage(doc, logo, {
+      level: input.level,
+      term: input.term,
+      year: input.year,
+      subjects: input.subjects,
+      studentName: s.studentName,
+      regNo: s.regNo,
+      form: s.form,
+      stream: s.stream,
+    });
+  });
+  const safe = (input.className || "Class").replace(/\s+/g, "_");
+  doc.save(`Targets-${input.level}Level-${safe}-${input.term || ""}-${input.year || ""}.pdf`);
 };
