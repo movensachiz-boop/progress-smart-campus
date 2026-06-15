@@ -23,6 +23,7 @@ type MarksMap = Record<string, Record<string, number | null>>;
 
 const TeacherMarks = () => {
   const { toast } = useToast();
+  const { subjects: ttSubjects } = useTimetable();
   const [exams, setExams] = useState<Exam[]>([]);
   const [examId, setExamId] = useState("");
   const [students, setStudents] = useState<Profile[]>([]);
