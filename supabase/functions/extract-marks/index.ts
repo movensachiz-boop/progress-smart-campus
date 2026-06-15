@@ -131,9 +131,9 @@ Deno.serve(async (req) => {
     }
 
     const rosterText = Array.isArray(expectedStudents) && expectedStudents.length
-      ? expectedStudents.slice(0, 250).map((s: any, i: number) => {
+      ? expectedStudents.slice(0, 250).map((s: any) => {
         const subs = Array.isArray(s.subjects) ? s.subjects.join(",") : "";
-        return `${i + 1}. ${s.name || ""}${subs ? ` [${subs}]` : ""}`;
+        return `- ${s.name || ""}${subs ? ` [${subs}]` : ""}`;
       }).join("\n")
       : "No roster provided.";
     const expectedCodesText = Array.isArray(expectedSubjectCodes) && expectedSubjectCodes.length
@@ -171,7 +171,7 @@ NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
           {
             role: "user",
             content: [
-              { type: "text", text: `Transcribe this mark sheet. Read the handwritten numbers carefully and include every visible mark under its subject header.\n\nExpected subject columns: ${expectedCodesText}\n\nClass roster to help names:\n${rosterText}` },
+              { type: "text", text: `Transcribe this mark sheet. Read the handwritten numbers carefully and include every visible mark under its subject header.\n\nExpected subject columns: ${expectedCodesText}\n\nClass roster is ONLY for spelling names. Do not use this roster order as row order; use the photo's printed/visual top-to-bottom order only:\n${rosterText}` },
               { type: "image_url", image_url: { url: imageUrl } },
             ],
           },
@@ -227,7 +227,7 @@ OUTPUT via tool call only:
           },
           {
             role: "user",
-            content: `OCR transcription:\n${transcript}\n\nExpected subject columns: ${expectedCodesText}\n\nClass roster to match against:\n${rosterText}`,
+            content: `OCR transcription:\n${transcript}\n\nExpected subject columns: ${expectedCodesText}\n\nClass roster below is ONLY for matching spellings. It is not the sheet order, so never sort by this roster:\n${rosterText}`,
           },
         ],
         tools: [

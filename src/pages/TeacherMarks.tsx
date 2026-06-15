@@ -154,8 +154,10 @@ const TeacherMarks = () => {
       const subjSet = new Set<string>(subjects);
       const orderList: string[] = [];
       const pushOrder = (c: string) => { if (c && !orderList.includes(c)) orderList.push(c); };
-      const studentRank: { id: string; rank: number }[] = [];
-      const pushStudentOrder = (id: string, rank: number) => { if (id && !studentRank.find(r => r.id === id)) studentRank.push({ id, rank }); };
+      const studentRank: { id: string; rank: number; sequence: number }[] = [];
+      const pushStudentOrder = (id: string, rank: number, sequence: number) => {
+        if (id && !studentRank.find(r => r.id === id)) studentRank.push({ id, rank, sequence });
+      };
       // Seed order from explicit subject_codes (header row, left→right)
       (subject_codes || []).forEach(c => pushOrder(normalizeSubjectCode(c)));
       const matched = new Set<string>();
@@ -181,7 +183,7 @@ const TeacherMarks = () => {
         matched.add(s.id);
         fallbackSeq++;
         const rank = Number.isFinite(Number(r.row_number)) ? Number(r.row_number) : fallbackSeq;
-        pushStudentOrder(s.id, rank);
+        pushStudentOrder(s.id, rank, fallbackSeq);
         matchedCount++;
         if (!nextMarks[s.id]) nextMarks[s.id] = {};
         for (const [rawCode, val] of Object.entries(r.marks || {})) {
@@ -200,7 +202,7 @@ const TeacherMarks = () => {
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
       setScanOrder(orderList);
-      setScanStudentOrder([...studentRank].sort((a, b) => a.rank - b.rank).map(r => r.id));
+      setScanStudentOrder([...studentRank].sort((a, b) => (a.rank - b.rank) || (a.sequence - b.sequence)).map(r => r.id));
       setLastMatched(matched);
       const formNote = form_level ? ` Detected Form ${form_level}${form_level === 5 ? " (Lower 6)" : form_level === 6 ? " (Upper 6)" : ""}.` : "";
       const formMismatch = form_level && activeExam && !activeExam.form_levels.includes(form_level)
