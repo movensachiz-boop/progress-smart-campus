@@ -72,10 +72,27 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const STRICT_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO']);
     const isStrictDouble = (s: Subject) => STRICT_DOUBLE_CODES.has((s.code || '').toUpperCase());
+
+    // Per-class subject periods-per-week overrides. Matched by class stream (case-insensitive)
+    // and subject code. These ALWAYS take precedence over the default O-level / A-level counts.
+    const streamIs = (classId: string, stream: string) =>
+      new RegExp(`^\\d+\\s*${stream}$`, 'i').test(classId);
+    const PPW_OVERRIDES: Array<{ match: (cls: { id: string; form?: number }) => boolean; code: string; periods: number }> = [
+      { match: (c) => c.form === 4 && streamIs(c.id, 'whale'), code: 'ECO', periods: 5 },
+      { match: (c) => c.form === 4 && streamIs(c.id, 'whale'), code: 'ACC', periods: 7 },
+      { match: (c) => c.form === 6, code: 'ECO', periods: 4 },
+    ];
     // A-level (forms 5/6) classes get 8 periods/week per subject regardless of the subject's
     // configured periodsPerWeek. O-level uses the subject's configured value; strict sciences
     // are rounded up to an even count so they can never be forced into a single session.
-    const ppwFor = (subject: Subject, classForm: number | undefined) => {
+    const ppwFor = (subject: Subject, classOrForm?: { id: string; form?: number } | number) => {
+      const classForm = typeof classOrForm === 'number' ? classOrForm : classOrForm?.form;
+      const classId = typeof classOrForm === 'object' && classOrForm ? classOrForm.id : undefined;
+      const code = (subject.code || '').toUpperCase();
+      if (classId) {
+        const ov = PPW_OVERRIDES.find(o => o.code === code && o.match({ id: classId, form: classForm }));
+        if (ov) return isStrictDouble(subject) && ov.periods % 2 === 1 ? ov.periods + 1 : ov.periods;
+      }
       const base = (classForm === 5 || classForm === 6) ? 8 : subject.periodsPerWeek;
       return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
     };
@@ -135,7 +152,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const subs = classSubjectIds[c.id]
         .map(id => subjects.find(s => s.id === id))
         .filter(Boolean) as Subject[];
-      const requiredPeriods = subs.reduce((sum, s) => sum + ppwFor(s, c.form), 0);
+      const requiredPeriods = subs.reduce((sum, s) => sum + ppwFor(s, c), 0);
       // Build list of academic (day, slot) pairs in order
       const academicPairs: Array<{ day: DayOfWeek; slot: number }> = [];
       for (const day of DAYS) {
@@ -191,7 +208,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // share the SAME teacher for the SAME subject. They will be scheduled together
     // in the same period as a combined lesson.
     // Returns a map: classId -> { subjectId -> { teacherId, groupClassIds[] } }
-    const combineGroups: Record<string, Record<string, { teacherId: string; groupClassIds: string[] }>> = {};
+    const combineGroups: Record<string, Record<string, { teacherId: string; groupClassIds: string[]; allowedDays?: Set<DayOfWeek> }>> = {};
     teachers.forEach(t => {
       t.assignments.forEach(a => {
         // Group this teacher's assigned classes by form (only Forms 5 & 6 combine here)
@@ -270,6 +287,45 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     })();
 
+    // Specific Business Studies combined groups (custom school rules):
+    //   - Form 3 Leo + Virgo + Aries: combined ONLY on Monday & Tuesday.
+    //   - Form 4 Shark + Whale: combined every day.
+    (() => {
+      const bus = subjects.find(s => (s.code || '').toUpperCase() === 'BUS');
+      if (!bus) return;
+      const pickGroup = (form: number, streamNames: string[]) =>
+        streamNames
+          .map(n => classes.find(c => c.form === form && c.stream.toLowerCase() === n.toLowerCase()))
+          .filter(Boolean) as SchoolClass[];
+      const chooseTeacher = (group: SchoolClass[]) => {
+        const ids = group.map(c => c.id);
+        const ranked = teachers
+          .map(t => ({
+            t,
+            covered: ids.filter(cid =>
+              t.assignments.some(a => a.subjectId === bus.id && a.classIds.some(rc => matchesClass(rc, cid)))
+            ).length,
+          }))
+          .filter(x => x.covered > 0)
+          .sort((a, b) => b.covered - a.covered);
+        return ranked[0]?.t;
+      };
+      const applyGroup = (group: SchoolClass[], allowedDays?: Set<DayOfWeek>) => {
+        if (group.length < 2) return;
+        const eligible = group.filter(c => (classSubjectIds[c.id] || []).includes(bus.id));
+        if (eligible.length < 2) return;
+        const teacher = chooseTeacher(eligible);
+        if (!teacher) return;
+        const ids = eligible.map(c => c.id);
+        ids.forEach(cid => {
+          if (!combineGroups[cid]) combineGroups[cid] = {};
+          combineGroups[cid][bus.id] = { teacherId: teacher.id, groupClassIds: ids, allowedDays };
+        });
+      };
+      applyGroup(pickGroup(3, ['Leo', 'Virgo', 'Aries']), new Set<DayOfWeek>(['Monday', 'Tuesday']));
+      applyGroup(pickGroup(4, ['Shark', 'Whale']));
+    })();
+
 
 
 
@@ -345,7 +401,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const partner = subjects.find(s => (s.code || '').toUpperCase() === partnerCode);
       if (!partner) return;
       if (!(classSubjectIds[cls.id] || []).includes(partner.id)) return;
-      if ((classSubjectCount[cls.id][partner.id] || 0) >= ppwFor(partner, cls.form)) return;
+      if ((classSubjectCount[cls.id][partner.id] || 0) >= ppwFor(partner, cls)) return;
       const partnerTeachers = teachers.filter(t =>
         t.assignments.some(a => a.subjectId === partner.id && a.classIds.some(cid => matchesClass(cid, cls.id)))
         && (teacherLoad[t.id] || 0) < t.maxPeriodsPerWeek
@@ -418,7 +474,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           const availableSubjects = shuffle(
             (classSubjectIds[cls.id] || cls.subjectIds)
               .map(sId => subjects.find(s => s.id === sId)!)
-              .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls.form))
+              .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
           )
             .filter(s => {
               const dayCount = classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0;
@@ -459,8 +515,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const aCore = a.isCompulsory ? 0 : 1;
               const bCore = b.isCompulsory ? 0 : 1;
               if (aCore !== bCore) return aCore - bCore;
-              const aRemain = ppwFor(a, cls.form) - (classSubjectCount[cls.id][a.id] || 0);
-              const bRemain = ppwFor(b, cls.form) - (classSubjectCount[cls.id][b.id] || 0);
+              const aRemain = ppwFor(a, cls) - (classSubjectCount[cls.id][a.id] || 0);
+              const bRemain = ppwFor(b, cls) - (classSubjectCount[cls.id][b.id] || 0);
               return bRemain - aRemain;
             });
 
@@ -486,7 +542,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               // Enforce "always double" for sciences/agriculture and all A-level subjects.
               // If 2+ periods remain, this placement MUST be paired with the next slot.
               // If only 1 period remains (odd ppw, e.g. Agriculture = 5), allow a single.
-              const remainingThisSubject = ppwFor(subject, cls.form) - (classSubjectCount[cls.id][subject.id] || 0);
+              const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
               const requireDouble = mustDouble(subject, cls.form) && remainingThisSubject >= 2;
               if (requireDouble) {
                 const nextSlotChk = slot + 1;
@@ -506,12 +562,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               // Auto-combine: if this class is in a combine-group for this subject with this
               // teacher, schedule all sibling classes in the same period as a combined lesson.
               const grp = combineGroups[cls.id]?.[subject.id];
-              const groupMembers = (grp && grp.teacherId === teacher.id)
-                ? grp.groupClassIds.filter(cid => {
+              const grpActive = !!grp && grp.teacherId === teacher.id && (!grp.allowedDays || grp.allowedDays.has(day));
+              const groupMembers = grpActive
+                ? grp!.groupClassIds.filter(cid => {
                     if (cid === cls.id) return true;
                     if (preAssigned[`${cid}-${day}-${slot}`]) return false;
                     if (isPreMarkedFree(cid, day, slot)) return false;
-                    if ((classSubjectCount[cid]?.[subject.id] || 0) >= ppwFor(subject, classes.find(c => c.id === cid)?.form)) return false;
+                    if ((classSubjectCount[cid]?.[subject.id] || 0) >= ppwFor(subject, classes.find(c => c.id === cid))) return false;
                     const dayCount = classSubjectDayCount[`${cid}-${day}-${subject.id}`] || 0;
                     if (dayCount >= 2) return false;
                     return (classSubjectIds[cid] || []).includes(subject.id);
@@ -548,7 +605,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 !classSubjectDayDoubled[doubleKey] &&
                 alreadyTodayCount < 2 && nextSlot <= totalSlots &&
                 !isNonAcademic(day, nextSlot) && !preAssigned[`${cls.id}-${day}-${nextSlot}`] &&
-                (classSubjectCount[cls.id][subject.id] || 0) < ppwFor(subject, cls.form) &&
+                (classSubjectCount[cls.id][subject.id] || 0) < ppwFor(subject, cls) &&
                 !teacherSchedule[teacher.id]?.[`${day}-${nextSlot}`] &&
                 (teacherLoad[teacher.id] || 0) < teacher.maxPeriodsPerWeek
               ) {
@@ -556,7 +613,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 // Also pre-assign double for sibling combined classes
                 others.forEach(cid => {
                   if (!preAssigned[`${cid}-${day}-${nextSlot}`] &&
-                      (classSubjectCount[cid]?.[subject.id] || 0) < ppwFor(subject, classes.find(c => c.id === cid)?.form)) {
+                      (classSubjectCount[cid]?.[subject.id] || 0) < ppwFor(subject, classes.find(c => c.id === cid))) {
                     const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
                     preAssigned[`${cid}-${day}-${nextSlot}`] = {
                       subjectId: subject.id,
@@ -579,7 +636,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             // unpaired single via fallback unless only 1 period remains (handles odd ppw like AGR=5).
             const fallbackPool = candidateSubjects.filter(s => {
               if (!mustDouble(s, cls.form)) return true;
-              const remaining = ppwFor(s, cls.form) - (classSubjectCount[cls.id][s.id] || 0);
+              const remaining = ppwFor(s, cls) - (classSubjectCount[cls.id][s.id] || 0);
               return remaining <= 1;
             });
             if (fallbackPool.length > 0) {
