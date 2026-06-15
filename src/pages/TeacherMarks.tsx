@@ -30,6 +30,7 @@ const TeacherMarks = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [phonePairOpen, setPhonePairOpen] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [lastMatched, setLastMatched] = useState<Set<string>>(new Set());
 
