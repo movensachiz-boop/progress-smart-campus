@@ -208,7 +208,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // share the SAME teacher for the SAME subject. They will be scheduled together
     // in the same period as a combined lesson.
     // Returns a map: classId -> { subjectId -> { teacherId, groupClassIds[] } }
-    const combineGroups: Record<string, Record<string, { teacherId: string; groupClassIds: string[] }>> = {};
+    const combineGroups: Record<string, Record<string, { teacherId: string; groupClassIds: string[]; allowedDays?: Set<DayOfWeek> }>> = {};
     teachers.forEach(t => {
       t.assignments.forEach(a => {
         // Group this teacher's assigned classes by form (only Forms 5 & 6 combine here)
