@@ -124,7 +124,10 @@ const TeacherMarks = () => {
     }
     setOcrLoading(true);
     try {
-      const expectedSubjectCodes = Array.from(new Set(students.flatMap((s) => subjectsForStudent(s).map((sub) => sub.code))));
+      const expectedSubjectCodes = Array.from(new Set([
+        ...subjects,
+        ...students.flatMap((s) => subjectsForStudent(s).map((sub) => sub.code)),
+      ]));
       const expectedStudents = students.map((s) => ({
         name: `${s.last_name} ${s.first_name}`.trim(),
         form: s.form,
