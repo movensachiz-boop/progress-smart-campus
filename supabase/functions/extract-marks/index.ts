@@ -44,6 +44,7 @@ const parseTranscriptRows = (text: string) => {
   const students: { name: string; marks: Record<string, number> }[] = [];
   const subjectSet = new Set<string>();
   const subjectOrder: string[] = [];
+  let activeHeader: string[] = [];
   const pushSubject = (raw: string) => {
     const code = normalizeSubjectCode(raw);
     if (canonicalSubjectCodes.includes(code) && !subjectSet.has(code)) {
@@ -53,24 +54,47 @@ const parseTranscriptRows = (text: string) => {
   };
   const codePattern = "LIT|R\\/?S|RS|HIS|C\\/?SC|CSC|BIO|CHE|MAT|ACC|PHY|GEO|BUS|ECO|ENG|SHO|AGR|F\\/?N|FN|ART";
   const markRegex = new RegExp(`\\b(${codePattern})\\b\\s*[:=\\-]?\\s*(\\d{1,3})`, "gi");
+  const subjectRegex = new RegExp(`\\b(${codePattern})\\b`, "gi");
+  const parseMark = (raw: string) => {
+    const mark = Number(raw);
+    return Number.isFinite(mark) && mark >= 0 && mark <= 100 ? mark : null;
+  };
 
   for (const rawLine of text.split(/\n+/)) {
     const line = rawLine.trim();
-    const headerMatches = [...line.matchAll(new RegExp(`\\b(${codePattern})\\b`, "gi"))];
-    if (headerMatches.length >= 3 && !/\d{1,3}\s*$/.test(line)) {
-      headerMatches.forEach((match) => pushSubject(match[1]));
+    const headerMatches = [...line.matchAll(subjectRegex)];
+    const lineSubjects = headerMatches
+      .map((match) => normalizeSubjectCode(match[1]))
+      .filter((code, index, arr) => canonicalSubjectCodes.includes(code) && arr.indexOf(code) === index);
+    const explicitMarkMatches = [...line.matchAll(markRegex)];
+    if (lineSubjects.length >= 3 && !explicitMarkMatches.length && !/^\d{1,2}\b/.test(line)) {
+      activeHeader = lineSubjects;
+      activeHeader.forEach(pushSubject);
       continue;
     }
-    if (!/^\d{1,2}\b/.test(line)) continue;
+    if (!/^\d{1,2}\b/.test(line) && !explicitMarkMatches.length) continue;
     const marks: Record<string, number> = {};
     let firstSubjectIndex = line.length;
-    for (const match of line.matchAll(markRegex)) {
+    for (const match of explicitMarkMatches) {
       const code = normalizeSubjectCode(match[1]);
-      const mark = Number(match[2]);
-      if (!canonicalSubjectCodes.includes(code) || !Number.isFinite(mark) || mark < 0 || mark > 100) continue;
+      const mark = parseMark(match[2]);
+      if (!canonicalSubjectCodes.includes(code) || mark == null) continue;
       marks[code] = mark;
       pushSubject(code);
       firstSubjectIndex = Math.min(firstSubjectIndex, match.index ?? line.length);
+    }
+    if (!Object.keys(marks).length && activeHeader.length) {
+      const withoutRowNumber = line.replace(/^\d{1,2}\s+/, "");
+      const numberMatches = [...withoutRowNumber.matchAll(/\b\d{1,3}\b/g)]
+        .map((match) => ({ mark: parseMark(match[0]), index: match.index ?? withoutRowNumber.length }))
+        .filter((match): match is { mark: number; index: number } => match.mark != null);
+      const usableMarks = numberMatches.slice(0, activeHeader.length);
+      usableMarks.forEach(({ mark }, index) => {
+        const code = activeHeader[index];
+        marks[code] = mark;
+        pushSubject(code);
+      });
+      if (numberMatches[0]) firstSubjectIndex = line.indexOf(withoutRowNumber) + numberMatches[0].index;
     }
     if (!Object.keys(marks).length) continue;
     const beforeMarks = line.slice(0, firstSubjectIndex).replace(/^\d{1,2}\s+/, "").trim();
