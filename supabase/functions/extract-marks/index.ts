@@ -41,10 +41,11 @@ const detectFormLevel = (text: string): number | null => {
 };
 
 const parseTranscriptRows = (text: string) => {
-  const students: { name: string; marks: Record<string, number> }[] = [];
+  const students: { name: string; marks: Record<string, number>; row_number?: number }[] = [];
   const subjectSet = new Set<string>();
   const subjectOrder: string[] = [];
   let activeHeader: string[] = [];
+  let sequence = 0;
   const pushSubject = (raw: string) => {
     const code = normalizeSubjectCode(raw);
     if (canonicalSubjectCodes.includes(code) && !subjectSet.has(code)) {
@@ -72,7 +73,8 @@ const parseTranscriptRows = (text: string) => {
       activeHeader.forEach(pushSubject);
       continue;
     }
-    if (!/^\d{1,2}\b/.test(line) && !explicitMarkMatches.length) continue;
+    const rowNumMatch = line.match(/^(\d{1,2})\b/);
+    if (!rowNumMatch && !explicitMarkMatches.length) continue;
     const marks: Record<string, number> = {};
     let firstSubjectIndex = line.length;
     for (const match of explicitMarkMatches) {
@@ -99,7 +101,11 @@ const parseTranscriptRows = (text: string) => {
     if (!Object.keys(marks).length) continue;
     const beforeMarks = line.slice(0, firstSubjectIndex).replace(/^\d{1,2}\s+/, "").trim();
     const name = beforeMarks.replace(/\b(POINTS?|TOTAL)\b.*$/i, "").replace(/\s+/g, " ").trim();
-    if (name) students.push({ name, marks });
+    if (name) {
+      sequence++;
+      const row_number = rowNumMatch ? Number(rowNumMatch[1]) : sequence;
+      students.push({ name, marks, row_number });
+    }
   }
 
   return { students, subject_codes: subjectOrder };
