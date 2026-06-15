@@ -57,6 +57,11 @@ const TeacherMarks = () => {
       setStudents((profs || []) as Profile[]);
       const m: MarksMap = {};
       const subjSet = new Set<string>();
+      // Pre-populate columns from the Subjects module for this exam's form levels
+      for (const sb of ttSubjects) {
+        const inForm = (sb.forms || []).some((f: any) => activeExam.form_levels.includes(Number(f)));
+        if (inForm && sb.code) subjSet.add(normalizeSubjectCode(sb.code));
+      }
       for (const r of (rows || []) as any[]) {
         const sid = r.student_profile_id;
         const code = normalizeSubjectCode(r.subject_code);
