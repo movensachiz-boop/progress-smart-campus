@@ -562,8 +562,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               // Auto-combine: if this class is in a combine-group for this subject with this
               // teacher, schedule all sibling classes in the same period as a combined lesson.
               const grp = combineGroups[cls.id]?.[subject.id];
-              const groupMembers = (grp && grp.teacherId === teacher.id)
-                ? grp.groupClassIds.filter(cid => {
+              const grpActive = !!grp && grp.teacherId === teacher.id && (!grp.allowedDays || grp.allowedDays.has(day));
+              const groupMembers = grpActive
+                ? grp!.groupClassIds.filter(cid => {
                     if (cid === cls.id) return true;
                     if (preAssigned[`${cid}-${day}-${slot}`]) return false;
                     if (isPreMarkedFree(cid, day, slot)) return false;
