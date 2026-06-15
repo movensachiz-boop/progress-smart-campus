@@ -10,6 +10,7 @@ import { Loader2, Save, Camera, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
+import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import {
   SUBJECT_CODES, normalizeSubjectCode, formToLevel, computeGrade, computePoints,
 } from "@/lib/grading";
@@ -29,6 +30,7 @@ const TeacherMarks = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [phonePairOpen, setPhonePairOpen] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [lastMatched, setLastMatched] = useState<Set<string>>(new Set());
 
@@ -187,6 +189,9 @@ const TeacherMarks = () => {
             <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
+            <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading} title="Scan QR with phone to capture from phone camera">
+              <Camera size={14}/> Use Phone Camera
+            </Button>
             <Button onClick={addSubject} variant="outline" disabled={!activeExam}>+ Subject Column</Button>
             <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving}>
               {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save All
@@ -255,6 +260,12 @@ const TeacherMarks = () => {
 
       <CameraCaptureDialog open={scanOpen} onOpenChange={setScanOpen} onCapture={handleCapture}
         title="Scan Mark Sheet" description="Capture the whole grid — names and all subject columns. Marks for every student & subject will auto-fill."/>
+      <PhoneCameraPairDialog
+        open={phonePairOpen}
+        onOpenChange={setPhonePairOpen}
+        onPhotos={async (photos) => { if (photos[0]) await handleCapture(photos[0]); }}
+        title="Use Phone Camera for Mark Sheet"
+      />
     </DashboardLayout>
   );
 };
