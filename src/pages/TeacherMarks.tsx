@@ -149,17 +149,21 @@ const TeacherMarks = () => {
       const matched = new Set<string>();
       let matchedCount = 0;
       let cellCount = 0;
+      const scanCandidates = form_level
+        ? students.filter((p) => Number(p.form) === Number(form_level))
+        : students;
+      const matchCandidates = scanCandidates.length ? scanCandidates : students;
 
       for (const r of rows) {
         const target = nameKey(r.name || "");
         if (!target) continue;
-        const s = students.find(p => {
+        const s = matchCandidates.find(p => {
           const full = nameKey(`${p.first_name} ${p.last_name}`);
           const rev = nameKey(`${p.last_name} ${p.first_name}`);
           return full === target || rev === target ||
             full.includes(target) || target.includes(full) ||
             rev.includes(target) || target.includes(rev);
-        }) || bestFuzzyMatch(r.name || "", students, (p) => `${p.last_name} ${p.first_name}`, 4);
+        }) || bestFuzzyMatch(r.name || "", matchCandidates, (p) => `${p.last_name} ${p.first_name}`, 4);
         if (!s) continue;
         matched.add(s.id);
         matchedCount++;
