@@ -51,6 +51,7 @@ const studentLinks = [
   { label: "Announcements", icon: Bell, path: "/student/announcements" },
   { label: "Fees & Requirements", icon: FileText, path: "/student/requirements" },
   { label: "School Shop", icon: ShoppingBag, path: "/student/shop" },
+  { label: "Exam Results", icon: Award, path: "/student/results" },
 ];
 
 const teacherLinks = [
