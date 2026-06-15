@@ -197,6 +197,109 @@ export type Database = {
         }
         Relationships: []
       }
+      exam_results: {
+        Row: {
+          created_at: string
+          entered_by: string | null
+          exam_id: string
+          grade: string | null
+          id: string
+          mark: number | null
+          points: number | null
+          student_profile_id: string
+          subject_code: string
+          subject_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entered_by?: string | null
+          exam_id: string
+          grade?: string | null
+          id?: string
+          mark?: number | null
+          points?: number | null
+          student_profile_id: string
+          subject_code: string
+          subject_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entered_by?: string | null
+          exam_id?: string
+          grade?: string | null
+          id?: string
+          mark?: number | null
+          points?: number | null
+          student_profile_id?: string
+          subject_code?: string
+          subject_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_results_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_results_student_profile_id_fkey"
+            columns: ["student_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_results_student_profile_id_fkey"
+            columns: ["student_profile_id"]
+            isOneToOne: false
+            referencedRelation: "student_roster"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exams: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          exam_type: string
+          form_levels: number[]
+          id: string
+          name: string
+          published: boolean
+          term: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          exam_type?: string
+          form_levels?: number[]
+          id?: string
+          name: string
+          published?: boolean
+          term?: number
+          updated_at?: string
+          year?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          exam_type?: string
+          form_levels?: number[]
+          id?: string
+          name?: string
+          published?: boolean
+          term?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       fee_requirements: {
         Row: {
           amount: number
