@@ -138,9 +138,10 @@ const TeacherMarks = () => {
         body: { imageBase64: dataUrl, expectedStudents, expectedSubjectCodes },
       });
       if (error) throw error;
-      const { students: rows, subject_codes } = data as {
+      const { students: rows, subject_codes, form_level } = data as {
         students: { name: string; marks: Record<string, number> }[];
         subject_codes?: string[];
+        form_level?: number | null;
       };
 
       const nextMarks: MarksMap = JSON.parse(JSON.stringify(marks));
@@ -178,9 +179,13 @@ const TeacherMarks = () => {
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
       setLastMatched(matched);
+      const formNote = form_level ? ` Detected Form ${form_level}${form_level === 5 ? " (Lower 6)" : form_level === 6 ? " (Upper 6)" : ""}.` : "";
+      const formMismatch = form_level && activeExam && !activeExam.form_levels.includes(form_level)
+        ? ` The scanned sheet is Form ${form_level}, but the selected exam is for Form ${activeExam.form_levels.join(", ")}.`
+        : "";
       toast({
         title: "Scan complete",
-        description: `Matched ${matchedCount} students, ${cellCount} marks. Review highlighted rows then click Save All.`,
+        description: `Matched ${matchedCount} students, ${cellCount} marks.${formNote}${formMismatch} Review highlighted rows then click Save All.`,
       });
     } catch (err: any) {
       toast({ title: "OCR failed", description: err.message, variant: "destructive" });
