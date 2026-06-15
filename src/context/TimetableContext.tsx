@@ -152,7 +152,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const subs = classSubjectIds[c.id]
         .map(id => subjects.find(s => s.id === id))
         .filter(Boolean) as Subject[];
-      const requiredPeriods = subs.reduce((sum, s) => sum + ppwFor(s, c.form), 0);
+      const requiredPeriods = subs.reduce((sum, s) => sum + ppwFor(s, c), 0);
       // Build list of academic (day, slot) pairs in order
       const academicPairs: Array<{ day: DayOfWeek; slot: number }> = [];
       for (const day of DAYS) {
@@ -362,7 +362,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const partner = subjects.find(s => (s.code || '').toUpperCase() === partnerCode);
       if (!partner) return;
       if (!(classSubjectIds[cls.id] || []).includes(partner.id)) return;
-      if ((classSubjectCount[cls.id][partner.id] || 0) >= ppwFor(partner, cls.form)) return;
+      if ((classSubjectCount[cls.id][partner.id] || 0) >= ppwFor(partner, cls)) return;
       const partnerTeachers = teachers.filter(t =>
         t.assignments.some(a => a.subjectId === partner.id && a.classIds.some(cid => matchesClass(cid, cls.id)))
         && (teacherLoad[t.id] || 0) < t.maxPeriodsPerWeek
@@ -435,7 +435,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           const availableSubjects = shuffle(
             (classSubjectIds[cls.id] || cls.subjectIds)
               .map(sId => subjects.find(s => s.id === sId)!)
-              .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls.form))
+              .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
           )
             .filter(s => {
               const dayCount = classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0;
@@ -476,8 +476,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const aCore = a.isCompulsory ? 0 : 1;
               const bCore = b.isCompulsory ? 0 : 1;
               if (aCore !== bCore) return aCore - bCore;
-              const aRemain = ppwFor(a, cls.form) - (classSubjectCount[cls.id][a.id] || 0);
-              const bRemain = ppwFor(b, cls.form) - (classSubjectCount[cls.id][b.id] || 0);
+              const aRemain = ppwFor(a, cls) - (classSubjectCount[cls.id][a.id] || 0);
+              const bRemain = ppwFor(b, cls) - (classSubjectCount[cls.id][b.id] || 0);
               return bRemain - aRemain;
             });
 
@@ -503,7 +503,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               // Enforce "always double" for sciences/agriculture and all A-level subjects.
               // If 2+ periods remain, this placement MUST be paired with the next slot.
               // If only 1 period remains (odd ppw, e.g. Agriculture = 5), allow a single.
-              const remainingThisSubject = ppwFor(subject, cls.form) - (classSubjectCount[cls.id][subject.id] || 0);
+              const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
               const requireDouble = mustDouble(subject, cls.form) && remainingThisSubject >= 2;
               if (requireDouble) {
                 const nextSlotChk = slot + 1;
@@ -528,7 +528,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     if (cid === cls.id) return true;
                     if (preAssigned[`${cid}-${day}-${slot}`]) return false;
                     if (isPreMarkedFree(cid, day, slot)) return false;
-                    if ((classSubjectCount[cid]?.[subject.id] || 0) >= ppwFor(subject, classes.find(c => c.id === cid)?.form)) return false;
+                    if ((classSubjectCount[cid]?.[subject.id] || 0) >= ppwFor(subject, classes.find(c => c.id === cid))) return false;
                     const dayCount = classSubjectDayCount[`${cid}-${day}-${subject.id}`] || 0;
                     if (dayCount >= 2) return false;
                     return (classSubjectIds[cid] || []).includes(subject.id);
@@ -565,7 +565,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 !classSubjectDayDoubled[doubleKey] &&
                 alreadyTodayCount < 2 && nextSlot <= totalSlots &&
                 !isNonAcademic(day, nextSlot) && !preAssigned[`${cls.id}-${day}-${nextSlot}`] &&
-                (classSubjectCount[cls.id][subject.id] || 0) < ppwFor(subject, cls.form) &&
+                (classSubjectCount[cls.id][subject.id] || 0) < ppwFor(subject, cls) &&
                 !teacherSchedule[teacher.id]?.[`${day}-${nextSlot}`] &&
                 (teacherLoad[teacher.id] || 0) < teacher.maxPeriodsPerWeek
               ) {
@@ -573,7 +573,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 // Also pre-assign double for sibling combined classes
                 others.forEach(cid => {
                   if (!preAssigned[`${cid}-${day}-${nextSlot}`] &&
-                      (classSubjectCount[cid]?.[subject.id] || 0) < ppwFor(subject, classes.find(c => c.id === cid)?.form)) {
+                      (classSubjectCount[cid]?.[subject.id] || 0) < ppwFor(subject, classes.find(c => c.id === cid))) {
                     const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
                     preAssigned[`${cid}-${day}-${nextSlot}`] = {
                       subjectId: subject.id,
@@ -596,7 +596,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             // unpaired single via fallback unless only 1 period remains (handles odd ppw like AGR=5).
             const fallbackPool = candidateSubjects.filter(s => {
               if (!mustDouble(s, cls.form)) return true;
-              const remaining = ppwFor(s, cls.form) - (classSubjectCount[cls.id][s.id] || 0);
+              const remaining = ppwFor(s, cls) - (classSubjectCount[cls.id][s.id] || 0);
               return remaining <= 1;
             });
             if (fallbackPool.length > 0) {
