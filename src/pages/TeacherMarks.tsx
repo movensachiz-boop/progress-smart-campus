@@ -293,12 +293,12 @@ const TeacherMarks = () => {
                       <p className="text-sm text-muted-foreground">No subjects assigned for this student's form/stream. Click "+ Subject" to add one.</p>
                     ) : (
                       <div className="overflow-auto max-h-[400px] border rounded-md">
-                        <Table>
+                        <table className="w-full caption-bottom text-sm">
                           <TableHeader>
-                            <TableRow className="sticky top-0 bg-background/95 backdrop-blur-sm z-10">
-                              <TableHead className="sticky left-0 bg-background/95 backdrop-blur-sm z-20">Subject</TableHead>
-                              <TableHead className="w-28 text-center">Mark</TableHead>
-                              <TableHead className="w-20 text-center">Grade</TableHead>
+                            <TableRow>
+                              <TableHead className="sticky left-0 top-0 bg-background/95 backdrop-blur-sm z-30 min-w-[180px]">Subject</TableHead>
+                              <TableHead className="sticky top-0 bg-background/95 backdrop-blur-sm z-20 w-28 text-center">Mark</TableHead>
+                              <TableHead className="sticky top-0 bg-background/95 backdrop-blur-sm z-20 w-20 text-center">Grade</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -307,7 +307,7 @@ const TeacherMarks = () => {
                               const grade = m != null ? computeGrade(m, level) : "";
                               return (
                                 <TableRow key={code}>
-                                  <TableCell className="sticky left-0 bg-background/95 z-10 border-r">
+                                  <TableCell className="sticky left-0 bg-background/95 z-10 border-r min-w-[180px]">
                                     <span className="font-medium">{code}</span>
                                     <span className="ml-2 text-xs text-muted-foreground">{name}</span>
                                   </TableCell>
@@ -320,7 +320,7 @@ const TeacherMarks = () => {
                               );
                             })}
                           </TableBody>
-                        </Table>
+                        </table>
                       </div>
                     )}
                   </CardContent>
