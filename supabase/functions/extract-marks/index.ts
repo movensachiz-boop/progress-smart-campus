@@ -244,6 +244,7 @@ OUTPUT via tool call only:
                     items: {
                       type: "object",
                       properties: {
+                        row_number: { type: "number", description: "1-based row number as printed on the sheet or visual top-to-bottom position" },
                         name: { type: "string" },
                         marks: {
                           type: "object",
@@ -251,7 +252,7 @@ OUTPUT via tool call only:
                           description: "Map of subject code -> mark",
                         },
                       },
-                      required: ["name", "marks"],
+                      required: ["row_number", "name", "marks"],
                     },
                   },
                   subject_codes: {
