@@ -17,12 +17,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { imageBase64 } = await req.json();
+    const { imageBase64, expectedStudents = [], expectedSubjectCodes = [] } = await req.json();
     if (!imageBase64) {
       return new Response(JSON.stringify({ error: "No image provided" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const rosterText = Array.isArray(expectedStudents) && expectedStudents.length
+      ? expectedStudents.slice(0, 250).map((s: any, i: number) => {
+        const subs = Array.isArray(s.subjects) ? s.subjects.join(",") : "";
+        return `${i + 1}. ${s.name || ""}${subs ? ` [${subs}]` : ""}`;
+      }).join("\n")
+      : "No roster provided.";
+    const expectedCodesText = Array.isArray(expectedSubjectCodes) && expectedSubjectCodes.length
+      ? expectedSubjectCodes.join(", ")
+      : "Use the subject headers visible on the sheet.";
 
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -44,6 +54,8 @@ LAYOUT: The sheet is a grid. The leftmost columns are an index number and a STUD
 
 GOAL: For EVERY student row, return the handwritten mark in EVERY filled subject cell, mapped to that column's subject code. Scan horizontally across the row and read each number under its printed subject header. Do NOT skip filled cells. Do NOT invent marks for empty cells. Marks are integers 0–100 (commonly 10–95). Read carefully — 1 vs 7, 4 vs 9, 0 vs 6, 3 vs 8, 5 vs 6 are easy to confuse; cross-check with row lines and column boundaries.
 
+Use the provided roster only to help match names and expected subject columns. The photo is still the source of truth for the marks: extract the visible numbers from the sheet.
+
 NUMBER RULES:
 - Return raw integers only, not strings, not grades, not percentages.
 - If two digits are written close together, read them as one mark (e.g. "40", "17", "30").
@@ -64,7 +76,7 @@ Skip rows that have no name. Never include the POINTS/TOTAL column.`,
           {
             role: "user",
             content: [
-              { type: "text", text: "Read the attached mark sheet. Extract every student name and every visible handwritten numeric mark under each subject column. Focus especially on the numbers in the cells." },
+              { type: "text", text: `Read the attached mark sheet. Extract every student name and every visible handwritten numeric mark under each subject column. Focus especially on the numbers in the cells.\n\nExpected subject columns: ${expectedCodesText}\n\nClass roster to match against:\n${rosterText}` },
               {
                 type: "image_url",
                 image_url: {
