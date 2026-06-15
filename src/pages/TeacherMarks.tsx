@@ -113,7 +113,16 @@ const TeacherMarks = () => {
     }
     setOcrLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("extract-marks", { body: { imageBase64: dataUrl } });
+      const expectedSubjectCodes = Array.from(new Set(students.flatMap((s) => subjectsForStudent(s).map((sub) => sub.code))));
+      const expectedStudents = students.map((s) => ({
+        name: `${s.last_name} ${s.first_name}`.trim(),
+        form: s.form,
+        stream: s.stream,
+        subjects: subjectsForStudent(s).map((sub) => sub.code),
+      }));
+      const { data, error } = await supabase.functions.invoke("extract-marks", {
+        body: { imageBase64: dataUrl, expectedStudents, expectedSubjectCodes },
+      });
       if (error) throw error;
       const { students: rows, subject_codes } = data as {
         students: { name: string; marks: Record<string, number> }[];
