@@ -15,11 +15,22 @@ import {
   SUBJECT_CODES, normalizeSubjectCode, formToLevel, computeGrade, computePoints,
 } from "@/lib/grading";
 import { useTimetable } from "@/context/TimetableContext";
+import { bestFuzzyMatch, nameKey } from "@/lib/normalize";
 
 type Exam = { id: string; name: string; form_levels: number[]; published: boolean };
 type Profile = { id: string; first_name: string; last_name: string; form: string | null; stream: string | null };
 // marks[studentId][subjectCode] = mark
 type MarksMap = Record<string, Record<string, number | null>>;
+
+const parseMarkValue = (value: unknown): number | null => {
+  if (value == null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.min(100, Math.round(value)));
+  const match = String(value).match(/\d{1,3}/);
+  if (!match) return null;
+  const mark = Number(match[0]);
+  if (!Number.isFinite(mark)) return null;
+  return Math.max(0, Math.min(100, mark));
+};
 
 const TeacherMarks = () => {
   const { toast } = useToast();
@@ -113,7 +124,19 @@ const TeacherMarks = () => {
     }
     setOcrLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("extract-marks", { body: { imageBase64: dataUrl } });
+      const expectedSubjectCodes = Array.from(new Set([
+        ...subjects,
+        ...students.flatMap((s) => subjectsForStudent(s).map((sub) => sub.code)),
+      ]));
+      const expectedStudents = students.map((s) => ({
+        name: `${s.last_name} ${s.first_name}`.trim(),
+        form: s.form,
+        stream: s.stream,
+        subjects: subjectsForStudent(s).map((sub) => sub.code),
+      }));
+      const { data, error } = await supabase.functions.invoke("extract-marks", {
+        body: { imageBase64: dataUrl, expectedStudents, expectedSubjectCodes },
+      });
       if (error) throw error;
       const { students: rows, subject_codes } = data as {
         students: { name: string; marks: Record<string, number> }[];
@@ -127,23 +150,24 @@ const TeacherMarks = () => {
       let cellCount = 0;
 
       for (const r of rows) {
-        const target = (r.name || "").toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim();
+        const target = nameKey(r.name || "");
         if (!target) continue;
         const s = students.find(p => {
-          const full = `${p.first_name} ${p.last_name}`.toLowerCase().trim();
-          const rev = `${p.last_name} ${p.first_name}`.toLowerCase().trim();
+          const full = nameKey(`${p.first_name} ${p.last_name}`);
+          const rev = nameKey(`${p.last_name} ${p.first_name}`);
           return full === target || rev === target ||
             full.includes(target) || target.includes(full) ||
             rev.includes(target) || target.includes(rev);
-        });
+        }) || bestFuzzyMatch(r.name || "", students, (p) => `${p.last_name} ${p.first_name}`, 4);
         if (!s) continue;
         matched.add(s.id);
         matchedCount++;
         if (!nextMarks[s.id]) nextMarks[s.id] = {};
         for (const [rawCode, val] of Object.entries(r.marks || {})) {
-          if (val == null) continue;
+          const mark = parseMarkValue(val);
+          if (mark == null) continue;
           const code = normalizeSubjectCode(rawCode);
-          nextMarks[s.id][code] = Number(val);
+          nextMarks[s.id][code] = mark;
           subjSet.add(code);
           cellCount++;
         }
