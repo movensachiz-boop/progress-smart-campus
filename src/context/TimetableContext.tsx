@@ -486,8 +486,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           )
             .filter(s => {
               const dayCount = classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0;
-              if (dayCount >= 2) return false;
-              if (dayCount === 1) return isConsecutive(cls.id, day, s.id, slot);
+              const maxBlock = blockSize(s, cls.form);
+              if (dayCount >= maxBlock) return false;
+              if (dayCount >= 1) return isConsecutive(cls.id, day, s.id, slot);
               return true;
             })
             .filter(s => {
