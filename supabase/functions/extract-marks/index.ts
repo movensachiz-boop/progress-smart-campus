@@ -270,7 +270,27 @@ OUTPUT via tool call only:
     const transcriptCells = transcriptParsed.students.reduce((sum, row) => sum + Object.keys(row.marks).length, 0);
     if (transcriptCells > structuredCells) {
       parsed.students = transcriptParsed.students;
+    }
+    // Always prefer the transcript's subject order (left-to-right header order from the sheet).
+    // The structured tool-call often returns codes alphabetically, losing the form's column order.
+    if (transcriptParsed.subject_codes.length) {
       parsed.subject_codes = transcriptParsed.subject_codes;
+    }
+    // Reorder each student's marks object to follow the header order too (helps any downstream consumer
+    // that iterates Object.entries in insertion order).
+    if (parsed.subject_codes?.length) {
+      const order = parsed.subject_codes;
+      parsed.students = (parsed.students || []).map((row: any) => {
+        const ordered: Record<string, number> = {};
+        for (const c of order) {
+          if (row?.marks && row.marks[c] != null) ordered[c] = row.marks[c];
+        }
+        // append any extras not in header order
+        for (const [k, v] of Object.entries(row?.marks || {})) {
+          if (!(k in ordered)) ordered[k] = v as number;
+        }
+        return { ...row, marks: ordered };
+      });
     }
     parsed.form_level = parsed.form_level || detectedFormLevel;
     parsed.transcript = transcript;
