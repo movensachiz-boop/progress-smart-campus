@@ -112,7 +112,8 @@ const AdminPrincipalDocs = () => {
         regNo: s.registration_number || "",
         form: s.form || "",
         stream: s.stream || "",
-        subjects: subjectsFor(s),
+        // O-level: auto-fill subjects; A-level: leave blank for student to fill
+        subjects: selectedLevel === "O" ? subjectsFor(s) : [],
       }));
       await generateTargetsFormBatch({
         level: selectedLevel,
