@@ -46,6 +46,8 @@ const TeacherMarks = () => {
   const [phonePairOpen, setPhonePairOpen] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [lastMatched, setLastMatched] = useState<Set<string>>(new Set());
+  // Order of subject codes as they appeared on the scanned sheet (left→right)
+  const [scanOrder, setScanOrder] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -146,6 +148,10 @@ const TeacherMarks = () => {
 
       const nextMarks: MarksMap = JSON.parse(JSON.stringify(marks));
       const subjSet = new Set<string>(subjects);
+      const orderList: string[] = [];
+      const pushOrder = (c: string) => { if (c && !orderList.includes(c)) orderList.push(c); };
+      // Seed order from explicit subject_codes (header row, left→right)
+      (subject_codes || []).forEach(c => pushOrder(normalizeSubjectCode(c)));
       const matched = new Set<string>();
       let matchedCount = 0;
       let cellCount = 0;
@@ -174,6 +180,7 @@ const TeacherMarks = () => {
           const code = normalizeSubjectCode(rawCode);
           nextMarks[s.id][code] = mark;
           subjSet.add(code);
+          pushOrder(code);
           cellCount++;
         }
       }
@@ -182,6 +189,7 @@ const TeacherMarks = () => {
 
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
+      setScanOrder(orderList);
       setLastMatched(matched);
       const formNote = form_level ? ` Detected Form ${form_level}${form_level === 5 ? " (Lower 6)" : form_level === 6 ? " (Upper 6)" : ""}.` : "";
       const formMismatch = form_level && activeExam && !activeExam.form_levels.includes(form_level)
@@ -227,7 +235,19 @@ const TeacherMarks = () => {
     Object.keys(marks[s.id] || {}).forEach(c => {
       if (!map.has(c)) map.set(c, SUBJECT_CODES[c] || c);
     });
-    return [...map.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code));
+    const entries = [...map.entries()].map(([code, name]) => ({ code, name }));
+    // If a scan provided an order, surface those subjects first in that exact order
+    if (scanOrder.length) {
+      const rank = new Map(scanOrder.map((c, i) => [c, i]));
+      entries.sort((a, b) => {
+        const ra = rank.has(a.code) ? (rank.get(a.code) as number) : Number.POSITIVE_INFINITY;
+        const rb = rank.has(b.code) ? (rank.get(b.code) as number) : Number.POSITIVE_INFINITY;
+        if (ra !== rb) return ra - rb;
+        return a.code.localeCompare(b.code);
+      });
+      return entries;
+    }
+    return entries.sort((a, b) => a.code.localeCompare(b.code));
   };
 
   const addSubjectForStudent = (sid: string) => {
