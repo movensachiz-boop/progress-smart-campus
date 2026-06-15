@@ -48,6 +48,8 @@ const TeacherMarks = () => {
   const [lastMatched, setLastMatched] = useState<Set<string>>(new Set());
   // Order of subject codes as they appeared on the scanned sheet (left→right)
   const [scanOrder, setScanOrder] = useState<string[]>([]);
+  // Order of students as they appeared on the scanned sheet (top→bottom)
+  const [scanStudentOrder, setScanStudentOrder] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -85,6 +87,8 @@ const TeacherMarks = () => {
       setMarks(m);
       setSubjects([...subjSet].sort());
       setLastMatched(new Set());
+      setScanOrder([]);
+      setScanStudentOrder([]);
       setLoading(false);
     })();
   }, [examId, activeExam]);
@@ -150,6 +154,8 @@ const TeacherMarks = () => {
       const subjSet = new Set<string>(subjects);
       const orderList: string[] = [];
       const pushOrder = (c: string) => { if (c && !orderList.includes(c)) orderList.push(c); };
+      const studentOrderList: string[] = [];
+      const pushStudentOrder = (id: string) => { if (id && !studentOrderList.includes(id)) studentOrderList.push(id); };
       // Seed order from explicit subject_codes (header row, left→right)
       (subject_codes || []).forEach(c => pushOrder(normalizeSubjectCode(c)));
       const matched = new Set<string>();
@@ -172,6 +178,7 @@ const TeacherMarks = () => {
         }) || bestFuzzyMatch(r.name || "", matchCandidates, (p) => `${p.last_name} ${p.first_name}`, 4);
         if (!s) continue;
         matched.add(s.id);
+        pushStudentOrder(s.id);
         matchedCount++;
         if (!nextMarks[s.id]) nextMarks[s.id] = {};
         for (const [rawCode, val] of Object.entries(r.marks || {})) {
@@ -190,6 +197,7 @@ const TeacherMarks = () => {
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
       setScanOrder(orderList);
+      setScanStudentOrder(studentOrderList);
       setLastMatched(matched);
       const formNote = form_level ? ` Detected Form ${form_level}${form_level === 5 ? " (Lower 6)" : form_level === 6 ? " (Upper 6)" : ""}.` : "";
       const formMismatch = form_level && activeExam && !activeExam.form_levels.includes(form_level)
@@ -257,6 +265,18 @@ const TeacherMarks = () => {
     setMarks(prev => ({ ...prev, [sid]: { ...(prev[sid] || {}), [code]: prev[sid]?.[code] ?? null } }));
   };
 
+  const orderedStudents = useMemo(() => {
+    if (!scanStudentOrder.length) return students;
+    const rank = new Map(scanStudentOrder.map((id, i) => [id, i]));
+    const originalIndex = new Map(students.map((s, i) => [s.id, i]));
+    return [...students].sort((a, b) => {
+      const ra = rank.has(a.id) ? (rank.get(a.id) as number) : Number.POSITIVE_INFINITY;
+      const rb = rank.has(b.id) ? (rank.get(b.id) as number) : Number.POSITIVE_INFINITY;
+      if (ra !== rb) return ra - rb;
+      return (originalIndex.get(a.id) ?? 0) - (originalIndex.get(b.id) ?? 0);
+    });
+  }, [students, scanStudentOrder]);
+
   return (
     <DashboardLayout role="teacher">
       <div className="space-y-4">
@@ -293,7 +313,7 @@ const TeacherMarks = () => {
           <div className="p-8 text-center"><Loader2 className="inline animate-spin mr-2" size={16}/>Loading…</div>
         ) : students.length > 0 && (
           <div className="space-y-3">
-            {students.map(s => {
+            {orderedStudents.map(s => {
               const level = formToLevel(s.form);
               const row = marks[s.id] || {};
               const isMatched = lastMatched.has(s.id);

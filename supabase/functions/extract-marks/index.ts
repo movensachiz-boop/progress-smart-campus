@@ -43,11 +43,24 @@ const detectFormLevel = (text: string): number | null => {
 const parseTranscriptRows = (text: string) => {
   const students: { name: string; marks: Record<string, number> }[] = [];
   const subjectSet = new Set<string>();
+  const subjectOrder: string[] = [];
+  const pushSubject = (raw: string) => {
+    const code = normalizeSubjectCode(raw);
+    if (canonicalSubjectCodes.includes(code) && !subjectSet.has(code)) {
+      subjectSet.add(code);
+      subjectOrder.push(code);
+    }
+  };
   const codePattern = "LIT|R\\/?S|RS|HIS|C\\/?SC|CSC|BIO|CHE|MAT|ACC|PHY|GEO|BUS|ECO|ENG|SHO|AGR|F\\/?N|FN|ART";
   const markRegex = new RegExp(`\\b(${codePattern})\\b\\s*[:=\\-]?\\s*(\\d{1,3})`, "gi");
 
   for (const rawLine of text.split(/\n+/)) {
     const line = rawLine.trim();
+    const headerMatches = [...line.matchAll(new RegExp(`\\b(${codePattern})\\b`, "gi"))];
+    if (headerMatches.length >= 3 && !/\d{1,3}\s*$/.test(line)) {
+      headerMatches.forEach((match) => pushSubject(match[1]));
+      continue;
+    }
     if (!/^\d{1,2}\b/.test(line)) continue;
     const marks: Record<string, number> = {};
     let firstSubjectIndex = line.length;
@@ -56,7 +69,7 @@ const parseTranscriptRows = (text: string) => {
       const mark = Number(match[2]);
       if (!canonicalSubjectCodes.includes(code) || !Number.isFinite(mark) || mark < 0 || mark > 100) continue;
       marks[code] = mark;
-      subjectSet.add(code);
+      pushSubject(code);
       firstSubjectIndex = Math.min(firstSubjectIndex, match.index ?? line.length);
     }
     if (!Object.keys(marks).length) continue;
@@ -65,7 +78,7 @@ const parseTranscriptRows = (text: string) => {
     if (name) students.push({ name, marks });
   }
 
-  return { students, subject_codes: [...subjectSet] };
+  return { students, subject_codes: subjectOrder };
 };
 
 Deno.serve(async (req) => {
