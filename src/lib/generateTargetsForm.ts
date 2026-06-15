@@ -166,7 +166,7 @@ export const generateTargetsFormBatch = async (input: TargetsBatchInput) => {
       level: input.level,
       term: input.term,
       year: input.year,
-      subjects: input.subjects,
+      subjects: s.subjects,
       studentName: s.studentName,
       regNo: s.regNo,
       form: s.form,
