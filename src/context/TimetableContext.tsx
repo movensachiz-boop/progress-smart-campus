@@ -645,7 +645,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 }
                 if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
               }
-              }
               break;
             }
           }
