@@ -335,7 +335,11 @@ const TeacherMarks = () => {
       <PhoneCameraPairDialog
         open={phonePairOpen}
         onOpenChange={setPhonePairOpen}
-        onPhotos={async (photos) => { if (photos[0]) await handleCapture(photos[0]); }}
+        onPhotos={async (photos) => {
+          for (const p of photos) {
+            await handleCapture(p);
+          }
+        }}
         title="Use Phone Camera for Mark Sheet"
       />
     </DashboardLayout>
