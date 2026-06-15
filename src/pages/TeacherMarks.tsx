@@ -145,7 +145,7 @@ const TeacherMarks = () => {
       });
       if (error) throw error;
       const { students: rows, subject_codes, form_level } = data as {
-        students: { name: string; marks: Record<string, number> }[];
+        students: { name: string; marks: Record<string, number>; row_number?: number }[];
         subject_codes?: string[];
         form_level?: number | null;
       };
