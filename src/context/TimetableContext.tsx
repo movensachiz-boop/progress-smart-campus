@@ -388,7 +388,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       classSubjectDayCount[`${classId}-${day}-${subjectId}`] = (classSubjectDayCount[`${classId}-${day}-${subjectId}`] || 0) + 1;
       const sectionKey = `${classId}-${day}-${subjectId}`;
       if (!classSubjectDaySection[sectionKey]) classSubjectDaySection[sectionKey] = new Set();
-      classSubjectDaySection[sectionKey].add(getDaySection(slot));
+      const sec = getDaySection(slot);
+      classSubjectDaySection[sectionKey].add(sec);
+      classSubjectSectionWeekCount[`${classId}-${subjectId}-${sec}`] =
+        (classSubjectSectionWeekCount[`${classId}-${subjectId}-${sec}`] || 0) + 1;
       classSubjectLastSlot[`${classId}-${day}-${subjectId}`] = slot;
       const weekKey = `${classId}-${subjectId}`;
       if (!classSubjectWeekDays[weekKey]) classSubjectWeekDays[weekKey] = new Set();
