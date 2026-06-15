@@ -150,7 +150,7 @@ const AdminPrincipalDocs = () => {
                 <Select value={selForm} onValueChange={(v) => { setSelForm(v); setSelStream("ALL"); }}>
                   <SelectTrigger><SelectValue placeholder="Select form" /></SelectTrigger>
                   <SelectContent>
-                    {ALL_FORMS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                    {ALL_FORMS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
