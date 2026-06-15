@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activityLog";
 import {
   LayoutDashboard, Users, Receipt, Bell, FileText, Settings,
-  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart, ChefHat, Wallet, Award
+  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart, ChefHat, Wallet, Award, Target
 } from "lucide-react";
 import pccLogo from "@/assets/pcc-logo.png";
 
@@ -32,6 +32,7 @@ const adminLinks = [
   { label: "Master Timetable", icon: CalendarDays, path: "/admin/timetable/master" },
   { label: "Reports", icon: FileText, path: "/admin/reports" },
   { label: "Exam Results", icon: Award, path: "/admin/exams" },
+  { label: "Principal's Documents", icon: Target, path: "/admin/principal-docs" },
   { label: "Audit Trail", icon: ShieldCheck, path: "/admin/audit" },
   { label: "Announcements", icon: Bell, path: "/admin/announcements" },
   { label: "Fees & Requirements", icon: Receipt, path: "/admin/fees" },
