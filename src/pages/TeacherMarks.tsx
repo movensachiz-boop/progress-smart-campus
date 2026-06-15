@@ -148,6 +148,10 @@ const TeacherMarks = () => {
 
       const nextMarks: MarksMap = JSON.parse(JSON.stringify(marks));
       const subjSet = new Set<string>(subjects);
+      const orderList: string[] = [];
+      const pushOrder = (c: string) => { if (c && !orderList.includes(c)) orderList.push(c); };
+      // Seed order from explicit subject_codes (header row, left→right)
+      (subject_codes || []).forEach(c => pushOrder(normalizeSubjectCode(c)));
       const matched = new Set<string>();
       let matchedCount = 0;
       let cellCount = 0;
@@ -176,6 +180,7 @@ const TeacherMarks = () => {
           const code = normalizeSubjectCode(rawCode);
           nextMarks[s.id][code] = mark;
           subjSet.add(code);
+          pushOrder(code);
           cellCount++;
         }
       }
@@ -184,6 +189,7 @@ const TeacherMarks = () => {
 
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
+      setScanOrder(orderList);
       setLastMatched(matched);
       const formNote = form_level ? ` Detected Form ${form_level}${form_level === 5 ? " (Lower 6)" : form_level === 6 ? " (Upper 6)" : ""}.` : "";
       const formMismatch = form_level && activeExam && !activeExam.form_levels.includes(form_level)
