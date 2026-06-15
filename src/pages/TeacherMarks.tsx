@@ -200,7 +200,7 @@ const TeacherMarks = () => {
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
       setScanOrder(orderList);
-      setScanStudentOrder(studentOrderList);
+      setScanStudentOrder([...studentRank].sort((a, b) => a.rank - b.rank).map(r => r.id));
       setLastMatched(matched);
       const formNote = form_level ? ` Detected Form ${form_level}${form_level === 5 ? " (Lower 6)" : form_level === 6 ? " (Upper 6)" : ""}.` : "";
       const formMismatch = form_level && activeExam && !activeExam.form_levels.includes(form_level)
