@@ -260,6 +260,12 @@ const TeacherMarks = () => {
 
       <CameraCaptureDialog open={scanOpen} onOpenChange={setScanOpen} onCapture={handleCapture}
         title="Scan Mark Sheet" description="Capture the whole grid — names and all subject columns. Marks for every student & subject will auto-fill."/>
+      <PhoneCameraPairDialog
+        open={phonePairOpen}
+        onOpenChange={setPhonePairOpen}
+        onPhotos={async (photos) => { if (photos[0]) await handleCapture(photos[0]); }}
+        title="Use Phone Camera for Mark Sheet"
+      />
     </DashboardLayout>
   );
 };
