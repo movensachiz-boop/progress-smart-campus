@@ -14,6 +14,7 @@ import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import {
   SUBJECT_CODES, normalizeSubjectCode, formToLevel, computeGrade, computePoints,
 } from "@/lib/grading";
+import { useTimetable } from "@/context/TimetableContext";
 
 type Exam = { id: string; name: string; form_levels: number[]; published: boolean };
 type Profile = { id: string; first_name: string; last_name: string; form: string | null; stream: string | null };
