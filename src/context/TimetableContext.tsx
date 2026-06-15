@@ -120,6 +120,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const classSubjectDaySection: Record<string, Set<string>> = {};
     const classSubjectWeekDays: Record<string, Set<string>> = {};
     const classSubjectLastSlot: Record<string, number> = {};
+    // Weekly count of placements per section for a (class, subject) — used to keep
+    // subjects fairly distributed across morning / midday / afternoon over the week.
+    const classSubjectSectionWeekCount: Record<string, number> = {};
 
     teachers.forEach(t => { teacherLoad[t.id] = 0; });
 
@@ -385,7 +388,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       classSubjectDayCount[`${classId}-${day}-${subjectId}`] = (classSubjectDayCount[`${classId}-${day}-${subjectId}`] || 0) + 1;
       const sectionKey = `${classId}-${day}-${subjectId}`;
       if (!classSubjectDaySection[sectionKey]) classSubjectDaySection[sectionKey] = new Set();
-      classSubjectDaySection[sectionKey].add(getDaySection(slot));
+      const sec = getDaySection(slot);
+      classSubjectDaySection[sectionKey].add(sec);
+      classSubjectSectionWeekCount[`${classId}-${subjectId}-${sec}`] =
+        (classSubjectSectionWeekCount[`${classId}-${subjectId}-${sec}`] || 0) + 1;
       classSubjectLastSlot[`${classId}-${day}-${subjectId}`] = slot;
       const weekKey = `${classId}-${subjectId}`;
       if (!classSubjectWeekDays[weekKey]) classSubjectWeekDays[weekKey] = new Set();
@@ -455,7 +461,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               classSubjectDayCount[`${cls.id}-${day}-${pa.subjectId}`] = (classSubjectDayCount[`${cls.id}-${day}-${pa.subjectId}`] || 0) + 1;
               const sk = `${cls.id}-${day}-${pa.subjectId}`;
               if (!classSubjectDaySection[sk]) classSubjectDaySection[sk] = new Set();
-              classSubjectDaySection[sk].add(getDaySection(slot));
+              const sec2 = getDaySection(slot);
+              classSubjectDaySection[sk].add(sec2);
+              classSubjectSectionWeekCount[`${cls.id}-${pa.subjectId}-${sec2}`] =
+                (classSubjectSectionWeekCount[`${cls.id}-${pa.subjectId}-${sec2}`] || 0) + 1;
               classSubjectLastSlot[`${cls.id}-${day}-${pa.subjectId}`] = slot;
               const wk = `${cls.id}-${pa.subjectId}`;
               if (!classSubjectWeekDays[wk]) classSubjectWeekDays[wk] = new Set();
@@ -513,6 +522,12 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 const bEarly = earlyDayCount(cls.id, b.id);
                 if (aEarly !== bEarly) return aEarly - bEarly;
               }
+              // Fairness: avoid concentrating a subject in only one section of the day
+              // (e.g., always in the afternoon). Prefer the subject whose count in the
+              // CURRENT section is lowest across the week so far.
+              const aSecCount = classSubjectSectionWeekCount[`${cls.id}-${a.id}-${currentSection}`] || 0;
+              const bSecCount = classSubjectSectionWeekCount[`${cls.id}-${b.id}-${currentSection}`] || 0;
+              if (aSecCount !== bSecCount) return aSecCount - bSecCount;
               const aDays = classSubjectWeekDays[`${cls.id}-${a.id}`]?.size || 0;
               const bDays = classSubjectWeekDays[`${cls.id}-${b.id}`]?.size || 0;
               if (aDays !== bDays) return aDays - bDays;
