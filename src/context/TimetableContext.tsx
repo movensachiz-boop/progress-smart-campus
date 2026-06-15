@@ -522,6 +522,12 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 const bEarly = earlyDayCount(cls.id, b.id);
                 if (aEarly !== bEarly) return aEarly - bEarly;
               }
+              // Fairness: avoid concentrating a subject in only one section of the day
+              // (e.g., always in the afternoon). Prefer the subject whose count in the
+              // CURRENT section is lowest across the week so far.
+              const aSecCount = classSubjectSectionWeekCount[`${cls.id}-${a.id}-${currentSection}`] || 0;
+              const bSecCount = classSubjectSectionWeekCount[`${cls.id}-${b.id}-${currentSection}`] || 0;
+              if (aSecCount !== bSecCount) return aSecCount - bSecCount;
               const aDays = classSubjectWeekDays[`${cls.id}-${a.id}`]?.size || 0;
               const bDays = classSubjectWeekDays[`${cls.id}-${b.id}`]?.size || 0;
               if (aDays !== bDays) return aDays - bDays;
