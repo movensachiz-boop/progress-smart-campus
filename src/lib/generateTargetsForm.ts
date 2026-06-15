@@ -81,77 +81,62 @@ const renderPage = (
   let y = 40;
   const labelVal = (label: string, val: string, x: number, w: number) => {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.text(label, x, y);
     doc.setFont("helvetica", "normal");
     const lw = doc.getTextWidth(label);
     doc.line(x + lw + 2, y + 0.8, x + w, y + 0.8);
     if (val) doc.text(val, x + lw + 4, y);
   };
-  labelVal("NAME:", input.studentName || "", 10, 110);
-  labelVal("REG NO:", input.regNo || "", 125, 200);
-  labelVal("CLASS:", `${input.form || ""} ${input.stream || ""}`.trim(), 210, 290);
-  y += 8;
-  labelVal("TERM:", input.term || "", 10, 80);
-  labelVal("YEAR:", input.year || String(new Date().getFullYear()), 95, 165);
-  labelVal("DATE:", "", 180, 290);
-  y += 8;
-
-  doc.setFillColor(245, 247, 250);
-  doc.rect(10, y, pageW - 20, 10, "F");
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(8.5);
-  doc.setTextColor(60, 60, 60);
-  doc.text(
-    "Set realistic, measurable targets for each subject. Targets must be agreed and signed by the student, subject teacher, parent/guardian and class teacher.",
-    pageW / 2,
-    y + 6,
-    { align: "center" }
-  );
-  y += 14;
+  // Top header row: NAME | LEVEL | YEAR
+  labelVal("NAME:", input.studentName || "", 10, 130);
+  labelVal("LEVEL:", `${input.level} Level ${input.form || ""} ${input.stream || ""}`.trim(), 140, 220);
+  labelVal("YEAR:", `${input.term ? input.term + " / " : ""}${input.year || new Date().getFullYear()}`, 230, 287);
+  y += 6;
+  if (input.regNo) {
+    labelVal("REG NO:", input.regNo, 10, 130);
+    y += 6;
+  }
+  y += 2;
 
   const rowCount = input.level === "O" ? 10 : 4;
   const subs = (input.subjects || []).slice(0, rowCount);
   const filled = [...subs, ...Array(Math.max(0, rowCount - subs.length)).fill("")];
 
-  const body = filled.map((s, i) => [String(i + 1), s, "", "", "", "", "", ""]);
+  const body = filled.map((s) => [s, "", "", "", "", "", "", ""]);
 
   autoTable(doc, {
     startY: y,
     head: [[
-      "#", "SUBJECT", "PREV. GRADE", "CURRENT MARK", "TARGET MARK",
-      "TARGET GRADE", "STRATEGIES TO ACHIEVE TARGET", "TEACHER'S SIGNATURE",
+      "SUBJECT", "INITIAL TARGET", "RESULT %", "VARIANCE",
+      "MID TERM TARGET", "RESULT", "VARIANCE", "COMMENTS",
     ]],
     body,
     theme: "grid",
-    styles: { fontSize: 9, cellPadding: 2.5, valign: "middle", minCellHeight: input.level === "O" ? 11 : 18 },
+    styles: { fontSize: 9.5, cellPadding: 3, valign: "middle", minCellHeight: input.level === "O" ? 12 : 22, lineColor: [0, 0, 0], lineWidth: 0.2 },
     headStyles: { fillColor: navy, textColor: 255, fontSize: 9, halign: "center" },
     columnStyles: {
-      0: { cellWidth: 10, halign: "center" },
-      1: { cellWidth: 38 },
+      0: { cellWidth: 40 },
+      1: { cellWidth: 24, halign: "center" },
       2: { cellWidth: 22, halign: "center" },
-      3: { cellWidth: 25, halign: "center" },
-      4: { cellWidth: 25, halign: "center" },
-      5: { cellWidth: 25, halign: "center" },
-      6: { cellWidth: 80 },
-      7: { cellWidth: 52 },
+      3: { cellWidth: 22, halign: "center" },
+      4: { cellWidth: 28, halign: "center" },
+      5: { cellWidth: 22, halign: "center" },
+      6: { cellWidth: 22, halign: "center" },
+      7: { cellWidth: 97 },
     },
     margin: { left: 10, right: 10 },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 8;
-  const sigY = Math.min(finalY, pageH - 22);
-  const sigLine = (label: string, x: number, w: number) => {
-    doc.line(x, sigY, x + w, sigY);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(0, 0, 0);
-    doc.text(label, x, sigY + 4);
-  };
-  sigLine("Student Signature / Date", 12, 60);
-  sigLine("Class Teacher Signature / Date", 85, 70);
-  sigLine("Parent / Guardian Signature / Date", 165, 70);
-  sigLine("Principal Signature / Date", 245, 42);
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  const sigY = Math.min(finalY, pageH - 18);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Student's Signature:", 12, sigY);
+  doc.line(58, sigY + 0.8, 160, sigY + 0.8);
+  doc.text("Principal's Signature:", 170, sigY);
+  doc.line(218, sigY + 0.8, 287, sigY + 0.8);
 
   doc.setFont("helvetica", "italic");
   doc.setFontSize(7.5);
