@@ -14,6 +14,7 @@ import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import {
   SUBJECT_CODES, normalizeSubjectCode, formToLevel, computeGrade, computePoints,
 } from "@/lib/grading";
+import { useTimetable } from "@/context/TimetableContext";
 
 type Exam = { id: string; name: string; form_levels: number[]; published: boolean };
 type Profile = { id: string; first_name: string; last_name: string; form: string | null; stream: string | null };
@@ -22,6 +23,7 @@ type MarksMap = Record<string, Record<string, number | null>>;
 
 const TeacherMarks = () => {
   const { toast } = useToast();
+  const { subjects: ttSubjects } = useTimetable();
   const [exams, setExams] = useState<Exam[]>([]);
   const [examId, setExamId] = useState("");
   const [students, setStudents] = useState<Profile[]>([]);
@@ -55,6 +57,11 @@ const TeacherMarks = () => {
       setStudents((profs || []) as Profile[]);
       const m: MarksMap = {};
       const subjSet = new Set<string>();
+      // Pre-populate columns from the Subjects module for this exam's form levels
+      for (const sb of ttSubjects) {
+        const inForm = (sb.forms || []).some((f: any) => activeExam.form_levels.includes(Number(f)));
+        if (inForm && sb.code) subjSet.add(normalizeSubjectCode(sb.code));
+      }
       for (const r of (rows || []) as any[]) {
         const sid = r.student_profile_id;
         const code = normalizeSubjectCode(r.subject_code);
