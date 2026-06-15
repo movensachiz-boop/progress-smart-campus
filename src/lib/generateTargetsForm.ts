@@ -7,23 +7,23 @@ export interface TargetsStudent {
   regNo?: string;
   form?: string;
   stream?: string;
+  subjects?: string[]; // per-student subject override
 }
 
 export interface TargetsFormInput extends TargetsStudent {
   term?: string;
   year?: string;
   level: "O" | "A";
-  subjects?: string[];
 }
 
 export interface TargetsBatchInput {
   level: "O" | "A";
   term?: string;
   year?: string;
-  subjects?: string[];
   students: TargetsStudent[];
-  className?: string; // used for file name
+  className?: string;
 }
+
 
 const loadImage = (src: string): Promise<string> =>
   new Promise((resolve) => {
