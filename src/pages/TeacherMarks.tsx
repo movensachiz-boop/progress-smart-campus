@@ -172,11 +172,36 @@ const TeacherMarks = () => {
     }));
   };
 
-  const addSubject = () => {
+  // Per-student subjects derived from the Subjects module (form + learning area/stream)
+  const subjectsForStudent = (s: Profile): { code: string; name: string }[] => {
+    const fn = Number(s.form);
+    if (!fn) return [];
+    const stream = (s.stream || "").trim().toLowerCase();
+    const list = ttSubjects.filter((sb: any) => {
+      if (!(sb.forms || []).map(Number).includes(fn)) return false;
+      if (sb.learningAreas && sb.learningAreas.length > 0) {
+        if (!stream) return false;
+        return sb.learningAreas.some((la: string) => la.toLowerCase() === stream);
+      }
+      return true;
+    });
+    const map = new Map<string, string>();
+    list.forEach((sb: any) => {
+      const code = normalizeSubjectCode(sb.code || sb.name);
+      if (code) map.set(code, sb.name || code);
+    });
+    // Include any extra codes already saved for this student
+    Object.keys(marks[s.id] || {}).forEach(c => {
+      if (!map.has(c)) map.set(c, SUBJECT_CODES[c] || c);
+    });
+    return [...map.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code));
+  };
+
+  const addSubjectForStudent = (sid: string) => {
     const raw = prompt("Add subject code (e.g. MAT, CHE, PHY)");
     if (!raw) return;
     const code = normalizeSubjectCode(raw);
-    if (!subjects.includes(code)) setSubjects([...subjects, code].sort());
+    setMarks(prev => ({ ...prev, [sid]: { ...(prev[sid] || {}), [code]: prev[sid]?.[code] ?? null } }));
   };
 
   return (
