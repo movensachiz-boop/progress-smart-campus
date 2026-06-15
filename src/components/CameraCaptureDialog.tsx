@@ -143,7 +143,7 @@ const CameraCaptureDialog = ({ open, onOpenChange, onCapture, title = "Scan with
           <DialogTitle className="flex items-center gap-2"><Camera size={18} /> {title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="relative w-full overflow-hidden rounded-lg bg-black flex items-center justify-center" style={{ aspectRatio: '16/9' }}>
+        <div className="relative w-full overflow-hidden rounded-lg bg-black flex items-center justify-center" style={{ height: '78vh' }}>
           {!preview ? (
             <>
               <video ref={videoRef} className="h-full w-full object-contain" playsInline muted />
