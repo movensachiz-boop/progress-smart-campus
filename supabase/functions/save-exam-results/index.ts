@@ -15,12 +15,46 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
-    const { exam_id, rows } = await req.json();
+    const body = await req.json();
+    const action = body.action || "save";
+
+    if (action === "load") {
+      const { exam_id } = body;
+      if (!exam_id) {
+        return new Response(JSON.stringify({ error: "exam_id required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: exam } = await admin
+        .from("exams")
+        .select("id, name, exam_type, term, year, form_levels, published")
+        .eq("id", exam_id).maybeSingle();
+      if (!exam) {
+        return new Response(JSON.stringify({ error: "Exam not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const formStrs = (exam.form_levels || []).map((n: number) => String(n));
+      const { data: students } = await admin
+        .from("profiles")
+        .select("id, first_name, last_name, form, stream")
+        .in("form", formStrs).order("last_name");
+      const { data: results } = await admin
+        .from("exam_results")
+        .select("student_profile_id, subject_code, mark")
+        .eq("exam_id", exam_id);
+      return new Response(JSON.stringify({ exam, students: students || [], results: results || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { exam_id, rows } = body;
     if (!exam_id || !Array.isArray(rows) || rows.length === 0) {
       return new Response(JSON.stringify({ error: "exam_id and rows[] required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     // Validate exam exists
     const { data: exam, error: exErr } = await admin
