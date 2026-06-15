@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activityLog";
 import {
   LayoutDashboard, Users, Receipt, Bell, FileText, Settings,
-  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart, ChefHat, Wallet
+  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart, ChefHat, Wallet, Award
 } from "lucide-react";
 import pccLogo from "@/assets/pcc-logo.png";
 
@@ -31,6 +31,7 @@ const adminLinks = [
   { label: "Timetable", icon: Calendar, path: "/admin/timetable" },
   { label: "Master Timetable", icon: CalendarDays, path: "/admin/timetable/master" },
   { label: "Reports", icon: FileText, path: "/admin/reports" },
+  { label: "Exam Results", icon: Award, path: "/admin/exams" },
   { label: "Audit Trail", icon: ShieldCheck, path: "/admin/audit" },
   { label: "Announcements", icon: Bell, path: "/admin/announcements" },
   { label: "Fees & Requirements", icon: Receipt, path: "/admin/fees" },
@@ -50,6 +51,7 @@ const studentLinks = [
   { label: "Announcements", icon: Bell, path: "/student/announcements" },
   { label: "Fees & Requirements", icon: FileText, path: "/student/requirements" },
   { label: "School Shop", icon: ShoppingBag, path: "/student/shop" },
+  { label: "Exam Results", icon: Award, path: "/student/results" },
 ];
 
 const teacherLinks = [
@@ -58,6 +60,7 @@ const teacherLinks = [
   { label: "Class Roster", icon: BookOpen, path: "/teacher/roster" },
   { label: "Timetable", icon: CalendarDays, path: "/teacher/timetable" },
   { label: "Announcements", icon: Bell, path: "/teacher/announcements" },
+  { label: "Enter Marks", icon: Award, path: "/teacher/marks" },
 ];
 
 const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {

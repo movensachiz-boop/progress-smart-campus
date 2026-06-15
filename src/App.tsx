@@ -41,6 +41,11 @@ import AdminFundTracker from "./pages/AdminFundTracker";
 import StudentInventory from "./pages/StudentInventory";
 import StaffGuard from "./components/StaffGuard";
 import PhoneScan from "./pages/PhoneScan";
+import AdminExams from "./pages/AdminExams";
+import TeacherMarks from "./pages/TeacherMarks";
+import StudentReports from "./pages/StudentReports";
+import VerifyReport from "./pages/VerifyReport";
+import ScanMarks from "./pages/ScanMarks";
 
 // Sub-roles
 const DENY_TM_AND_CASHIER: ("cashier" | "timetable_manager")[] = ["cashier", "timetable_manager"];
@@ -92,6 +97,11 @@ const App = () => (
             <Route path="/teacher/announcements" element={<AnnouncementsPage role="teacher" />} />
             <Route path="/owner" element={<OwnerDashboard />} />
             <Route path="/verify" element={<VerifyReceipt />} />
+            <Route path="/verify-report/:examId/:studentId" element={<VerifyReport />} />
+            <Route path="/scan-marks/:examId" element={<ScanMarks />} />
+            <Route path="/admin/exams" element={<StaffGuard deny={DENY_TM}><AdminExams /></StaffGuard>} />
+            <Route path="/teacher/marks" element={<TeacherMarks />} />
+            <Route path="/student/results" element={<StudentReports />} />
             <Route path="/phone-scan/:sessionId" element={<PhoneScan />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
