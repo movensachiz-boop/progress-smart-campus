@@ -609,35 +609,42 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
               assigned = true;
 
-              const nextSlot = slot + 1;
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
-              const alreadyTodayCount = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
-              if (
-                (doubleEligible.has(subject.id) || mustDouble(subject, cls.form)) &&
-                !classSubjectDayDoubled[doubleKey] &&
-                alreadyTodayCount < 2 && nextSlot <= totalSlots &&
-                !isNonAcademic(day, nextSlot) && !preAssigned[`${cls.id}-${day}-${nextSlot}`] &&
-                (classSubjectCount[cls.id][subject.id] || 0) < ppwFor(subject, cls) &&
-                !teacherSchedule[teacher.id]?.[`${day}-${nextSlot}`] &&
-                (teacherLoad[teacher.id] || 0) < teacher.maxPeriodsPerWeek
-              ) {
-                preAssigned[`${cls.id}-${day}-${nextSlot}`] = { subjectId: subject.id, teacherId: teacher.id, combinedClassIds: others };
-                // Also pre-assign double for sibling combined classes
-                others.forEach(cid => {
-                  if (!preAssigned[`${cid}-${day}-${nextSlot}`] &&
-                      (classSubjectCount[cid]?.[subject.id] || 0) < ppwFor(subject, classes.find(c => c.id === cid))) {
-                    const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
-                    preAssigned[`${cid}-${day}-${nextSlot}`] = {
-                      subjectId: subject.id,
-                      teacherId: teacher.id,
-                      combinedClassIds: otherCombined,
-                      skipTeacherLoad: true,
-                    };
-                  }
-                });
-                if (!teacherSchedule[teacher.id]) teacherSchedule[teacher.id] = {};
-                teacherSchedule[teacher.id][`${day}-${nextSlot}`] = cls.id;
-                classSubjectDayDoubled[doubleKey] = true;
+              const targetBlock = blockSize(subject, cls.form);
+              // For double/quad-eligible subjects, pre-assign the remaining block-1 consecutive slots.
+              const wantsBlock = targetBlock > 1 || doubleEligible.has(subject.id);
+              if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
+                const extra = Math.max(1, targetBlock - 1);
+                let placed = 0;
+                for (let k = 1; k <= extra; k++) {
+                  const ns = slot + k;
+                  if (ns > totalSlots) break;
+                  if (isNonAcademic(day, ns)) break;
+                  if (preAssigned[`${cls.id}-${day}-${ns}`]) break;
+                  if ((classSubjectCount[cls.id][subject.id] || 0) + placed + 1 > ppwFor(subject, cls)) break;
+                  if (teacherSchedule[teacher.id]?.[`${day}-${ns}`]) break;
+                  if ((teacherLoad[teacher.id] || 0) + placed + 1 > teacher.maxPeriodsPerWeek) break;
+                  preAssigned[`${cls.id}-${day}-${ns}`] = { subjectId: subject.id, teacherId: teacher.id, combinedClassIds: others };
+                  others.forEach(cid => {
+                    if (!preAssigned[`${cid}-${day}-${ns}`] &&
+                        (classSubjectCount[cid]?.[subject.id] || 0) < ppwFor(subject, classes.find(c => c.id === cid))) {
+                      const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
+                      preAssigned[`${cid}-${day}-${ns}`] = {
+                        subjectId: subject.id,
+                        teacherId: teacher.id,
+                        combinedClassIds: otherCombined,
+                        skipTeacherLoad: true,
+                      };
+                    }
+                  });
+                  if (!teacherSchedule[teacher.id]) teacherSchedule[teacher.id] = {};
+                  teacherSchedule[teacher.id][`${day}-${ns}`] = cls.id;
+                  placed++;
+                  // For doubleEligible non-quad subjects, only chain a single extra (double).
+                  if (targetBlock <= 1 && doubleEligible.has(subject.id)) break;
+                }
+                if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
+              }
               }
               break;
             }
