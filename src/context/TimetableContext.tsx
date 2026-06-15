@@ -120,6 +120,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const classSubjectDaySection: Record<string, Set<string>> = {};
     const classSubjectWeekDays: Record<string, Set<string>> = {};
     const classSubjectLastSlot: Record<string, number> = {};
+    // Weekly count of placements per section for a (class, subject) — used to keep
+    // subjects fairly distributed across morning / midday / afternoon over the week.
+    const classSubjectSectionWeekCount: Record<string, number> = {};
 
     teachers.forEach(t => { teacherLoad[t.id] = 0; });
 
