@@ -287,6 +287,45 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     })();
 
+    // Specific Business Studies combined groups (custom school rules):
+    //   - Form 3 Leo + Virgo + Aries: combined ONLY on Monday & Tuesday.
+    //   - Form 4 Shark + Whale: combined every day.
+    (() => {
+      const bus = subjects.find(s => (s.code || '').toUpperCase() === 'BUS');
+      if (!bus) return;
+      const pickGroup = (form: number, streamNames: string[]) =>
+        streamNames
+          .map(n => classes.find(c => c.form === form && c.stream.toLowerCase() === n.toLowerCase()))
+          .filter(Boolean) as SchoolClass[];
+      const chooseTeacher = (group: SchoolClass[]) => {
+        const ids = group.map(c => c.id);
+        const ranked = teachers
+          .map(t => ({
+            t,
+            covered: ids.filter(cid =>
+              t.assignments.some(a => a.subjectId === bus.id && a.classIds.some(rc => matchesClass(rc, cid)))
+            ).length,
+          }))
+          .filter(x => x.covered > 0)
+          .sort((a, b) => b.covered - a.covered);
+        return ranked[0]?.t;
+      };
+      const applyGroup = (group: SchoolClass[], allowedDays?: Set<DayOfWeek>) => {
+        if (group.length < 2) return;
+        const eligible = group.filter(c => (classSubjectIds[c.id] || []).includes(bus.id));
+        if (eligible.length < 2) return;
+        const teacher = chooseTeacher(eligible);
+        if (!teacher) return;
+        const ids = eligible.map(c => c.id);
+        ids.forEach(cid => {
+          if (!combineGroups[cid]) combineGroups[cid] = {};
+          combineGroups[cid][bus.id] = { teacherId: teacher.id, groupClassIds: ids, allowedDays };
+        });
+      };
+      applyGroup(pickGroup(3, ['Leo', 'Virgo', 'Aries']), new Set<DayOfWeek>(['Monday', 'Tuesday']));
+      applyGroup(pickGroup(4, ['Shark', 'Whale']));
+    })();
+
 
 
 
