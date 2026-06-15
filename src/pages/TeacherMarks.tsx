@@ -296,7 +296,7 @@ const TeacherMarks = () => {
                         <Table>
                           <TableHeader>
                             <TableRow className="sticky top-0 bg-background/95 backdrop-blur-sm z-10">
-                              <TableHead>Subject</TableHead>
+                              <TableHead className="sticky left-0 bg-background/95 backdrop-blur-sm z-20">Subject</TableHead>
                               <TableHead className="w-28 text-center">Mark</TableHead>
                               <TableHead className="w-20 text-center">Grade</TableHead>
                             </TableRow>
@@ -307,7 +307,7 @@ const TeacherMarks = () => {
                               const grade = m != null ? computeGrade(m, level) : "";
                               return (
                                 <TableRow key={code}>
-                                  <TableCell>
+                                  <TableCell className="sticky left-0 bg-background/95 z-10 border-r">
                                     <span className="font-medium">{code}</span>
                                     <span className="ml-2 text-xs text-muted-foreground">{name}</span>
                                   </TableCell>
