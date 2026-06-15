@@ -5,6 +5,69 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const canonicalSubjectCodes = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO", "ENG", "SHO", "AGR", "FN", "ART"];
+
+const normalizeSubjectCode = (raw: string) => {
+  const stripped = raw.trim().toUpperCase().replace(/\s+/g, "").replace(/[\/\.\-]/g, "");
+  const map: Record<string, string> = {
+    CSC: "CSC", CSCIE: "CSC", COMPUTER: "CSC", COMPSC: "CSC", CSCIENCE: "CSC",
+    RS: "RS", RE: "RS", RELIGIOUS: "RS",
+    LIT: "LIT", LITERATURE: "LIT",
+    BIO: "BIO", BIOLOGY: "BIO",
+    CHE: "CHE", CHEM: "CHE", CHEMISTRY: "CHE",
+    MAT: "MAT", MATH: "MAT", MATHS: "MAT", MATHEMATICS: "MAT",
+    ACC: "ACC", ACCOUNTS: "ACC", ACCOUNTING: "ACC",
+    PHY: "PHY", PHYSICS: "PHY",
+    GEO: "GEO", GEOGRAPHY: "GEO",
+    BUS: "BUS", BUSINESS: "BUS",
+    ECO: "ECO", ECONOMICS: "ECO",
+    ENG: "ENG", ENGLISH: "ENG",
+    SHO: "SHO", SHONA: "SHO",
+    HIS: "HIS", HISTORY: "HIS",
+    AGR: "AGR", AGRIC: "AGR", AGRICULTURE: "AGR",
+    FN: "FN", FOOD: "FN", FOODNUTRITION: "FN",
+    ART: "ART",
+  };
+  return map[stripped] || stripped;
+};
+
+const detectFormLevel = (text: string): number | null => {
+  const upper = text.toUpperCase();
+  if (/LOWER\s*6|LOWER\s*SIX/.test(upper)) return 5;
+  if (/UPPER\s*6|UPPER\s*SIX/.test(upper)) return 6;
+  const form = upper.match(/\bFORM\s*([1-6])\b/);
+  if (form) return Number(form[1]);
+  return null;
+};
+
+const parseTranscriptRows = (text: string) => {
+  const students: { name: string; marks: Record<string, number> }[] = [];
+  const subjectSet = new Set<string>();
+  const codePattern = "LIT|R\\/?S|RS|HIS|C\\/?SC|CSC|BIO|CHE|MAT|ACC|PHY|GEO|BUS|ECO|ENG|SHO|AGR|F\\/?N|FN|ART";
+  const markRegex = new RegExp(`\\b(${codePattern})\\b\\s*[:=\\-]?\\s*(\\d{1,3})`, "gi");
+
+  for (const rawLine of text.split(/\n+/)) {
+    const line = rawLine.trim();
+    if (!/^\d{1,2}\b/.test(line)) continue;
+    const marks: Record<string, number> = {};
+    let firstSubjectIndex = line.length;
+    for (const match of line.matchAll(markRegex)) {
+      const code = normalizeSubjectCode(match[1]);
+      const mark = Number(match[2]);
+      if (!canonicalSubjectCodes.includes(code) || !Number.isFinite(mark) || mark < 0 || mark > 100) continue;
+      marks[code] = mark;
+      subjectSet.add(code);
+      firstSubjectIndex = Math.min(firstSubjectIndex, match.index ?? line.length);
+    }
+    if (!Object.keys(marks).length) continue;
+    const beforeMarks = line.slice(0, firstSubjectIndex).replace(/^\d{1,2}\s+/, "").trim();
+    const name = beforeMarks.replace(/\b(POINTS?|TOTAL)\b.*$/i, "").replace(/\s+/g, " ").trim();
+    if (name) students.push({ name, marks });
+  }
+
+  return { students, subject_codes: [...subjectSet] };
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
