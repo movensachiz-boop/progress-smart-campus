@@ -218,8 +218,10 @@ NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
 
 Extract the visible CODE: number pairs exactly from the transcription. Do not drop numbers. Do not include POINTS/TOTAL. Use LOWER 6 = form_level 5 and UPPER 6 = form_level 6.
 
+CRITICAL: Emit students[] strictly in the TOP-TO-BOTTOM order they appear on the sheet. Include row_number for every student using the printed row number on the sheet (1, 2, 3, ...). If a row number is not printed, use the visual top-to-bottom sequence (1-based).
+
 OUTPUT via tool call only:
-- students[]: each with { name: "FULL NAME", marks: { CODE: number } }
+- students[]: each with { row_number: integer, name: "FULL NAME", marks: { CODE: number } }
 - subject_codes[]: subject codes seen on the sheet
 - form_level: detected numeric form level when visible`,
           },
