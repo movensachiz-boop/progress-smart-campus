@@ -23,7 +23,14 @@ interface StudentRow {
   stream: string | null;
 }
 
-const ALL_FORMS = ["Form 1", "Form 2", "Form 3", "Form 4", "Form 5", "Form 6"];
+const ALL_FORMS = [
+  { value: "1", label: "Form 1" },
+  { value: "2", label: "Form 2" },
+  { value: "3", label: "Form 3" },
+  { value: "4", label: "Form 4" },
+  { value: "5", label: "Form 5" },
+  { value: "6", label: "Form 6" },
+];
 
 const parseFormNumber = (form: string | null | undefined): number | null => {
   if (!form) return null;
