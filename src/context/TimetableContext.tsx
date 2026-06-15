@@ -100,10 +100,18 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects).
     const doubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
     // "Always double" subjects: every placement must be part of a double period.
-    // Covers core sciences + Agriculture by code, and ALL A-level (forms 5/6) subjects.
+    // Covers core sciences + Agriculture by code. A-level (forms 5/6) use QUADS instead.
     const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP']);
+    // A-level subjects (forms 5/6) must always be scheduled as 4 consecutive periods on a day.
+    const mustQuad = (form: number | undefined) => form === 5 || form === 6;
     const mustDouble = (s: Subject, form: number | undefined) =>
-      form === 5 || form === 6 || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
+      mustQuad(form) || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
+    // Per-day block size required when this subject appears on a day.
+    const blockSize = (s: Subject, form: number | undefined) => {
+      if (mustQuad(form)) return 4;
+      if (mustDouble(s, form)) return 2;
+      return 1;
+    };
     const classSubjectDayDoubled: Record<string, boolean> = {};
     // All compulsory (core) subjects should appear EVERY day for each class.
     const dailySubjectIds = new Set(subjects.filter(s => s.isCompulsory).map(s => s.id));
