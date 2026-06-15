@@ -138,12 +138,12 @@ const CameraCaptureDialog = ({ open, onOpenChange, onCapture, title = "Scan with
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!submitting) onOpenChange(v); }}>
-      <DialogContent className="max-w-[98vw] sm:max-w-7xl w-[98vw] p-4">
+      <DialogContent className="max-w-none w-screen h-screen sm:rounded-none p-3 flex flex-col gap-2 top-0 left-0 translate-x-0 translate-y-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Camera size={18} /> {title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="relative w-full overflow-hidden rounded-lg bg-black flex items-center justify-center" style={{ height: '78vh' }}>
+        <div className="relative w-full flex-1 overflow-hidden rounded-lg bg-black flex items-center justify-center">
           {!preview ? (
             <>
               <video ref={videoRef} className="h-full w-full object-contain" playsInline muted />
