@@ -41,6 +41,11 @@ import AdminFundTracker from "./pages/AdminFundTracker";
 import StudentInventory from "./pages/StudentInventory";
 import StaffGuard from "./components/StaffGuard";
 import PhoneScan from "./pages/PhoneScan";
+import AdminExams from "./pages/AdminExams";
+import TeacherMarks from "./pages/TeacherMarks";
+import StudentReports from "./pages/StudentReports";
+import VerifyReport from "./pages/VerifyReport";
+import ScanMarks from "./pages/ScanMarks";
 
 // Sub-roles
 const DENY_TM_AND_CASHIER: ("cashier" | "timetable_manager")[] = ["cashier", "timetable_manager"];
