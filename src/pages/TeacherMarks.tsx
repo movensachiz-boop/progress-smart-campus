@@ -172,11 +172,36 @@ const TeacherMarks = () => {
     }));
   };
 
-  const addSubject = () => {
+  // Per-student subjects derived from the Subjects module (form + learning area/stream)
+  const subjectsForStudent = (s: Profile): { code: string; name: string }[] => {
+    const fn = Number(s.form);
+    if (!fn) return [];
+    const stream = (s.stream || "").trim().toLowerCase();
+    const list = ttSubjects.filter((sb: any) => {
+      if (!(sb.forms || []).map(Number).includes(fn)) return false;
+      if (sb.learningAreas && sb.learningAreas.length > 0) {
+        if (!stream) return false;
+        return sb.learningAreas.some((la: string) => la.toLowerCase() === stream);
+      }
+      return true;
+    });
+    const map = new Map<string, string>();
+    list.forEach((sb: any) => {
+      const code = normalizeSubjectCode(sb.code || sb.name);
+      if (code) map.set(code, sb.name || code);
+    });
+    // Include any extra codes already saved for this student
+    Object.keys(marks[s.id] || {}).forEach(c => {
+      if (!map.has(c)) map.set(c, SUBJECT_CODES[c] || c);
+    });
+    return [...map.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code));
+  };
+
+  const addSubjectForStudent = (sid: string) => {
     const raw = prompt("Add subject code (e.g. MAT, CHE, PHY)");
     if (!raw) return;
     const code = normalizeSubjectCode(raw);
-    if (!subjects.includes(code)) setSubjects([...subjects, code].sort());
+    setMarks(prev => ({ ...prev, [sid]: { ...(prev[sid] || {}), [code]: prev[sid]?.[code] ?? null } }));
   };
 
   return (
@@ -199,7 +224,6 @@ const TeacherMarks = () => {
             <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading} title="Scan QR with phone to capture from phone camera">
               <Camera size={14}/> Use Phone Camera
             </Button>
-            <Button onClick={addSubject} variant="outline" disabled={!activeExam}>+ Subject Column</Button>
             <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving}>
               {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save All
             </Button>
@@ -215,55 +239,63 @@ const TeacherMarks = () => {
         {loading ? (
           <div className="p-8 text-center"><Loader2 className="inline animate-spin mr-2" size={16}/>Loading…</div>
         ) : students.length > 0 && (
-          <Card>
-            <CardContent className="p-0 overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="sticky left-0 bg-background z-10 min-w-[200px]">Student</TableHead>
-                    {subjects.map(code => (
-                      <TableHead key={code} className="text-center w-20" title={SUBJECT_CODES[code] || code}>
-                        {code}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {students.map(s => {
-                    const level = formToLevel(s.form);
-                    const row = marks[s.id] || {};
-                    const isMatched = lastMatched.has(s.id);
-                    return (
-                      <TableRow key={s.id} className={isMatched ? "bg-green-50 dark:bg-green-950/20" : ""}>
-                        <TableCell className="sticky left-0 bg-background z-10">
-                          {isMatched && <CheckCircle2 className="inline mr-1 text-green-600" size={12}/>}
-                          {s.last_name} {s.first_name}{" "}
-                          <span className="text-xs text-muted-foreground">F{s.form} {s.stream}</span>
-                        </TableCell>
-                        {subjects.map(code => {
-                          const m = row[code];
-                          const grade = m != null ? computeGrade(m, level) : "";
-                          return (
-                            <TableCell key={code} className="p-1 text-center">
-                              <Input
-                                type="number" min={0} max={100}
-                                className="h-8 text-center text-sm"
-                                value={m ?? ""}
-                                onChange={(e) => updateMark(s.id, code, e.target.value)}
-                              />
-                              {grade && <div className="text-[10px] text-muted-foreground mt-0.5">{grade}</div>}
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            {students.map(s => {
+              const level = formToLevel(s.form);
+              const row = marks[s.id] || {};
+              const isMatched = lastMatched.has(s.id);
+              const studentSubs = subjectsForStudent(s);
+              return (
+                <Card key={s.id} className={isMatched ? "border-green-500/50" : ""}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                      <div className="font-semibold">
+                        {isMatched && <CheckCircle2 className="inline mr-1 text-green-600" size={14}/>}
+                        {s.last_name} {s.first_name}
+                        <span className="ml-2 text-xs text-muted-foreground">F{s.form} {s.stream}</span>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => addSubjectForStudent(s.id)}>+ Subject</Button>
+                    </div>
+                    {studentSubs.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No subjects assigned for this student's form/stream. Click "+ Subject" to add one.</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Subject</TableHead>
+                            <TableHead className="w-28 text-center">Mark</TableHead>
+                            <TableHead className="w-20 text-center">Grade</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {studentSubs.map(({ code, name }) => {
+                            const m = row[code];
+                            const grade = m != null ? computeGrade(m, level) : "";
+                            return (
+                              <TableRow key={code}>
+                                <TableCell>
+                                  <span className="font-medium">{code}</span>
+                                  <span className="ml-2 text-xs text-muted-foreground">{name}</span>
+                                </TableCell>
+                                <TableCell className="p-1 text-center">
+                                  <Input type="number" min={0} max={100} className="h-8 text-center"
+                                    value={m ?? ""} onChange={(e) => updateMark(s.id, code, e.target.value)}/>
+                                </TableCell>
+                                <TableCell className="text-center text-sm font-medium">{grade || "—"}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
       </div>
+
 
       <CameraCaptureDialog open={scanOpen} onOpenChange={setScanOpen} onCapture={handleCapture}
         title="Scan Mark Sheet" description="Capture the whole grid — names and all subject columns. Marks for every student & subject will auto-fill."/>
