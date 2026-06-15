@@ -5,6 +5,69 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const canonicalSubjectCodes = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO", "ENG", "SHO", "AGR", "FN", "ART"];
+
+const normalizeSubjectCode = (raw: string) => {
+  const stripped = raw.trim().toUpperCase().replace(/\s+/g, "").replace(/[\/\.\-]/g, "");
+  const map: Record<string, string> = {
+    CSC: "CSC", CSCIE: "CSC", COMPUTER: "CSC", COMPSC: "CSC", CSCIENCE: "CSC",
+    RS: "RS", RE: "RS", RELIGIOUS: "RS",
+    LIT: "LIT", LITERATURE: "LIT",
+    BIO: "BIO", BIOLOGY: "BIO",
+    CHE: "CHE", CHEM: "CHE", CHEMISTRY: "CHE",
+    MAT: "MAT", MATH: "MAT", MATHS: "MAT", MATHEMATICS: "MAT",
+    ACC: "ACC", ACCOUNTS: "ACC", ACCOUNTING: "ACC",
+    PHY: "PHY", PHYSICS: "PHY",
+    GEO: "GEO", GEOGRAPHY: "GEO",
+    BUS: "BUS", BUSINESS: "BUS",
+    ECO: "ECO", ECONOMICS: "ECO",
+    ENG: "ENG", ENGLISH: "ENG",
+    SHO: "SHO", SHONA: "SHO",
+    HIS: "HIS", HISTORY: "HIS",
+    AGR: "AGR", AGRIC: "AGR", AGRICULTURE: "AGR",
+    FN: "FN", FOOD: "FN", FOODNUTRITION: "FN",
+    ART: "ART",
+  };
+  return map[stripped] || stripped;
+};
+
+const detectFormLevel = (text: string): number | null => {
+  const upper = text.toUpperCase();
+  if (/LOWER\s*6|LOWER\s*SIX/.test(upper)) return 5;
+  if (/UPPER\s*6|UPPER\s*SIX/.test(upper)) return 6;
+  const form = upper.match(/\bFORM\s*([1-6])\b/);
+  if (form) return Number(form[1]);
+  return null;
+};
+
+const parseTranscriptRows = (text: string) => {
+  const students: { name: string; marks: Record<string, number> }[] = [];
+  const subjectSet = new Set<string>();
+  const codePattern = "LIT|R\\/?S|RS|HIS|C\\/?SC|CSC|BIO|CHE|MAT|ACC|PHY|GEO|BUS|ECO|ENG|SHO|AGR|F\\/?N|FN|ART";
+  const markRegex = new RegExp(`\\b(${codePattern})\\b\\s*[:=\\-]?\\s*(\\d{1,3})`, "gi");
+
+  for (const rawLine of text.split(/\n+/)) {
+    const line = rawLine.trim();
+    if (!/^\d{1,2}\b/.test(line)) continue;
+    const marks: Record<string, number> = {};
+    let firstSubjectIndex = line.length;
+    for (const match of line.matchAll(markRegex)) {
+      const code = normalizeSubjectCode(match[1]);
+      const mark = Number(match[2]);
+      if (!canonicalSubjectCodes.includes(code) || !Number.isFinite(mark) || mark < 0 || mark > 100) continue;
+      marks[code] = mark;
+      subjectSet.add(code);
+      firstSubjectIndex = Math.min(firstSubjectIndex, match.index ?? line.length);
+    }
+    if (!Object.keys(marks).length) continue;
+    const beforeMarks = line.slice(0, firstSubjectIndex).replace(/^\d{1,2}\s+/, "").trim();
+    const name = beforeMarks.replace(/\b(POINTS?|TOTAL)\b.*$/i, "").replace(/\s+/g, " ").trim();
+    if (name) students.push({ name, marks });
+  }
+
+  return { students, subject_codes: [...subjectSet] };
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -35,6 +98,68 @@ Deno.serve(async (req) => {
       : "Use the subject headers visible on the sheet.";
 
 
+    const imageUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+
+    const transcriptResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          {
+            role: "system",
+            content: `You are a strict OCR transcriber for a school exam mark sheet with handwritten NUMERIC MARKS.
+
+Transcribe the photo row by row. Include the form/level heading, printed subject headers, every student name, and every visible handwritten mark. Write each mark as CODE: number under the correct subject code. Ignore POINTS/TOTAL except do not confuse them with subject marks.
+
+If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form 6.
+
+Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART. Normalize C/SC to CSC and R/S to RS.
+
+Return plain text only, one student row per line, like:
+LOWER 6 (2026 MID-TERM 2 EXAMINATIONS)
+NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
+1 CHUNDU TRISHA CHE: 40 PHY: 13 GEO: 17
+2 TSANU FAN CSC: 94 CHE: 84 MAT: 76 PHY: 78`,
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: `Transcribe this mark sheet. Read the handwritten numbers carefully and include every visible mark under its subject header.\n\nExpected subject columns: ${expectedCodesText}\n\nClass roster to help names:\n${rosterText}` },
+              { type: "image_url", image_url: { url: imageUrl } },
+            ],
+          },
+        ],
+        max_tokens: 5000,
+      }),
+    });
+
+    if (!transcriptResponse.ok) {
+      const errorText = await transcriptResponse.text();
+      console.error("AI transcript error:", transcriptResponse.status, errorText);
+      if (transcriptResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "AI busy. Try again shortly." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (transcriptResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: "Failed to process image" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const transcriptData = await transcriptResponse.json();
+    const transcript = String(transcriptData.choices?.[0]?.message?.content || "").trim();
+    const transcriptParsed = parseTranscriptRows(transcript);
+    const detectedFormLevel = detectFormLevel(transcript);
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -46,44 +171,18 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a strict OCR engine for a school exam mark sheet with handwritten NUMERIC MARKS.
+            content: `You convert OCR transcription of a school exam mark sheet into structured rows.
 
-IMPORTANT: The main task is to read the numbers in the subject cells. Do not drop numbers just because the handwriting is imperfect. If a mark is visible but uncertain, return your best numeric reading. Only leave a subject out when that cell is truly blank.
+Extract the visible CODE: number pairs exactly from the transcription. Do not drop numbers. Do not include POINTS/TOTAL. Use LOWER 6 = form_level 5 and UPPER 6 = form_level 6.
 
-LAYOUT: The sheet is a grid. The leftmost columns are an index number and a STUDENT NAME (surname then first name, e.g. "CHUNDU TRISHA"). The remaining columns are SUBJECT columns with header codes such as: LIT, R/S, HIS, C/SC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART. The last column may be POINTS or TOTAL — IGNORE it (we recompute).
-
-GOAL: For EVERY student row, return the handwritten mark in EVERY filled subject cell, mapped to that column's subject code. Scan horizontally across the row and read each number under its printed subject header. Do NOT skip filled cells. Do NOT invent marks for empty cells. Marks are integers 0–100 (commonly 10–95). Read carefully — 1 vs 7, 4 vs 9, 0 vs 6, 3 vs 8, 5 vs 6 are easy to confuse; cross-check with row lines and column boundaries.
-
-Use the provided roster only to help match names and expected subject columns. The photo is still the source of truth for the marks: extract the visible numbers from the sheet.
-
-NUMBER RULES:
-- Return raw integers only, not strings, not grades, not percentages.
-- If two digits are written close together, read them as one mark (e.g. "40", "17", "30").
-- Do not confuse the printed row/index number with a subject mark.
-- Do not confuse totals/points with subject marks; ignore POINTS/TOTAL columns.
-- If the name is readable but only some marks are readable, still return the readable marks.
-
-NORMALIZE column codes to UPPERCASE with no separators:
-  C/SC -> CSC, R/S -> RS, F/N -> FN, A/RT -> ART, B/S -> BUS, E/CO -> ECO.
-Use these canonical codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART.
-
-OUTPUT (via tool call only):
-- students[]: each with { name: "FULL NAME AS WRITTEN", marks: { CODE: number, ... } } — include EVERY filled cell for that row.
-- subject_codes[]: the column codes seen on the sheet, in left-to-right order.
-
-Skip rows that have no name. Never include the POINTS/TOTAL column.`,
+OUTPUT via tool call only:
+- students[]: each with { name: "FULL NAME", marks: { CODE: number } }
+- subject_codes[]: subject codes seen on the sheet
+- form_level: detected numeric form level when visible`,
           },
           {
             role: "user",
-            content: [
-              { type: "text", text: `Read the attached mark sheet. Extract every student name and every visible handwritten numeric mark under each subject column. Focus especially on the numbers in the cells.\n\nExpected subject columns: ${expectedCodesText}\n\nClass roster to match against:\n${rosterText}` },
-              {
-                type: "image_url",
-                image_url: {
-                  url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`,
-                },
-              },
-            ],
+            content: `OCR transcription:\n${transcript}\n\nExpected subject columns: ${expectedCodesText}\n\nClass roster to match against:\n${rosterText}`,
           },
         ],
         tools: [
@@ -115,6 +214,10 @@ Skip rows that have no name. Never include the POINTS/TOTAL column.`,
                     items: { type: "string" },
                     description: "All subject column codes seen on the sheet, in order",
                   },
+                  form_level: {
+                    type: "number",
+                    description: "Detected form level. LOWER 6 is 5, UPPER 6 is 6.",
+                  },
                 },
                 required: ["students"],
               },
@@ -144,11 +247,20 @@ Skip rows that have no name. Never include the POINTS/TOTAL column.`,
     }
 
     const aiData = await aiResponse.json();
-    let parsed: { students: any[]; subject_codes?: string[] } = { students: [] };
+    let parsed: { students: any[]; subject_codes?: string[]; form_level?: number | null; transcript?: string } = { students: [] };
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
       try { parsed = JSON.parse(toolCall.function.arguments); } catch { /* ignore */ }
     }
+
+    const structuredCells = (parsed.students || []).reduce((sum, row: any) => sum + Object.keys(row?.marks || {}).length, 0);
+    const transcriptCells = transcriptParsed.students.reduce((sum, row) => sum + Object.keys(row.marks).length, 0);
+    if (transcriptCells > structuredCells) {
+      parsed.students = transcriptParsed.students;
+      parsed.subject_codes = transcriptParsed.subject_codes;
+    }
+    parsed.form_level = parsed.form_level || detectedFormLevel;
+    parsed.transcript = transcript;
 
     if (!parsed.students?.length) {
       return new Response(JSON.stringify({ error: "Could not read any rows. Try a clearer photo." }), {
