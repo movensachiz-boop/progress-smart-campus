@@ -46,6 +46,8 @@ const TeacherMarks = () => {
   const [phonePairOpen, setPhonePairOpen] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [lastMatched, setLastMatched] = useState<Set<string>>(new Set());
+  // Order of subject codes as they appeared on the scanned sheet (left→right)
+  const [scanOrder, setScanOrder] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
