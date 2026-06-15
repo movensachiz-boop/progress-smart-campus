@@ -72,10 +72,27 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const STRICT_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO']);
     const isStrictDouble = (s: Subject) => STRICT_DOUBLE_CODES.has((s.code || '').toUpperCase());
+
+    // Per-class subject periods-per-week overrides. Matched by class stream (case-insensitive)
+    // and subject code. These ALWAYS take precedence over the default O-level / A-level counts.
+    const streamIs = (classId: string, stream: string) =>
+      new RegExp(`^\\d+\\s*${stream}$`, 'i').test(classId);
+    const PPW_OVERRIDES: Array<{ match: (cls: { id: string; form?: number }) => boolean; code: string; periods: number }> = [
+      { match: (c) => c.form === 4 && streamIs(c.id, 'whale'), code: 'ECO', periods: 5 },
+      { match: (c) => c.form === 4 && streamIs(c.id, 'whale'), code: 'ACC', periods: 7 },
+      { match: (c) => c.form === 6, code: 'ECO', periods: 4 },
+    ];
     // A-level (forms 5/6) classes get 8 periods/week per subject regardless of the subject's
     // configured periodsPerWeek. O-level uses the subject's configured value; strict sciences
     // are rounded up to an even count so they can never be forced into a single session.
-    const ppwFor = (subject: Subject, classForm: number | undefined) => {
+    const ppwFor = (subject: Subject, classOrForm?: { id: string; form?: number } | number) => {
+      const classForm = typeof classOrForm === 'number' ? classOrForm : classOrForm?.form;
+      const classId = typeof classOrForm === 'object' && classOrForm ? classOrForm.id : undefined;
+      const code = (subject.code || '').toUpperCase();
+      if (classId) {
+        const ov = PPW_OVERRIDES.find(o => o.code === code && o.match({ id: classId, form: classForm }));
+        if (ov) return isStrictDouble(subject) && ov.periods % 2 === 1 ? ov.periods + 1 : ov.periods;
+      }
       const base = (classForm === 5 || classForm === 6) ? 8 : subject.periodsPerWeek;
       return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
     };
