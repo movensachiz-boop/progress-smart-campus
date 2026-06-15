@@ -235,7 +235,19 @@ const TeacherMarks = () => {
     Object.keys(marks[s.id] || {}).forEach(c => {
       if (!map.has(c)) map.set(c, SUBJECT_CODES[c] || c);
     });
-    return [...map.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code));
+    const entries = [...map.entries()].map(([code, name]) => ({ code, name }));
+    // If a scan provided an order, surface those subjects first in that exact order
+    if (scanOrder.length) {
+      const rank = new Map(scanOrder.map((c, i) => [c, i]));
+      entries.sort((a, b) => {
+        const ra = rank.has(a.code) ? (rank.get(a.code) as number) : Number.POSITIVE_INFINITY;
+        const rb = rank.has(b.code) ? (rank.get(b.code) as number) : Number.POSITIVE_INFINITY;
+        if (ra !== rb) return ra - rb;
+        return a.code.localeCompare(b.code);
+      });
+      return entries;
+    }
+    return entries.sort((a, b) => a.code.localeCompare(b.code));
   };
 
   const addSubjectForStudent = (sid: string) => {
