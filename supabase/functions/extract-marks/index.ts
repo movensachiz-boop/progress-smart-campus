@@ -41,10 +41,11 @@ const detectFormLevel = (text: string): number | null => {
 };
 
 const parseTranscriptRows = (text: string) => {
-  const students: { name: string; marks: Record<string, number> }[] = [];
+  const students: { name: string; marks: Record<string, number>; row_number?: number }[] = [];
   const subjectSet = new Set<string>();
   const subjectOrder: string[] = [];
   let activeHeader: string[] = [];
+  let sequence = 0;
   const pushSubject = (raw: string) => {
     const code = normalizeSubjectCode(raw);
     if (canonicalSubjectCodes.includes(code) && !subjectSet.has(code)) {
@@ -72,7 +73,8 @@ const parseTranscriptRows = (text: string) => {
       activeHeader.forEach(pushSubject);
       continue;
     }
-    if (!/^\d{1,2}\b/.test(line) && !explicitMarkMatches.length) continue;
+    const rowNumMatch = line.match(/^(\d{1,2})\b/);
+    if (!rowNumMatch && !explicitMarkMatches.length) continue;
     const marks: Record<string, number> = {};
     let firstSubjectIndex = line.length;
     for (const match of explicitMarkMatches) {
@@ -99,7 +101,11 @@ const parseTranscriptRows = (text: string) => {
     if (!Object.keys(marks).length) continue;
     const beforeMarks = line.slice(0, firstSubjectIndex).replace(/^\d{1,2}\s+/, "").trim();
     const name = beforeMarks.replace(/\b(POINTS?|TOTAL)\b.*$/i, "").replace(/\s+/g, " ").trim();
-    if (name) students.push({ name, marks });
+    if (name) {
+      sequence++;
+      const row_number = rowNumMatch ? Number(rowNumMatch[1]) : sequence;
+      students.push({ name, marks, row_number });
+    }
   }
 
   return { students, subject_codes: subjectOrder };
@@ -212,8 +218,10 @@ NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
 
 Extract the visible CODE: number pairs exactly from the transcription. Do not drop numbers. Do not include POINTS/TOTAL. Use LOWER 6 = form_level 5 and UPPER 6 = form_level 6.
 
+CRITICAL: Emit students[] strictly in the TOP-TO-BOTTOM order they appear on the sheet. Include row_number for every student using the printed row number on the sheet (1, 2, 3, ...). If a row number is not printed, use the visual top-to-bottom sequence (1-based).
+
 OUTPUT via tool call only:
-- students[]: each with { name: "FULL NAME", marks: { CODE: number } }
+- students[]: each with { row_number: integer, name: "FULL NAME", marks: { CODE: number } }
 - subject_codes[]: subject codes seen on the sheet
 - form_level: detected numeric form level when visible`,
           },
@@ -236,6 +244,7 @@ OUTPUT via tool call only:
                     items: {
                       type: "object",
                       properties: {
+                        row_number: { type: "number", description: "1-based row number as printed on the sheet or visual top-to-bottom position" },
                         name: { type: "string" },
                         marks: {
                           type: "object",
@@ -243,7 +252,7 @@ OUTPUT via tool call only:
                           description: "Map of subject code -> mark",
                         },
                       },
-                      required: ["name", "marks"],
+                      required: ["row_number", "name", "marks"],
                     },
                   },
                   subject_codes: {
@@ -317,6 +326,11 @@ OUTPUT via tool call only:
       });
     }
     parsed.form_level = parsed.form_level || detectedFormLevel;
+    // Ensure students are sorted by row_number (top-to-bottom on the form)
+    parsed.students = (parsed.students || []).map((row: any, i: number) => ({
+      ...row,
+      row_number: Number.isFinite(Number(row?.row_number)) ? Number(row.row_number) : i + 1,
+    })).sort((a: any, b: any) => (a.row_number ?? 0) - (b.row_number ?? 0));
     parsed.transcript = transcript;
 
     if (!parsed.students?.length) {

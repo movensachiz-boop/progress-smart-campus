@@ -145,7 +145,7 @@ const TeacherMarks = () => {
       });
       if (error) throw error;
       const { students: rows, subject_codes, form_level } = data as {
-        students: { name: string; marks: Record<string, number> }[];
+        students: { name: string; marks: Record<string, number>; row_number?: number }[];
         subject_codes?: string[];
         form_level?: number | null;
       };
@@ -154,8 +154,8 @@ const TeacherMarks = () => {
       const subjSet = new Set<string>(subjects);
       const orderList: string[] = [];
       const pushOrder = (c: string) => { if (c && !orderList.includes(c)) orderList.push(c); };
-      const studentOrderList: string[] = [];
-      const pushStudentOrder = (id: string) => { if (id && !studentOrderList.includes(id)) studentOrderList.push(id); };
+      const studentRank: { id: string; rank: number }[] = [];
+      const pushStudentOrder = (id: string, rank: number) => { if (id && !studentRank.find(r => r.id === id)) studentRank.push({ id, rank }); };
       // Seed order from explicit subject_codes (header row, left→right)
       (subject_codes || []).forEach(c => pushOrder(normalizeSubjectCode(c)));
       const matched = new Set<string>();
@@ -166,6 +166,7 @@ const TeacherMarks = () => {
         : students;
       const matchCandidates = scanCandidates.length ? scanCandidates : students;
 
+      let fallbackSeq = 0;
       for (const r of rows) {
         const target = nameKey(r.name || "");
         if (!target) continue;
@@ -178,7 +179,9 @@ const TeacherMarks = () => {
         }) || bestFuzzyMatch(r.name || "", matchCandidates, (p) => `${p.last_name} ${p.first_name}`, 4);
         if (!s) continue;
         matched.add(s.id);
-        pushStudentOrder(s.id);
+        fallbackSeq++;
+        const rank = Number.isFinite(Number(r.row_number)) ? Number(r.row_number) : fallbackSeq;
+        pushStudentOrder(s.id, rank);
         matchedCount++;
         if (!nextMarks[s.id]) nextMarks[s.id] = {};
         for (const [rawCode, val] of Object.entries(r.marks || {})) {
@@ -197,7 +200,7 @@ const TeacherMarks = () => {
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
       setScanOrder(orderList);
-      setScanStudentOrder(studentOrderList);
+      setScanStudentOrder([...studentRank].sort((a, b) => a.rank - b.rank).map(r => r.id));
       setLastMatched(matched);
       const formNote = form_level ? ` Detected Form ${form_level}${form_level === 5 ? " (Lower 6)" : form_level === 6 ? " (Upper 6)" : ""}.` : "";
       const formMismatch = form_level && activeExam && !activeExam.form_levels.includes(form_level)
