@@ -154,8 +154,8 @@ const TeacherMarks = () => {
       const subjSet = new Set<string>(subjects);
       const orderList: string[] = [];
       const pushOrder = (c: string) => { if (c && !orderList.includes(c)) orderList.push(c); };
-      const studentOrderList: string[] = [];
-      const pushStudentOrder = (id: string) => { if (id && !studentOrderList.includes(id)) studentOrderList.push(id); };
+      const studentRank: { id: string; rank: number }[] = [];
+      const pushStudentOrder = (id: string, rank: number) => { if (id && !studentRank.find(r => r.id === id)) studentRank.push({ id, rank }); };
       // Seed order from explicit subject_codes (header row, left→right)
       (subject_codes || []).forEach(c => pushOrder(normalizeSubjectCode(c)));
       const matched = new Set<string>();
