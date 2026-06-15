@@ -292,34 +292,36 @@ const TeacherMarks = () => {
                     {studentSubs.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No subjects assigned for this student's form/stream. Click "+ Subject" to add one.</p>
                     ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Subject</TableHead>
-                            <TableHead className="w-28 text-center">Mark</TableHead>
-                            <TableHead className="w-20 text-center">Grade</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {studentSubs.map(({ code, name }) => {
-                            const m = row[code];
-                            const grade = m != null ? computeGrade(m, level) : "";
-                            return (
-                              <TableRow key={code}>
-                                <TableCell>
-                                  <span className="font-medium">{code}</span>
-                                  <span className="ml-2 text-xs text-muted-foreground">{name}</span>
-                                </TableCell>
-                                <TableCell className="p-1 text-center">
-                                  <Input type="number" min={0} max={100} className="h-8 text-center"
-                                    value={m ?? ""} onChange={(e) => updateMark(s.id, code, e.target.value)}/>
-                                </TableCell>
-                                <TableCell className="text-center text-sm font-medium">{grade || "—"}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                      <div className="overflow-auto max-h-[400px] border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="sticky top-0 bg-background/95 backdrop-blur-sm z-10">
+                              <TableHead>Subject</TableHead>
+                              <TableHead className="w-28 text-center">Mark</TableHead>
+                              <TableHead className="w-20 text-center">Grade</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {studentSubs.map(({ code, name }) => {
+                              const m = row[code];
+                              const grade = m != null ? computeGrade(m, level) : "";
+                              return (
+                                <TableRow key={code}>
+                                  <TableCell>
+                                    <span className="font-medium">{code}</span>
+                                    <span className="ml-2 text-xs text-muted-foreground">{name}</span>
+                                  </TableCell>
+                                  <TableCell className="p-1 text-center">
+                                    <Input type="number" min={0} max={100} className="h-8 text-center"
+                                      value={m ?? ""} onChange={(e) => updateMark(s.id, code, e.target.value)}/>
+                                  </TableCell>
+                                  <TableCell className="text-center text-sm font-medium">{grade || "—"}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
