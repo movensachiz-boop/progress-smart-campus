@@ -326,6 +326,11 @@ OUTPUT via tool call only:
       });
     }
     parsed.form_level = parsed.form_level || detectedFormLevel;
+    // Ensure students are sorted by row_number (top-to-bottom on the form)
+    parsed.students = (parsed.students || []).map((row: any, i: number) => ({
+      ...row,
+      row_number: Number.isFinite(Number(row?.row_number)) ? Number(row.row_number) : i + 1,
+    })).sort((a: any, b: any) => (a.row_number ?? 0) - (b.row_number ?? 0));
     parsed.transcript = transcript;
 
     if (!parsed.students?.length) {
