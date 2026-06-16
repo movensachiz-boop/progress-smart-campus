@@ -221,7 +221,9 @@ const Login = () => {
                   </Button>
                 )}
                 <p className="text-xs text-center text-muted-foreground">
-                  Forgot password? Contact your administrator.
+                  <button type="button" className="text-primary font-medium hover:underline" onClick={() => navigate("/forgot-password")}>
+                    Forgot password?
+                  </button>
                 </p>
               </div>
             </form>

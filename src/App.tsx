@@ -7,6 +7,7 @@ import { TimetableProvider } from "@/context/TimetableContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import SetupAccount from "./pages/SetupAccount";
+import ForgotPassword from "./pages/ForgotPassword";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentPayments from "./pages/StudentPayments";
 import StudentTimetable from "./pages/StudentTimetable";
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/setup-account" element={<SetupAccount />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/student/payments" element={<StudentPayments />} />
             <Route path="/student/timetable" element={<StudentTimetable />} />
