@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, CheckCircle2, XCircle, Search, Loader2 } from "lucide-react";
+import { Shield, CheckCircle2, XCircle, Search, Loader2, User, Receipt, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import pccLogo from "@/assets/pcc-logo.png";
 
@@ -15,25 +15,33 @@ interface VerifyResult {
   currency?: string;
   date?: string;
   studentName?: string;
+  studentNameFull?: string;
   studentClass?: string;
   regNumber?: string;
   method?: string;
   status?: string;
+  description?: string;
+  type?: string;
 }
+
+type SearchMode = "receipt" | "name";
 
 const VerifyReceipt = () => {
   const [searchParams] = useSearchParams();
   const [receiptNo, setReceiptNo] = useState("");
+  const [studentName, setStudentName] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VerifyResult | null>(null);
   const [checked, setChecked] = useState(false);
+  const [mode, setMode] = useState<SearchMode>("receipt");
+  const [receiptList, setReceiptList] = useState<VerifyResult[]>([]);
 
   // Auto-fill and verify from QR code URL param
   useEffect(() => {
     const r = searchParams.get("r");
     if (r) {
       setReceiptNo(r);
-      // Auto-trigger verification
+      setMode("receipt");
       const autoVerify = async () => {
         setLoading(true);
         try {
@@ -54,18 +62,23 @@ const VerifyReceipt = () => {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!receiptNo.trim()) return;
     setLoading(true);
     setResult(null);
     setChecked(false);
+    setReceiptList([]);
 
     try {
-      const { data, error } = await supabase.functions.invoke("verify-receipt", {
-        body: { receiptNumber: receiptNo.trim().toUpperCase() },
-      });
+      const body = mode === "receipt"
+        ? { receiptNumber: receiptNo.trim().toUpperCase() }
+        : { studentName: studentName.trim() };
+
+      const { data, error } = await supabase.functions.invoke("verify-receipt", { body });
 
       if (error || data?.error) {
         setResult({ valid: false });
+      } else if (mode === "name" && data.mode === "name") {
+        setReceiptList(data.receipts || []);
+        setResult({ valid: data.valid });
       } else {
         setResult(data);
       }
@@ -77,29 +90,70 @@ const VerifyReceipt = () => {
     }
   };
 
+  const selectReceipt = (receipt: VerifyResult) => {
+    setResult(receipt);
+    setReceiptList([]);
+  };
+
+  const goBackToList = () => {
+    setResult({ valid: receiptList.length > 0 });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex items-start justify-center p-4 pt-8">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-3">
           <img src={pccLogo} alt="PCC" width={64} height={64} className="mx-auto" />
           <h1 className="text-2xl font-bold text-foreground">Receipt Verification</h1>
           <p className="text-sm text-muted-foreground">
-            Enter a receipt number to verify its authenticity
+            Verify receipts by number or search by student name
           </p>
         </div>
 
         {/* Search card */}
         <Card className="shadow-lg">
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 space-y-4">
+            {/* Mode toggle */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => { setMode("receipt"); setResult(null); setChecked(false); setReceiptList([]); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                  mode === "receipt" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Receipt size={16} /> Receipt No.
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode("name"); setResult(null); setChecked(false); setReceiptList([]); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                  mode === "name" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <User size={16} /> Student Name
+              </button>
+            </div>
+
             <form onSubmit={handleVerify} className="flex gap-2">
-              <Input
-                placeholder="e.g. RCP-0001"
-                value={receiptNo}
-                onChange={(e) => setReceiptNo(e.target.value)}
-                className="h-11"
-                required
-              />
+              {mode === "receipt" ? (
+                <Input
+                  placeholder="e.g. RCP-0001"
+                  value={receiptNo}
+                  onChange={(e) => setReceiptNo(e.target.value)}
+                  className="h-11"
+                  required
+                />
+              ) : (
+                <Input
+                  placeholder="e.g. John Doe"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  className="h-11"
+                  required
+                />
+              )}
               <Button type="submit" disabled={loading} className="h-11 px-5">
                 {loading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
               </Button>
@@ -107,9 +161,53 @@ const VerifyReceipt = () => {
           </CardContent>
         </Card>
 
-        {/* Result */}
-        {checked && result && (
+        {/* Receipt list (name search results) */}
+        {checked && mode === "name" && receiptList.length > 0 && !result?.receiptNumber && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground text-center">
+              Found {receiptList.length} receipt{receiptList.length === 1 ? "" : "s"} — tap to view
+            </p>
+            {receiptList.map((r, i) => (
+              <button
+                key={`${r.receiptNumber}-${i}`}
+                onClick={() => selectReceipt(r)}
+                className="w-full text-left"
+              >
+                <Card className="shadow-sm hover:shadow-md transition-shadow border border-border/60 hover:border-primary/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-sm">{r.receiptNumber}</p>
+                        <p className="text-xs text-muted-foreground">{r.studentNameFull || r.studentName}</p>
+                        <p className="text-xs text-muted-foreground">{r.studentClass}</p>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <p className="font-bold text-green-700">
+                          {r.currency} {Number(r.amount).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{r.date}</p>
+                        <Badge variant="outline" className="text-[10px]">
+                          {r.type === "payment" ? "Fees" : "Inventory"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Single receipt result */}
+        {checked && result && result.receiptNumber && (
           <Card className={`shadow-lg border-2 ${result.valid ? "border-green-500/30" : "border-destructive/30"}`}>
+            {mode === "name" && receiptList.length > 0 && (
+              <CardContent className="pt-4 pb-0">
+                <Button variant="ghost" size="sm" onClick={goBackToList} className="gap-1 -ml-2">
+                  <ArrowLeft size={14} /> Back to results
+                </Button>
+              </CardContent>
+            )}
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 {result.valid ? (
@@ -149,7 +247,7 @@ const VerifyReceipt = () => {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Student</p>
-                    <p className="font-semibold">{result.studentName}</p>
+                    <p className="font-semibold">{result.studentNameFull || result.studentName}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Class</p>
@@ -188,6 +286,18 @@ const VerifyReceipt = () => {
                 </p>
               </CardContent>
             )}
+          </Card>
+        )}
+
+        {/* No results for name search */}
+        {checked && mode === "name" && receiptList.length === 0 && (!result || !result.receiptNumber) && (
+          <Card className="shadow-lg border-2 border-destructive/30">
+            <CardContent className="p-6 text-center">
+              <XCircle className="text-destructive mx-auto mb-2" size={28} />
+              <p className="text-sm text-muted-foreground">
+                No receipts found for that student name. Please check the spelling or try a different name.
+              </p>
+            </CardContent>
           </Card>
         )}
 
