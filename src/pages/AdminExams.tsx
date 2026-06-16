@@ -273,10 +273,11 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
   const saveAll = async () => {
     setSaving(true);
     const payload: any[] = [];
+    const allCodes = Array.from(new Set([...subjectCodes, ...Object.values(results).flatMap(r => Object.keys(r))]));
     for (const s of students) {
       const level = formToLevel(s.form);
       const row = results[s.id] || {};
-      for (const code of subjectCodes) {
+      for (const code of allCodes) {
         const mark = row[code];
         if (mark == null || isNaN(mark)) continue;
         const grade = computeGrade(mark, level);
