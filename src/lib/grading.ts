@@ -67,6 +67,8 @@ export const SUBJECT_CODES: Record<string, string> = {
   FRE: "French",
   HERI: "Heritage",
   BS: "Building Studies",
+  SCI: "Science",
+  MUS: "Music",
 };
 
 export const normalizeSubjectCode = (raw: string): string => {
