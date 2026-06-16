@@ -18,7 +18,10 @@ type Exam = {
 type Profile = { id: string; first_name: string; last_name: string; form: string | null; stream: string | null };
 
 const ALEVEL_ORDER = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
-const OLEVEL_ORDER = ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "ACC", "AGR", "CSC", "RS", "HIS", "SCI", "MUS"];
+// Form 1-2 mark sheet column order
+const OLEVEL_JUNIOR_ORDER = ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "ACC", "AGR", "CSC", "RS", "HIS", "SCI", "MUS"];
+// Form 3-4 mark sheet column order — union of Leo (Sciences) + Aries (Commercials)
+const OLEVEL_SENIOR_ORDER = ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC", "ECO", "ACC", "ICT", "COMB"];
 
 /**
  * Public mark-sheet capture page. Reached by scanning the QR printed on a mark
@@ -87,7 +90,7 @@ const ScanMarks = () => {
       const expectedStudents = students.map((p) => ({ name: `${p.first_name} ${p.last_name}` }));
       const expectedSubjectCodes = subjectCodes.length
         ? subjectCodes
-        : (exam && Math.max(...exam.form_levels) <= 4 ? OLEVEL_ORDER : ALEVEL_ORDER);
+        : (exam ? (Math.max(...exam.form_levels) <= 2 ? OLEVEL_JUNIOR_ORDER : Math.max(...exam.form_levels) <= 4 ? OLEVEL_SENIOR_ORDER : ALEVEL_ORDER) : ALEVEL_ORDER);
       const { data, error } = await supabase.functions.invoke("extract-marks", {
         body: { imageBase64: dataUrl, expectedStudents, expectedSubjectCodes },
       });
@@ -185,7 +188,8 @@ const ScanMarks = () => {
 
   // Order subject columns: preferred order first, then scan order, then alpha
   const orderedCodes = useMemo(() => {
-    const preferredOrder = exam && Math.max(...exam.form_levels) <= 4 ? OLEVEL_ORDER : ALEVEL_ORDER;
+    const maxForm = exam ? Math.max(...exam.form_levels) : 0;
+    const preferredOrder = maxForm <= 2 ? OLEVEL_JUNIOR_ORDER : maxForm <= 4 ? OLEVEL_SENIOR_ORDER : ALEVEL_ORDER;
     const preferredRank = new Map(preferredOrder.map((c, i) => [c, i]));
     const scanRank = new Map(scanOrder.map((c, i) => [c, i]));
     return [...subjectCodes].sort((a, b) => {
