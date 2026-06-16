@@ -316,64 +316,102 @@ const TeacherMarks = () => {
 
         {loading ? (
           <div className="p-8 text-center"><Loader2 className="inline animate-spin mr-2" size={16}/>Loading…</div>
-        ) : students.length > 0 && (
-          <div className="space-y-3">
-            {orderedStudents.map(s => {
-              const level = formToLevel(s.form);
-              const row = marks[s.id] || {};
-              const isMatched = lastMatched.has(s.id);
-              const studentSubs = subjectsForStudent(s);
-              return (
-                <Card key={s.id} className={isMatched ? "border-green-500/50" : ""}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-                      <div className="font-semibold">
-                        {isMatched && <CheckCircle2 className="inline mr-1 text-green-600" size={14}/>}
-                        {s.last_name} {s.first_name}
-                        <span className="ml-2 text-xs text-muted-foreground">F{s.form} {s.stream}</span>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => addSubjectForStudent(s.id)}>+ Subject</Button>
-                    </div>
-                    {studentSubs.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No subjects assigned for this student's form/stream. Click "+ Subject" to add one.</p>
-                    ) : (
-                      <div className="relative overflow-auto max-h-[70vh] border rounded-md">
-                        <table className="w-full min-w-[420px] table-fixed caption-bottom text-sm border-separate border-spacing-0">
-                          <thead className="sticky top-0 z-50 bg-background">
-                            <tr className="border-b">
-                              <th className="sticky left-0 top-0 bg-background z-[60] w-[220px] min-w-[220px] border-r border-b h-12 px-4 text-left align-middle font-medium text-muted-foreground shadow-sm">Subject</th>
-                              <th className="sticky top-0 bg-background z-[55] w-28 border-b h-12 px-4 text-center align-middle font-medium text-muted-foreground shadow-sm">Mark</th>
-                              <th className="sticky top-0 bg-background z-[55] w-20 border-b h-12 px-4 text-center align-middle font-medium text-muted-foreground shadow-sm">Grade</th>
-                            </tr>
-                          </thead>
-                          <TableBody>
-                            {studentSubs.map(({ code, name }) => {
-                              const m = row[code];
-                              const grade = m != null ? computeGrade(m, level) : "";
+        ) : students.length > 0 && (() => {
+          // Build unified column list (union of all students' subjects + scan order + saved marks)
+          const colMap = new Map<string, string>();
+          orderedStudents.forEach(s => subjectsForStudent(s).forEach(({ code, name }) => {
+            if (!colMap.has(code)) colMap.set(code, name);
+          }));
+          scanOrder.forEach(c => { if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
+          Object.values(marks).forEach(r => Object.keys(r || {}).forEach(c => {
+            if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c);
+          }));
+          let columns = Array.from(colMap, ([code, name]) => ({ code, name }));
+          if (scanOrder.length) {
+            const rank = new Map(scanOrder.map((c, i) => [c, i]));
+            columns.sort((a, b) => {
+              const ra = rank.has(a.code) ? (rank.get(a.code) as number) : Number.POSITIVE_INFINITY;
+              const rb = rank.has(b.code) ? (rank.get(b.code) as number) : Number.POSITIVE_INFINITY;
+              if (ra !== rb) return ra - rb;
+              return a.code.localeCompare(b.code);
+            });
+          } else {
+            columns.sort((a, b) => a.code.localeCompare(b.code));
+          }
+
+          const addColumn = () => {
+            const raw = prompt("Add subject code (e.g. MAT, CHE, PHY)");
+            if (!raw) return;
+            const code = normalizeSubjectCode(raw);
+            if (!code) return;
+            setSubjects(prev => prev.includes(code) ? prev : [...prev, code].sort());
+          };
+
+          return (
+            <Card>
+              <CardContent className="p-0">
+                <div className="flex items-center justify-between p-3 border-b">
+                  <div className="text-sm text-muted-foreground">{orderedStudents.length} students · {columns.length} subjects</div>
+                  <Button size="sm" variant="outline" onClick={addColumn}>+ Subject Column</Button>
+                </div>
+                <div className="relative overflow-auto max-h-[75vh]">
+                  <table className="caption-bottom text-sm border-separate border-spacing-0">
+                    <thead>
+                      <tr>
+                        <th className="sticky top-0 left-0 z-[60] bg-background border-b border-r h-12 px-3 text-left align-middle font-semibold text-muted-foreground min-w-[220px] w-[220px] shadow-sm">Student</th>
+                        {columns.map(col => (
+                          <th key={col.code} title={col.name}
+                              className="sticky top-0 z-50 bg-background border-b border-r h-12 px-2 text-center align-middle font-semibold text-muted-foreground min-w-[64px] w-[64px] shadow-sm">
+                            {col.code}
+                          </th>
+                        ))}
+                        <th className="sticky top-0 z-50 bg-background border-b h-12 px-2 text-center align-middle font-semibold text-muted-foreground min-w-[64px] w-[64px] shadow-sm">Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orderedStudents.map(s => {
+                        const level = formToLevel(s.form);
+                        const row = marks[s.id] || {};
+                        const isMatched = lastMatched.has(s.id);
+                        const allowed = new Set(subjectsForStudent(s).map(x => x.code));
+                        let pts = 0;
+                        return (
+                          <tr key={s.id} className={isMatched ? "bg-green-500/5" : ""}>
+                            <td className="sticky left-0 z-30 bg-background border-b border-r px-3 py-2 min-w-[220px] w-[220px] shadow-sm">
+                              <div className="font-medium text-sm flex items-center">
+                                {isMatched && <CheckCircle2 className="inline mr-1 text-green-600 shrink-0" size={14}/>}
+                                <span className="truncate">{s.last_name} {s.first_name}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">F{s.form} {s.stream}</div>
+                            </td>
+                            {columns.map(col => {
+                              const m = row[col.code];
+                              const isAllowed = allowed.has(col.code) || m != null;
+                              if (m != null) pts += computePoints(m, level) || 0;
                               return (
-                                <TableRow key={code}>
-                                  <TableCell className="sticky left-0 bg-background z-30 w-[220px] min-w-[220px] border-r shadow-sm">
-                                    <span className="font-medium">{code}</span>
-                                    <span className="ml-2 text-xs text-muted-foreground">{name}</span>
-                                  </TableCell>
-                                  <TableCell className="p-1 text-center">
-                                    <Input type="number" min={0} max={100} className="h-8 text-center"
-                                      value={m ?? ""} onChange={(e) => updateMark(s.id, code, e.target.value)}/>
-                                  </TableCell>
-                                  <TableCell className="text-center text-sm font-medium">{grade || "—"}</TableCell>
-                                </TableRow>
+                                <td key={col.code} className="border-b border-r p-1 text-center min-w-[64px] w-[64px]">
+                                  {isAllowed ? (
+                                    <Input type="number" min={0} max={100}
+                                      className="h-8 px-1 text-center text-sm"
+                                      value={m ?? ""}
+                                      onChange={(e) => updateMark(s.id, col.code, e.target.value)}/>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground/40">—</span>
+                                  )}
+                                </td>
                               );
                             })}
-                          </TableBody>
-                        </table>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+                            <td className="border-b px-2 py-2 text-center text-sm font-medium min-w-[64px] w-[64px]">{pts || "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
 
