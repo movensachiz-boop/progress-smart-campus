@@ -84,7 +84,13 @@ const ScanMarks = () => {
     setScanOpen(false);
     setOcrLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("extract-marks", { body: { imageBase64: dataUrl } });
+      const expectedStudents = students.map((p) => ({ name: `${p.first_name} ${p.last_name}` }));
+      const expectedSubjectCodes = subjectCodes.length
+        ? subjectCodes
+        : (exam && Math.max(...exam.form_levels) <= 4 ? OLEVEL_ORDER : ALEVEL_ORDER);
+      const { data, error } = await supabase.functions.invoke("extract-marks", {
+        body: { imageBase64: dataUrl, expectedStudents, expectedSubjectCodes },
+      });
       if (error) throw error;
       const { students: rows, subject_codes } = data as { students: { name: string; marks: Record<string, number>; row_number?: number }[]; subject_codes?: string[] };
       const codes = new Set(subjectCodes);

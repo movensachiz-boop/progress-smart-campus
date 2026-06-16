@@ -40,11 +40,16 @@ const detectFormLevel = (text: string): number | null => {
   return null;
 };
 
-const parseTranscriptRows = (text: string) => {
+const parseTranscriptRows = (text: string, fallbackCodes: string[] = []) => {
   const students: { name: string; marks: Record<string, number>; row_number?: number }[] = [];
   const subjectSet = new Set<string>();
   const subjectOrder: string[] = [];
-  let activeHeader: string[] = [];
+  const normalizedFallback = fallbackCodes
+    .map((c) => normalizeSubjectCode(c))
+    .filter((c, i, arr) => canonicalSubjectCodes.includes(c) && arr.indexOf(c) === i);
+  // If the sheet has no printed header, fall back to the historical/expected column order
+  // so we can still align "name then numbers" rows to subject codes immediately.
+  let activeHeader: string[] = [...normalizedFallback];
   let sequence = 0;
   const pushSubject = (raw: string) => {
     const code = normalizeSubjectCode(raw);
@@ -162,6 +167,8 @@ If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form
 
 Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART. Normalize C/SC to CSC and R/S to RS. NEVER skip the GEO column or any other subject column that appears in the header — even if some students have blank cells in that column, include marks for the students who do have them.
 
+IF NO SUBJECT HEADER ROW IS VISIBLE on the sheet, ASSUME the columns are exactly the "Expected subject columns" provided by the user, IN THAT EXACT ORDER, and align the numbers in each row to those codes left-to-right. Emit a synthetic header line so the transcript still has CODE: number pairs.
+
 Return plain text only, one student row per line, like:
 LOWER 6 (2026 MID-TERM 2 EXAMINATIONS)
 NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
@@ -200,7 +207,7 @@ NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
 
     const transcriptData = await transcriptResponse.json();
     const transcript = String(transcriptData.choices?.[0]?.message?.content || "").trim();
-    const transcriptParsed = parseTranscriptRows(transcript);
+    const transcriptParsed = parseTranscriptRows(transcript, expectedSubjectCodes);
     const detectedFormLevel = detectFormLevel(transcript);
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -218,11 +225,13 @@ NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
 
 Extract the visible CODE: number pairs exactly from the transcription. Do not drop numbers. Do not include POINTS/TOTAL. Use LOWER 6 = form_level 5 and UPPER 6 = form_level 6.
 
+If the sheet has NO subject header row, treat the user-provided "Expected subject columns" as the header in that exact left-to-right order and align each row's numbers to those codes.
+
 CRITICAL: Emit students[] strictly in the TOP-TO-BOTTOM order they appear on the sheet. Include row_number for every student using the printed row number on the sheet (1, 2, 3, ...). If a row number is not printed, use the visual top-to-bottom sequence (1-based).
 
 OUTPUT via tool call only:
 - students[]: each with { row_number: integer, name: "FULL NAME", marks: { CODE: number } }
-- subject_codes[]: subject codes seen on the sheet
+- subject_codes[]: subject codes seen on the sheet (or the assumed header from expected columns)
 - form_level: detected numeric form level when visible`,
           },
           {
