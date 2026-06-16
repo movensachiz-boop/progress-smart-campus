@@ -331,7 +331,10 @@ const TeacherMarks = () => {
           }));
           let columns = Array.from(colMap, ([code, name]) => ({ code, name }));
           // Preferred mark-sheet column order (matches the printed form)
-          const PREFERRED_ORDER = ["LIT", "RS", "HIS", "CS", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
+          const isOlevel = activeExam && Math.max(...activeExam.form_levels) <= 4;
+          const PREFERRED_ORDER = isOlevel
+            ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC"]
+            : ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
           const preferredRank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
           if (scanOrder.length) {
             const rank = new Map(scanOrder.map((c, i) => [c, i]));
