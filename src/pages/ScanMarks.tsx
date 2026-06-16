@@ -90,7 +90,7 @@ const ScanMarks = () => {
       const expectedStudents = students.map((p) => ({ name: `${p.first_name} ${p.last_name}` }));
       const expectedSubjectCodes = subjectCodes.length
         ? subjectCodes
-        : (exam && Math.max(...exam.form_levels) <= 4 ? OLEVEL_ORDER : ALEVEL_ORDER);
+        : (exam ? (Math.max(...exam.form_levels) <= 2 ? OLEVEL_JUNIOR_ORDER : Math.max(...exam.form_levels) <= 4 ? OLEVEL_SENIOR_ORDER : ALEVEL_ORDER) : ALEVEL_ORDER);
       const { data, error } = await supabase.functions.invoke("extract-marks", {
         body: { imageBase64: dataUrl, expectedStudents, expectedSubjectCodes },
       });
