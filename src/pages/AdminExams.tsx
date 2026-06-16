@@ -375,12 +375,28 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
           </div>
 
           <div className="flex-1 overflow-auto">
-            {loading ? <div className="p-8 text-center"><Loader2 className="inline animate-spin mr-2" size={16}/>Loading…</div> : (
+            {loading ? <div className="p-8 text-center"><Loader2 className="inline animate-spin mr-2" size={16}/>Loading…</div> : (() => {
+              const maxForm = Math.max(...exam.form_levels);
+              const PREFERRED_ORDER = maxForm <= 2
+                ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "ACC", "AGR", "CSC", "RS", "HIS", "SCI", "MUS"]
+                : maxForm <= 4
+                  ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC", "ECO", "ACC", "ICT", "COMB"]
+                  : ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
+              const rank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
+              const orderedCodes = [...subjectCodes].sort((a, b) => {
+                const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
+                const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
+                if (ra !== rb) return ra - rb;
+                return a.localeCompare(b);
+              });
+              return (
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-10">
                   <TableRow>
                     <TableHead className="min-w-[200px]">Student</TableHead>
-                    {subjectCodes.map(c => <TableHead key={c} className="text-center min-w-[70px]">{c}</TableHead>)}
+                    {orderedCodes.map(c => <TableHead key={c} className="text-center min-w-[70px]" title={SUBJECT_CODES[c] || c}>{c}</TableHead>)}
+                    <TableHead className="text-center min-w-[140px]">Passed</TableHead>
+                    <TableHead className="text-center min-w-[140px]">Failed</TableHead>
                     <TableHead className="text-center">Pts</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -388,28 +404,49 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                   {students.map(s => {
                     const level = formToLevel(s.form);
                     const row = results[s.id] || {};
-                    const totalPts = subjectCodes.reduce((acc, c) => acc + computePoints(row[c] ?? null, level), 0);
+                    const passed: string[] = [];
+                    const failed: string[] = [];
+                    for (const c of orderedCodes) {
+                      const m = row[c];
+                      if (m == null || isNaN(m as number)) continue;
+                      const g = computeGrade(m, level);
+                      if (!g) continue;
+                      if (g === "U") failed.push(c); else passed.push(c);
+                    }
+                    const totalPts = orderedCodes.reduce((acc, c) => acc + computePoints(row[c] ?? null, level), 0);
                     return (
                       <TableRow key={s.id}>
                         <TableCell className="font-medium">
                           {s.last_name} {s.first_name}
                           <div className="text-xs text-muted-foreground">F{s.form} {s.stream}</div>
                         </TableCell>
-                        {subjectCodes.map(c => (
-                          <TableCell key={c} className="p-1">
-                            <Input
-                              type="number" min={0} max={100} className="h-8 text-center"
-                              value={row[c] ?? ""} onChange={(e) => setCell(s.id, c, e.target.value)}
-                            />
-                          </TableCell>
-                        ))}
+                        {orderedCodes.map(c => {
+                          const m = row[c];
+                          const g = m != null && !isNaN(m as number) ? computeGrade(m, level) : "";
+                          return (
+                            <TableCell key={c} className="p-1">
+                              <div className="flex flex-col items-center gap-0.5">
+                                <Input
+                                  type="number" min={0} max={100} className="h-8 text-center"
+                                  value={row[c] ?? ""} onChange={(e) => setCell(s.id, c, e.target.value)}
+                                />
+                                {g && (
+                                  <span className={`text-[10px] font-bold ${g === "U" ? "text-red-600" : "text-blue-600"}`}>{g}</span>
+                                )}
+                              </div>
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className="text-center text-xs font-medium text-green-600">{passed.join(", ") || "—"}</TableCell>
+                        <TableCell className="text-center text-xs font-medium text-red-600">{failed.join(", ") || "—"}</TableCell>
                         <TableCell className="text-center font-semibold">{level === "alevel" ? totalPts : "—"}</TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
-            )}
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
