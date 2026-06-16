@@ -30,7 +30,18 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [config, _setConfig] = useState<SchoolConfig>(() => loadLS('tt_config', defaultConfig));
   const [subjects, _setSubjects] = useState<Subject[]>(() => loadLS('tt_subjects', defaultSubjects));
   const [teachers, _setTeachers] = useState<Teacher[]>(() => loadLS('tt_teachers', generateDefaultTeachers()));
-  const [classes, _setClasses] = useState<SchoolClass[]>(() => loadLS('tt_classes', generateDefaultClasses()));
+  const [classes, _setClasses] = useState<SchoolClass[]>(() => {
+    const stored = loadLS<SchoolClass[]>('tt_classes', generateDefaultClasses());
+    // Migration: ensure default streams (incl. Leo) exist for forms 1-4
+    const defaults = generateDefaultClasses();
+    const missing = defaults.filter(d => !stored.some(c => c.id === d.id));
+    if (missing.length) {
+      const merged = [...stored, ...missing];
+      try { localStorage.setItem('tt_classes', JSON.stringify(merged)); } catch {}
+      return merged;
+    }
+    return stored;
+  });
   const [timetable, setTimetable] = useState<Timetable | null>(() => loadLS<Timetable | null>('tt_timetable', null));
 
   const persistTimetable = (v: Timetable | null) => {
