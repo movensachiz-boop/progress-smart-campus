@@ -93,7 +93,7 @@ const AdminExams = () => {
   };
 
   const openSheetQR = async (e: Exam) => {
-    const url = `${window.location.origin}/scan-marks/${e.id}`;
+    const url = `https://progress-smart-campus.lovable.app/scan-marks/${e.id}`;
     const dataUrl = await QRCode.toDataURL(url, { width: 320, margin: 2 });
     setQrUrl(dataUrl);
     setQrShareUrl(url);
