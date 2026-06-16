@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import QRCode from "qrcode";
+import { useTimetable } from "@/context/TimetableContext";
 import {
   SUBJECT_CODES, normalizeSubjectCode, formToLevel, computeGrade, computePoints,
 } from "@/lib/grading";
@@ -227,6 +228,7 @@ const AdminExams = () => {
 
 const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; onOpenChange: (o: boolean) => void }) => {
   const { toast } = useToast();
+  const { classes, subjects } = useTimetable();
   const [students, setStudents] = useState<Profile[]>([]);
   const [subjectCodes, setSubjectCodes] = useState<string[]>([]);
   const [results, setResults] = useState<Record<string, Record<string, number | null>>>({}); // [studentId][code] = mark
@@ -235,6 +237,24 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
   const [scanOpen, setScanOpen] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [newCode, setNewCode] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState<string>("all");
+
+  // Classes whose form belongs to this exam
+  const examClasses = useMemo(
+    () => classes.filter(c => exam.form_levels.includes(c.form as number)),
+    [classes, exam.form_levels]
+  );
+
+  // Subject codes derived from the selected class
+  const classSubjectCodes = useMemo(() => {
+    if (selectedClassId === "all") return [];
+    const cls = examClasses.find(c => c.id === selectedClassId);
+    if (!cls) return [];
+    return cls.subjectIds
+      .map(id => subjects.find(s => s.id === id)?.code)
+      .filter(Boolean)
+      .map(c => normalizeSubjectCode(c as string));
+  }, [selectedClassId, examClasses, subjects]);
 
   const load = async () => {
     setLoading(true);
@@ -357,6 +377,15 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
           </DialogHeader>
 
           <div className="flex flex-wrap items-center gap-2 pb-2 border-b">
+            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+              <SelectTrigger className="w-52"><SelectValue placeholder="Class"/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All classes</SelectItem>
+                {examClasses.map(c => (
+                  <SelectItem key={c.id} value={c.id}>Form {c.form} {c.stream}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button onClick={() => setScanOpen(true)} className="gap-2" disabled={ocrLoading}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
@@ -375,6 +404,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
             </Button>
           </div>
 
+
           <div className="flex-1 overflow-auto">
             {loading ? <div className="p-8 text-center"><Loader2 className="inline animate-spin mr-2" size={16}/>Loading…</div> : (() => {
               const maxForm = Math.max(...exam.form_levels);
@@ -384,13 +414,25 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                   ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC", "ECO", "ACC", "ICT", "COMB"]
                   : ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
               const rank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
-              const combined = Array.from(new Set([...PREFERRED_ORDER, ...subjectCodes]));
+              // When a class is picked, restrict columns to that class's registered subjects (in preferred order).
+              const baseCodes = classSubjectCodes.length ? classSubjectCodes : PREFERRED_ORDER;
+              const combined = Array.from(new Set([...baseCodes, ...subjectCodes]));
               const orderedCodes = combined.sort((a, b) => {
                 const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
                 const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
                 if (ra !== rb) return ra - rb;
                 return a.localeCompare(b);
               });
+              // Filter students by selected class (match by form + stream/learning area)
+              const selectedClass = examClasses.find(c => c.id === selectedClassId);
+              const visibleStudents = selectedClass
+                ? students.filter(s => {
+                    if (String(s.form) !== String(selectedClass.form)) return false;
+                    const target = (selectedClass.learningArea || selectedClass.stream || "").toLowerCase();
+                    const stream = (s.stream || "").toLowerCase();
+                    return stream === target || stream.charAt(0) === target.charAt(0);
+                  })
+                : students;
               return (
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-10">
@@ -403,7 +445,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {students.map(s => {
+                  {visibleStudents.map(s => {
                     const level = formToLevel(s.form);
                     const row = results[s.id] || {};
                     const passed: string[] = [];
