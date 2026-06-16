@@ -225,6 +225,12 @@ const Login = () => {
                     Forgot password?
                   </button>
                 </p>
+                <p className="text-xs text-center text-muted-foreground pt-1 border-t mt-2">
+                  <button type="button" className="text-primary font-medium hover:underline inline-flex items-center gap-1" onClick={() => window.open("/verify", "_blank")}>
+                    <Shield size={12} /> Verify a Receipt
+                  </button>
+                </p>
+
               </div>
             </form>
           </CardContent>
