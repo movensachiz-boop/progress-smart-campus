@@ -479,7 +479,8 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                   })
                 : orderedStudents;
               return (
-              <Table>
+              <Table wrapperClassName="overflow-visible">
+
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[200px] sticky left-0 top-0 bg-card z-20 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">Student</TableHead>
