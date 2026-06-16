@@ -102,14 +102,16 @@ const parseTranscriptRows = (text: string, fallbackCodes: string[] = []) => {
       const numberMatches = [...withoutRowNumber.matchAll(/\b\d{1,3}\b/g)]
         .map((match) => ({ mark: parseMark(match[0]), index: match.index ?? withoutRowNumber.length }))
         .filter((match): match is { mark: number; index: number } => match.mark != null);
-      // Only fall back to positional assignment when the row has EXACTLY one number per header column.
-      // Otherwise blank cells would shift marks into the wrong subject — better to drop the row than misalign.
-      if (numberMatches.length === activeHeader.length) {
-        numberMatches.forEach(({ mark }, index) => {
-          const code = activeHeader[index];
-          marks[code] = mark;
+      // Positional fallback: assign numbers left-to-right to header columns. If there are fewer
+      // numbers than columns, the trailing columns are simply blank (do not drop the row). If
+      // there are more numbers than columns, ignore the extras (likely POINTS/TOTAL trailing cols).
+      if (numberMatches.length > 0) {
+        const take = Math.min(numberMatches.length, activeHeader.length);
+        for (let i = 0; i < take; i++) {
+          const code = activeHeader[i];
+          marks[code] = numberMatches[i].mark;
           pushSubject(code);
-        });
+        }
         firstSubjectIndex = line.indexOf(withoutRowNumber) + numberMatches[0].index;
       }
     }
@@ -177,7 +179,7 @@ CRITICAL COLUMN ALIGNMENT RULES — accuracy of column placement matters more th
 3. ALWAYS write each mark as "CODE: number" using the canonical code of the column the mark physically sits under. Never output a bare number without its CODE: prefix in a student row.
 4. If a cell is empty / blank / dashed, OMIT it entirely (do not guess, do not shift the next number leftwards into the blank column).
 5. Read column-by-column down the page when in doubt — vertical alignment of the handwritten digit with the printed header is the source of truth, not horizontal position relative to other numbers in the same row.
-6. Double-check: the count of CODE:number pairs you emit for a row MUST equal the number of non-blank cells you actually see in that row. If you are unsure which column a number belongs to, leave it out rather than guess.
+6. Capture EVERY visible handwritten mark. Do not skip a mark just because the column alignment is ambiguous — make your best column assignment based on horizontal/vertical position. It is far worse to silently drop a mark than to occasionally place one in the wrong column.
 
 If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form 6. Ignore POINTS/TOTAL columns; never treat them as a subject.
 
