@@ -251,6 +251,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [scanOrder, setScanOrder] = useState<string[]>([]);
   const [scanStudentOrder, setScanStudentOrder] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Classes whose form belongs to this exam
   const examClasses = useMemo(
