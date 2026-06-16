@@ -97,15 +97,23 @@ const parseTranscriptRows = (text: string, fallbackCodes: string[] = []) => {
       pushSubject(code);
       firstSubjectIndex = Math.min(firstSubjectIndex, match.index ?? line.length);
     }
-    if (!Object.keys(marks).length && activeHeader.length) {
+    if (activeHeader.length) {
       const withoutRowNumber = line.replace(/^\d{1,2}\s+/, "");
+      const explicitRanges = explicitMarkMatches.map((match) => ({
+        start: match.index ?? -1,
+        end: (match.index ?? -1) + match[0].length,
+      }));
       const numberMatches = [...withoutRowNumber.matchAll(/\b\d{1,3}\b/g)]
         .map((match) => ({ mark: parseMark(match[0]), index: match.index ?? withoutRowNumber.length }))
-        .filter((match): match is { mark: number; index: number } => match.mark != null);
+        .filter((match): match is { mark: number; index: number } => {
+          if (match.mark == null) return false;
+          const originalIndex = line.indexOf(withoutRowNumber) + match.index;
+          return !explicitRanges.some((range) => originalIndex >= range.start && originalIndex < range.end);
+        });
       // Positional fallback: assign numbers left-to-right to header columns. If there are fewer
       // numbers than columns, the trailing columns are simply blank (do not drop the row). If
       // there are more numbers than columns, ignore the extras (likely POINTS/TOTAL trailing cols).
-      if (numberMatches.length > 0) {
+      if (!Object.keys(marks).length && numberMatches.length > 0) {
         const take = Math.min(numberMatches.length, activeHeader.length);
         for (let i = 0; i < take; i++) {
           const code = activeHeader[i];
@@ -113,6 +121,20 @@ const parseTranscriptRows = (text: string, fallbackCodes: string[] = []) => {
           pushSubject(code);
         }
         firstSubjectIndex = line.indexOf(withoutRowNumber) + numberMatches[0].index;
+      } else if (Object.keys(marks).length && numberMatches.length > 0) {
+        // Some phone OCR transcripts mix CODE:number pairs with extra bare numbers on the
+        // same row. Do not lose those extra visible marks: put them into the next empty
+        // expected subject columns in left-to-right order.
+        let headerCursor = 0;
+        for (const match of numberMatches) {
+          while (headerCursor < activeHeader.length && marks[activeHeader[headerCursor]] != null) headerCursor++;
+          if (headerCursor >= activeHeader.length) break;
+          const code = activeHeader[headerCursor];
+          marks[code] = match.mark;
+          pushSubject(code);
+          firstSubjectIndex = Math.min(firstSubjectIndex, line.indexOf(withoutRowNumber) + match.index);
+          headerCursor++;
+        }
       }
     }
     if (!Object.keys(marks).length) continue;
