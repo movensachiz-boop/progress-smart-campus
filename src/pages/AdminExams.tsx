@@ -290,7 +290,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
   const addColumn = () => {
     const c = normalizeSubjectCode(newCode);
     if (!c) return;
-    if (!subjectCodes.includes(c)) setSubjectCodes([...subjectCodes, c].sort());
+    if (!subjectCodes.includes(c)) setSubjectCodes([...subjectCodes, c]);
     setNewCode("");
   };
 
