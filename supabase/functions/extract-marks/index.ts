@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const canonicalSubjectCodes = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO", "ENG", "SHO", "AGR", "FN", "ART"];
+const canonicalSubjectCodes = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO", "ENG", "SHO", "AGR", "FN", "ART", "HERI", "FRE", "BS", "SCI", "MUS", "ICT", "COMB"];
 
 const normalizeSubjectCode = (raw: string) => {
   const stripped = raw.trim().toUpperCase().replace(/\s+/g, "").replace(/[\/\.\-]/g, "");
@@ -27,6 +27,13 @@ const normalizeSubjectCode = (raw: string) => {
     AGR: "AGR", AGRIC: "AGR", AGRICULTURE: "AGR",
     FN: "FN", FOOD: "FN", FOODNUTRITION: "FN",
     ART: "ART",
+    HERI: "HERI", HER: "HERI", HERITAGE: "HERI", HERITAGESTUDIES: "HERI",
+    FRE: "FRE", FRENCH: "FRE",
+    BS: "BS", BUSINESSSTUDIES: "BS",
+    SCI: "SCI", SCIENCE: "SCI",
+    MUS: "MUS", MUSIC: "MUS",
+    ICT: "ICT", INFORMATION: "ICT", INFORMATIONTECHNOLOGY: "ICT", COMPUTERSTUDIES: "ICT",
+    COMB: "COMB", COMBINED: "COMB", COMBINEDSCIENCE: "COMB", CLS: "COMB",
   };
   return map[stripped] || stripped;
 };
@@ -58,7 +65,7 @@ const parseTranscriptRows = (text: string, fallbackCodes: string[] = []) => {
       subjectOrder.push(code);
     }
   };
-  const codePattern = "LIT|R\\/?S|RS|HIS|C\\/?SC|CSC|BIO|CHE|MAT|ACC|PHY|GEO|BUS|ECO|ENG|SHO|AGR|F\\/?N|FN|ART";
+  const codePattern = "LIT|R\\/?S|RS|HIS|C\\/?SC|CSC|BIO|CHE|MAT|ACC|PHY|GEO|BUS|ECO|ENG|SHO|AGR|F\\/?N|FN|ART|HERI|HER|FRE|BS|SCI|MUS|ICT|COMB";
   const markRegex = new RegExp(`\\b(${codePattern})\\b\\s*[:=\\-]?\\s*(\\d{1,3})`, "gi");
   const subjectRegex = new RegExp(`\\b(${codePattern})\\b`, "gi");
   const parseMark = (raw: string) => {
@@ -165,7 +172,7 @@ Transcribe the photo row by row. Include the form/level heading, printed subject
 
 If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form 6.
 
-Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART. Normalize C/SC to CSC and R/S to RS. NEVER skip the GEO column or any other subject column that appears in the header — even if some students have blank cells in that column, include marks for the students who do have them.
+Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART, HERI, FRE, BS, SCI, MUS, ICT, COMB. Normalize C/SC to CSC, R/S to RS, HER to HERI (Heritage Studies). NEVER skip any subject column that appears in the header — even if some students have blank cells in that column, include marks for the students who do have them.
 
 IF NO SUBJECT HEADER ROW IS VISIBLE on the sheet, ASSUME the columns are exactly the "Expected subject columns" provided by the user, IN THAT EXACT ORDER, and align the numbers in each row to those codes left-to-right. Emit a synthetic header line so the transcript still has CODE: number pairs.
 
