@@ -207,7 +207,7 @@ NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
 
     const transcriptData = await transcriptResponse.json();
     const transcript = String(transcriptData.choices?.[0]?.message?.content || "").trim();
-    const transcriptParsed = parseTranscriptRows(transcript);
+    const transcriptParsed = parseTranscriptRows(transcript, expectedSubjectCodes);
     const detectedFormLevel = detectFormLevel(transcript);
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
