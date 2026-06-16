@@ -482,7 +482,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-10">
                   <TableRow>
-                    <TableHead className="min-w-[200px]">Student</TableHead>
+                    <TableHead className="min-w-[200px] sticky left-0 bg-card z-20 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">Student</TableHead>
                     {orderedCodes.map(c => <TableHead key={c} className="text-center min-w-[70px]" title={SUBJECT_CODES[c] || c}>{c}</TableHead>)}
                     <TableHead className="text-center min-w-[140px]">Passed</TableHead>
                     <TableHead className="text-center min-w-[140px]">Failed</TableHead>
