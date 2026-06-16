@@ -426,19 +426,41 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                   ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC", "ECO", "ACC", "ICT", "COMB"]
                   : ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
               const rank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
+              const scanRank = new Map(scanOrder.map((c, i) => [c, i]));
               // When a class is picked, restrict columns to that class's registered subjects (in preferred order).
               const baseCodes = classSubjectCodes.length ? classSubjectCodes : PREFERRED_ORDER;
               const combined = Array.from(new Set([...baseCodes, ...subjectCodes]));
-              const orderedCodes = combined.sort((a, b) => {
-                const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
-                const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
-                if (ra !== rb) return ra - rb;
-                return a.localeCompare(b);
-              });
+              const orderedCodes = scanOrder.length
+                ? combined.sort((a, b) => {
+                    const sa = scanRank.has(a) ? (scanRank.get(a) as number) : Number.POSITIVE_INFINITY;
+                    const sb = scanRank.has(b) ? (scanRank.get(b) as number) : Number.POSITIVE_INFINITY;
+                    if (sa !== sb) return sa - sb;
+                    const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
+                    const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
+                    if (ra !== rb) return ra - rb;
+                    return a.localeCompare(b);
+                  })
+                : combined.sort((a, b) => {
+                    const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
+                    const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
+                    if (ra !== rb) return ra - rb;
+                    return a.localeCompare(b);
+                  });
+              // Order students by scan order first, then DB order (no alphabetical sort)
+              const studentRank = new Map(scanStudentOrder.map((id, i) => [id, i]));
+              const origIdx = new Map(students.map((s, i) => [s.id, i]));
+              const orderedStudents = scanStudentOrder.length
+                ? [...students].sort((a, b) => {
+                    const ra = studentRank.has(a.id) ? (studentRank.get(a.id) as number) : Number.POSITIVE_INFINITY;
+                    const rb = studentRank.has(b.id) ? (studentRank.get(b.id) as number) : Number.POSITIVE_INFINITY;
+                    if (ra !== rb) return ra - rb;
+                    return (origIdx.get(a.id) ?? 0) - (origIdx.get(b.id) ?? 0);
+                  })
+                : students;
               // Filter students by selected class (match by form + stream/learning area)
               const selectedClass = examClasses.find(c => c.id === selectedClassId);
               const visibleStudents = selectedClass
-                ? students.filter(s => {
+                ? orderedStudents.filter(s => {
                     if (String(s.form) !== String(selectedClass.form)) return false;
                     const target = (selectedClass.learningArea || selectedClass.stream || "").toLowerCase();
                     const stream = (s.stream || "").toLowerCase();
