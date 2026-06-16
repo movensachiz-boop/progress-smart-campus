@@ -466,7 +466,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                     const stream = (s.stream || "").toLowerCase();
                     return stream === target || stream.charAt(0) === target.charAt(0);
                   })
-                : students;
+                : orderedStudents;
               return (
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-10">
