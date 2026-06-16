@@ -377,6 +377,15 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
           </DialogHeader>
 
           <div className="flex flex-wrap items-center gap-2 pb-2 border-b">
+            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+              <SelectTrigger className="w-52"><SelectValue placeholder="Class"/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All classes</SelectItem>
+                {examClasses.map(c => (
+                  <SelectItem key={c.id} value={c.id}>Form {c.form} {c.stream}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button onClick={() => setScanOpen(true)} className="gap-2" disabled={ocrLoading}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
@@ -394,6 +403,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
               {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save All
             </Button>
           </div>
+
 
           <div className="flex-1 overflow-auto">
             {loading ? <div className="p-8 text-center"><Loader2 className="inline animate-spin mr-2" size={16}/>Loading…</div> : (() => {
