@@ -167,6 +167,8 @@ If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form
 
 Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART. Normalize C/SC to CSC and R/S to RS. NEVER skip the GEO column or any other subject column that appears in the header — even if some students have blank cells in that column, include marks for the students who do have them.
 
+IF NO SUBJECT HEADER ROW IS VISIBLE on the sheet, ASSUME the columns are exactly the "Expected subject columns" provided by the user, IN THAT EXACT ORDER, and align the numbers in each row to those codes left-to-right. Emit a synthetic header line so the transcript still has CODE: number pairs.
+
 Return plain text only, one student row per line, like:
 LOWER 6 (2026 MID-TERM 2 EXAMINATIONS)
 NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
