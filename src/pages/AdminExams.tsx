@@ -46,6 +46,8 @@ const AdminExams = () => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [qrTitle, setQrTitle] = useState<string>("");
+  const [qrShareUrl, setQrShareUrl] = useState<string>("");
+
 
   const [newExam, setNewExam] = useState({
     name: "2026 Mid-Term 2", exam_type: "Mid-Term", term: 2, year: 2026, form_levels: [6] as number[],
@@ -94,8 +96,10 @@ const AdminExams = () => {
     const url = `${window.location.origin}/scan-marks/${e.id}`;
     const dataUrl = await QRCode.toDataURL(url, { width: 320, margin: 2 });
     setQrUrl(dataUrl);
-    setQrTitle(`${e.name} – Mark Sheet QR (scan to capture marks)`);
+    setQrShareUrl(url);
+    setQrTitle(`${e.name} – Mark Sheet Editing Link`);
   };
+
 
   return (
     <DashboardLayout role="admin">
@@ -215,9 +219,16 @@ const AdminExams = () => {
       <Dialog open={!!qrUrl} onOpenChange={(o) => { if (!o) setQrUrl(null); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>{qrTitle}</DialogTitle></DialogHeader>
-          {qrUrl && <div className="flex flex-col items-center gap-3 py-2"><img src={qrUrl} alt="QR" className="w-72 h-72"/><p className="text-xs text-muted-foreground text-center">Print this QR and stick it on the printed mark sheet. Any admin can scan it with their phone to open OCR for this exam.</p>
-            <Button onClick={() => window.print()} variant="outline" className="gap-2"><Printer size={14}/> Print</Button>
+          {qrUrl && <div className="flex flex-col items-center gap-3 py-2">
+            <img src={qrUrl} alt="QR" className="w-72 h-72"/>
+            <p className="text-xs text-muted-foreground text-center">Scan this QR or share the link below. The page only allows editing marks for this exam — no other access.</p>
+            <div className="w-full flex gap-2">
+              <Input readOnly value={qrShareUrl} className="text-xs font-mono" onFocus={(ev) => ev.currentTarget.select()} />
+              <Button type="button" variant="outline" onClick={() => { navigator.clipboard.writeText(qrShareUrl); toast({ title: "Link copied" }); }}>Copy</Button>
+            </div>
+            <Button onClick={() => window.print()} variant="outline" className="gap-2"><Printer size={14}/> Print QR</Button>
           </div>}
+
         </DialogContent>
       </Dialog>
     </DashboardLayout>
