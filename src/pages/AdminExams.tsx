@@ -251,6 +251,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [scanOrder, setScanOrder] = useState<string[]>([]);
   const [scanStudentOrder, setScanStudentOrder] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Classes whose form belongs to this exam
   const examClasses = useMemo(
@@ -409,6 +410,12 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                 ))}
               </SelectContent>
             </Select>
+            <Input
+              placeholder="Search student name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-56"
+            />
             <Button onClick={() => setScanOpen(true)} className="gap-2" disabled={ocrLoading}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
@@ -470,7 +477,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                 : students;
               // Filter students by selected class (match by form + stream/learning area)
               const selectedClass = examClasses.find(c => c.id === selectedClassId);
-              const visibleStudents = selectedClass
+              let visibleStudents = selectedClass
                 ? orderedStudents.filter(s => {
                     if (String(s.form) !== String(selectedClass.form)) return false;
                     const target = (selectedClass.learningArea || selectedClass.stream || "").toLowerCase();
@@ -478,6 +485,14 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                     return stream === target || stream.charAt(0) === target.charAt(0);
                   })
                 : orderedStudents;
+              // Filter by search query
+              const q = searchQuery.trim().toLowerCase();
+              if (q) {
+                visibleStudents = visibleStudents.filter(s =>
+                  `${s.first_name} ${s.last_name}`.toLowerCase().includes(q) ||
+                  `${s.last_name} ${s.first_name}`.toLowerCase().includes(q)
+                );
+              }
               return (
               <Table wrapperClassName="overflow-visible">
 
