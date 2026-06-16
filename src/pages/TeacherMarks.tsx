@@ -382,7 +382,8 @@ const TeacherMarks = () => {
                             {col.code}
                           </th>
                         ))}
-                        <th className="sticky top-0 z-50 bg-background border-b h-12 px-2 text-center align-middle font-semibold text-muted-foreground min-w-[64px] w-[64px] shadow-sm">Pts</th>
+                        <th className="sticky top-0 z-50 bg-background border-b border-r h-12 px-2 text-center align-middle font-semibold text-muted-foreground min-w-[140px] w-[140px] shadow-sm">Passed</th>
+                        <th className="sticky top-0 z-50 bg-background border-b h-12 px-2 text-center align-middle font-semibold text-muted-foreground min-w-[140px] w-[140px] shadow-sm">Failed</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -391,7 +392,8 @@ const TeacherMarks = () => {
                         const row = marks[s.id] || {};
                         const isMatched = lastMatched.has(s.id);
                         const allowed = new Set(subjectsForStudent(s).map(x => x.code));
-                        let pts = 0;
+                        const passed: string[] = [];
+                        const failed: string[] = [];
                         return (
                           <tr key={s.id} className={isMatched ? "bg-green-500/5" : ""}>
                             <td className="sticky left-0 z-30 bg-background border-b border-r px-3 py-2 min-w-[220px] w-[220px] shadow-sm">
@@ -404,7 +406,11 @@ const TeacherMarks = () => {
                             {columns.map(col => {
                               const m = row[col.code];
                               const isAllowed = allowed.has(col.code) || m != null;
-                              if (m != null) pts += computePoints(m, level) || 0;
+                              if (m != null) {
+                                const g = computeGrade(m, level);
+                                if (g === "U") failed.push(col.code);
+                                else if (g) passed.push(col.code);
+                              }
                               return (
                                 <td key={col.code} className="border-b border-r p-1 text-center min-w-[64px] w-[64px]">
                                   {isAllowed ? (
@@ -418,7 +424,8 @@ const TeacherMarks = () => {
                                 </td>
                               );
                             })}
-                            <td className="border-b px-2 py-2 text-center text-sm font-medium min-w-[64px] w-[64px]">{pts || "—"}</td>
+                            <td className="border-b border-r px-2 py-2 text-center text-xs font-medium text-green-600 min-w-[140px] w-[140px]">{passed.join(", ") || "—"}</td>
+                            <td className="border-b px-2 py-2 text-center text-xs font-medium text-red-600 min-w-[140px] w-[140px]">{failed.join(", ") || "—"}</td>
                           </tr>
                         );
                       })}

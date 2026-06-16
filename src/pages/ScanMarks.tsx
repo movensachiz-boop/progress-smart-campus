@@ -193,16 +193,20 @@ const ScanMarks = () => {
     });
   }, [subjectCodes, scanOrder, exam]);
 
-  const computeRowPoints = (s: Profile): number => {
+  const computeRowResult = (s: Profile): { passed: string[]; failed: string[] } => {
     const level = formToLevel(s.form);
     const row = grid[s.id] || {};
-    let total = 0;
+    const passed: string[] = [];
+    const failed: string[] = [];
     for (const code of orderedCodes) {
       const m = row[code];
       if (m == null || isNaN(m)) continue;
-      total += computePoints(m, level);
+      const g = computeGrade(m, level);
+      if (!g) continue;
+      if (g === "U") failed.push(code);
+      else passed.push(code);
     }
-    return total;
+    return { passed, failed };
   };
 
   if (loading) {
@@ -279,11 +283,14 @@ const ScanMarks = () => {
                   {orderedCodes.map((c) => (
                     <th key={c} className="text-center p-2 min-w-[70px]" title={SUBJECT_CODES[c] || c}>{c}</th>
                   ))}
-                  <th className="text-center p-2 min-w-[70px]">POINTS</th>
+                  <th className="text-center p-2 min-w-[140px]">PASSED</th>
+                  <th className="text-center p-2 min-w-[140px]">FAILED</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleStudents.map((s) => (
+                {visibleStudents.map((s) => {
+                  const { passed, failed } = computeRowResult(s);
+                  return (
                   <tr key={s.id} className="border-t">
                     <td className="p-2 whitespace-nowrap">{s.last_name} {s.first_name}</td>
                     <td className="p-2">{s.form}{s.stream ? ` ${s.stream}` : ""}</td>
@@ -297,11 +304,13 @@ const ScanMarks = () => {
                         />
                       </td>
                     ))}
-                    <td className="p-2 text-center font-semibold">{computeRowPoints(s) || ""}</td>
+                    <td className="p-2 text-center text-xs font-medium text-green-600">{passed.join(", ") || "—"}</td>
+                    <td className="p-2 text-center text-xs font-medium text-red-600">{failed.join(", ") || "—"}</td>
                   </tr>
-                ))}
+                  );
+                })}
                 {visibleStudents.length === 0 && (
-                  <tr><td colSpan={3 + orderedCodes.length} className="p-6 text-center text-muted-foreground">
+                  <tr><td colSpan={4 + orderedCodes.length} className="p-6 text-center text-muted-foreground">
                     No students match the filter.
                   </td></tr>
                 )}
