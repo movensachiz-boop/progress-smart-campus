@@ -102,13 +102,16 @@ const parseTranscriptRows = (text: string, fallbackCodes: string[] = []) => {
       const numberMatches = [...withoutRowNumber.matchAll(/\b\d{1,3}\b/g)]
         .map((match) => ({ mark: parseMark(match[0]), index: match.index ?? withoutRowNumber.length }))
         .filter((match): match is { mark: number; index: number } => match.mark != null);
-      const usableMarks = numberMatches.slice(0, activeHeader.length);
-      usableMarks.forEach(({ mark }, index) => {
-        const code = activeHeader[index];
-        marks[code] = mark;
-        pushSubject(code);
-      });
-      if (numberMatches[0]) firstSubjectIndex = line.indexOf(withoutRowNumber) + numberMatches[0].index;
+      // Only fall back to positional assignment when the row has EXACTLY one number per header column.
+      // Otherwise blank cells would shift marks into the wrong subject — better to drop the row than misalign.
+      if (numberMatches.length === activeHeader.length) {
+        numberMatches.forEach(({ mark }, index) => {
+          const code = activeHeader[index];
+          marks[code] = mark;
+          pushSubject(code);
+        });
+        firstSubjectIndex = line.indexOf(withoutRowNumber) + numberMatches[0].index;
+      }
     }
     if (!Object.keys(marks).length) continue;
     const beforeMarks = line.slice(0, firstSubjectIndex).replace(/^\d{1,2}\s+/, "").trim();
@@ -168,15 +171,21 @@ Deno.serve(async (req) => {
             role: "system",
             content: `You are a strict OCR transcriber for a school exam mark sheet with handwritten NUMERIC MARKS.
 
-Transcribe the photo row by row. Include the form/level heading, printed subject headers, every student name, and every visible handwritten mark. Write each mark as CODE: number under the correct subject code. Ignore POINTS/TOTAL except do not confuse them with subject marks.
+CRITICAL COLUMN ALIGNMENT RULES — accuracy of column placement matters more than anything else:
+1. First, look at the printed subject header row of the table and list every column header in order, left to right.
+2. For EACH student row, look at every column cell INDIVIDUALLY (not just the numbers you see). Decide if that cell is filled or BLANK.
+3. ALWAYS write each mark as "CODE: number" using the canonical code of the column the mark physically sits under. Never output a bare number without its CODE: prefix in a student row.
+4. If a cell is empty / blank / dashed, OMIT it entirely (do not guess, do not shift the next number leftwards into the blank column).
+5. Read column-by-column down the page when in doubt — vertical alignment of the handwritten digit with the printed header is the source of truth, not horizontal position relative to other numbers in the same row.
+6. Double-check: the count of CODE:number pairs you emit for a row MUST equal the number of non-blank cells you actually see in that row. If you are unsure which column a number belongs to, leave it out rather than guess.
 
-If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form 6.
+If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form 6. Ignore POINTS/TOTAL columns; never treat them as a subject.
 
-Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART, HERI, FRE, BS, SCI, MUS, ICT, COMB. Normalize C/SC to CSC, R/S to RS, HER to HERI (Heritage Studies). NEVER skip any subject column that appears in the header — even if some students have blank cells in that column, include marks for the students who do have them.
+Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART, HERI, FRE, BS, SCI, MUS, ICT, COMB. Normalize C/SC to CSC, R/S to RS, HER to HERI (Heritage Studies).
 
-IF NO SUBJECT HEADER ROW IS VISIBLE on the sheet, ASSUME the columns are exactly the "Expected subject columns" provided by the user, IN THAT EXACT ORDER, and align the numbers in each row to those codes left-to-right. Emit a synthetic header line so the transcript still has CODE: number pairs.
+IF NO SUBJECT HEADER ROW IS VISIBLE on the sheet, ASSUME the columns are exactly the "Expected subject columns" provided by the user, IN THAT EXACT ORDER, and align each cell to those codes by horizontal position. Emit a synthetic header line and then CODE: number pairs.
 
-Return plain text only, one student row per line, like:
+Return plain text only — first the form/level heading, then the header row, then one student row per line, like:
 LOWER 6 (2026 MID-TERM 2 EXAMINATIONS)
 NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
 1 CHUNDU TRISHA CHE: 40 PHY: 13 GEO: 17
