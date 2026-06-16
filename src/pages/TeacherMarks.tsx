@@ -202,7 +202,10 @@ const TeacherMarks = () => {
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
       setScanOrder(orderList);
-      setScanStudentOrder([...studentRank].sort((a, b) => (a.rank - b.rank) || (a.sequence - b.sequence)).map(r => r.id));
+      const sortedIds = [...studentRank].sort((a, b) => (a.sequence - b.sequence)).map(r => r.id);
+      // Append unmatched students at the end in their original DB order so nothing disappears
+      const unmatched = students.filter(s => !sortedIds.includes(s.id)).map(s => s.id);
+      setScanStudentOrder([...sortedIds, ...unmatched]);
       setLastMatched(matched);
       const formNote = form_level ? ` Detected Form ${form_level}${form_level === 5 ? " (Lower 6)" : form_level === 6 ? " (Upper 6)" : ""}.` : "";
       const formMismatch = form_level && activeExam && !activeExam.form_levels.includes(form_level)
