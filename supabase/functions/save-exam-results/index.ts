@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
       const { data: students } = await admin
         .from("profiles")
         .select("id, first_name, last_name, form, stream")
-        .in("form", formStrs).order("last_name");
+        .in("form", formStrs).order("last_name", { ascending: true });
       const { data: results } = await admin
         .from("exam_results")
         .select("student_profile_id, subject_code, mark")
