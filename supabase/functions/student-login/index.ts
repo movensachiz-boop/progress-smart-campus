@@ -106,14 +106,133 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { registrationNumber, password } = body;
-
-    if (!registrationNumber || !password || typeof registrationNumber !== "string" || typeof password !== "string") {
-      return new Response(JSON.stringify({ error: "Registration number and password required" }), {
-        status: 400,
+    // ── Forgot-password actions ──
+    if (body?.action === "verify_identity") {
+      const input = body.registrationNumber?.trim();
+      if (!input) {
+        return new Response(JSON.stringify({ error: "Identifier required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      // Map to virtual email using same rules as login
+      let email: string;
+      if (input.includes("@")) {
+        email = input.toLowerCase();
+      } else if (/\s/.test(input)) {
+        const slug = input.toLowerCase().trim().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
+        email = `${slug}@pcc.local`;
+      } else {
+        email = `${input.toUpperCase().toLowerCase()}@pcc.local`;
+      }
+      // Find user by email
+      let page = 1;
+      let foundUser: any = null;
+      while (page <= 20) {
+        const { data: list, error: lerr } = await adminClient.auth.admin.listUsers({ page, perPage: 200 });
+        if (lerr) break;
+        foundUser = list.users.find((u: any) => (u.email || "").toLowerCase() === email);
+        if (foundUser) break;
+        if (list.users.length < 200) break;
+        page++;
+      }
+      if (!foundUser) {
+        return new Response(JSON.stringify({ error: "Account not found. Please check your registration number or name." }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const meta: any = foundUser.user_metadata || {};
+      const displayName = meta.full_name || meta.first_name
+        ? `${meta.first_name || ""} ${meta.last_name || ""}`.trim()
+        : (foundUser.email || "").split("@")[0];
+      return new Response(JSON.stringify({
+        found: true,
+        name: displayName,
+        identifier: input,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    if (body?.action === "reset_password") {
+      const input = body.registrationNumber?.trim();
+      const newPassword = body.newPassword;
+      if (!input || !newPassword) {
+        return new Response(JSON.stringify({ error: "Identifier and new password required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const pwdErr = validatePassword(newPassword);
+      if (pwdErr) {
+        return new Response(JSON.stringify({ error: pwdErr }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      // Map to virtual email
+      let email: string;
+      if (input.includes("@")) {
+        email = input.toLowerCase();
+      } else if (/\s/.test(input)) {
+        const slug = input.toLowerCase().trim().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
+        email = `${slug}@pcc.local`;
+      } else {
+        email = `${input.toUpperCase().toLowerCase()}@pcc.local`;
+      }
+      // Find user
+      let page = 1;
+      let foundUser: any = null;
+      while (page <= 20) {
+        const { data: list, error: lerr } = await adminClient.auth.admin.listUsers({ page, perPage: 200 });
+        if (lerr) break;
+        foundUser = list.users.find((u: any) => (u.email || "").toLowerCase() === email);
+        if (foundUser) break;
+        if (list.users.length < 200) break;
+        page++;
+      }
+      if (!foundUser) {
+        return new Response(JSON.stringify({ error: "Account not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error: updateError } = await adminClient.auth.admin.updateUserById(
+        foundUser.id,
+        { password: newPassword }
+      );
+      if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Auto-sign in after reset
+      const supabase = createClient(supabaseUrl, anonKey);
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password: newPassword });
+      if (signInError) {
+        return new Response(JSON.stringify({ success: true, message: "Password reset. Please log in." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Get roles
+      const { data: roleRows } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", foundUser.id);
+      const roles = (roleRows || []).map((r: any) => r.role);
+      const preferred =
+        roles.find((r: string) => r === "cashier" || r === "timetable_manager") ||
+        roles.find((r: string) => r === "owner" || r === "teacher") ||
+        roles.find((r: string) => r === "admin") ||
+        "student";
+      return new Response(JSON.stringify({
+        success: true,
+        session: signInData.session,
+        role: preferred,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { registrationNumber, password } = body;
 
     const cleanInput = registrationNumber.trim();
 
