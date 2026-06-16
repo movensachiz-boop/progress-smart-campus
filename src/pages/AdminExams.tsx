@@ -228,6 +228,7 @@ const AdminExams = () => {
 
 const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; onOpenChange: (o: boolean) => void }) => {
   const { toast } = useToast();
+  const { classes, subjects } = useTimetable();
   const [students, setStudents] = useState<Profile[]>([]);
   const [subjectCodes, setSubjectCodes] = useState<string[]>([]);
   const [results, setResults] = useState<Record<string, Record<string, number | null>>>({}); // [studentId][code] = mark
@@ -236,6 +237,24 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
   const [scanOpen, setScanOpen] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [newCode, setNewCode] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState<string>("all");
+
+  // Classes whose form belongs to this exam
+  const examClasses = useMemo(
+    () => classes.filter(c => exam.form_levels.includes(c.form as number)),
+    [classes, exam.form_levels]
+  );
+
+  // Subject codes derived from the selected class
+  const classSubjectCodes = useMemo(() => {
+    if (selectedClassId === "all") return [];
+    const cls = examClasses.find(c => c.id === selectedClassId);
+    if (!cls) return [];
+    return cls.subjectIds
+      .map(id => subjects.find(s => s.id === id)?.code)
+      .filter(Boolean)
+      .map(c => normalizeSubjectCode(c as string));
+  }, [selectedClassId, examClasses, subjects]);
 
   const load = async () => {
     setLoading(true);
