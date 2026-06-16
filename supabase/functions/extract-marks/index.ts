@@ -175,8 +175,11 @@ Deno.serve(async (req) => {
         return `- ${s.name || ""}${subs ? ` [${subs}]` : ""}`;
       }).join("\n")
       : "No roster provided.";
-    const expectedCodesText = Array.isArray(expectedSubjectCodes) && expectedSubjectCodes.length
-      ? expectedSubjectCodes.join(", ")
+    const normalizedExpected = (Array.isArray(expectedSubjectCodes) ? expectedSubjectCodes : [])
+      .map((c: string) => normalizeSubjectCode(c))
+      .filter((c: string, i: number, arr: string[]) => canonicalSubjectCodes.includes(c) && arr.indexOf(c) === i);
+    const expectedCodesText = normalizedExpected.length
+      ? normalizedExpected.join(", ")
       : "Use the subject headers visible on the sheet.";
 
 
