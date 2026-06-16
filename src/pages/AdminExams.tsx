@@ -262,7 +262,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
     setLoading(true);
     const [{ data: profs }, { data: rows }] = await Promise.all([
       supabase.from("profiles").select("id, first_name, last_name, form, stream")
-        .in("form", exam.form_levels.map(String)).order("last_name"),
+        .in("form", exam.form_levels.map(String)),
       supabase.from("exam_results").select("*").eq("exam_id", exam.id),
     ]);
     setStudents((profs || []) as Profile[]);
@@ -274,7 +274,9 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
       codes.add(r.subject_code);
     }
     setResults(grid);
-    setSubjectCodes(Array.from(codes).sort());
+    setSubjectCodes(Array.from(codes));
+    setScanOrder([]);
+    setScanStudentOrder([]);
     setLoading(false);
   };
 
