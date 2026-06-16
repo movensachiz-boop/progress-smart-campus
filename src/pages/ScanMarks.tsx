@@ -294,16 +294,28 @@ const ScanMarks = () => {
                   <tr key={s.id} className="border-t">
                     <td className="p-2 whitespace-nowrap">{s.last_name} {s.first_name}</td>
                     <td className="p-2">{s.form}{s.stream ? ` ${s.stream}` : ""}</td>
-                    {orderedCodes.map((c) => (
-                      <td key={c} className="p-1">
-                        <Input
-                          inputMode="numeric"
-                          value={grid[s.id]?.[c] ?? ""}
-                          onChange={(e) => setCell(s.id, c, e.target.value)}
-                          className="h-8 text-center w-16"
-                        />
-                      </td>
-                    ))}
+                    {orderedCodes.map((c) => {
+                      const m = grid[s.id]?.[c];
+                      const level = formToLevel(s.form);
+                      const grade = m != null && !isNaN(m) ? computeGrade(m, level) : "";
+                      return (
+                        <td key={c} className="p-1">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <Input
+                              inputMode="numeric"
+                              value={m ?? ""}
+                              onChange={(e) => setCell(s.id, c, e.target.value)}
+                              className="h-8 text-center w-16"
+                            />
+                            {grade && (
+                              <span className={`text-[10px] font-bold ${grade === "U" ? "text-red-600" : "text-blue-600"}`}>
+                                {grade}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
                     <td className="p-2 text-center text-xs font-medium text-green-600">{passed.join(", ") || "—"}</td>
                     <td className="p-2 text-center text-xs font-medium text-red-600">{failed.join(", ") || "—"}</td>
                   </tr>
