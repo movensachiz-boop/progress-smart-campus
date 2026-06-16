@@ -210,6 +210,14 @@ If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form
 
 Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART, HERI, FRE, BS, SCI, MUS, ICT, COMB. Normalize C/SC to CSC, R/S to RS, HER to HERI (Heritage Studies).
 
+SUBJECT CODE DISAMBIGUATION — these pairs are commonly confused and you MUST read them carefully:
+- AGR (Agriculture) vs ACC (Accounts/Accounting): look at the third letter. R = AGR, C = ACC. If the column header word starts with "AG" it is AGR. If it starts with "AC" it is ACC. NEVER swap them.
+- BIO (Biology) vs BS (Business Studies): BIO has three letters ending in O; BS is two letters.
+- CHE (Chemistry) vs CSC (Computer Science): CHE has H as second letter; CSC has S.
+- HIS (History) vs HERI (Heritage): HIS ends in S; HERI ends in I.
+- SHO (Shona) vs SCI (Science): different first two letters.
+If a column code is ambiguous, prefer the code that appears in the user-provided "Expected subject columns" list over a confusable one that does NOT appear there.
+
 IF NO SUBJECT HEADER ROW IS VISIBLE on the sheet, ASSUME the columns are exactly the "Expected subject columns" provided by the user, IN THAT EXACT ORDER, and align each cell to those codes by horizontal position. Emit a synthetic header line and then CODE: number pairs.
 
 Return plain text only — first the form/level heading, then the header row, then one student row per line, like:
