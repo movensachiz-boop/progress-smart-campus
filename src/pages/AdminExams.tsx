@@ -300,7 +300,11 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
     setScanOpen(false);
     setOcrLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("extract-marks", { body: { imageBase64: dataUrl } });
+      const expectedStudents = students.map((p) => ({ name: `${p.first_name} ${p.last_name}` }));
+      const expectedSubjectCodes = subjectCodes.length ? subjectCodes : [];
+      const { data, error } = await supabase.functions.invoke("extract-marks", {
+        body: { imageBase64: dataUrl, expectedStudents, expectedSubjectCodes },
+      });
       if (error) throw error;
       const { students: rows, subject_codes } = data as { students: { name: string; marks: Record<string, number> }[]; subject_codes?: string[] };
       // Add any new subject columns
