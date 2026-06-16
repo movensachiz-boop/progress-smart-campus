@@ -7,6 +7,7 @@ import { TimetableProvider } from "@/context/TimetableContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import SetupAccount from "./pages/SetupAccount";
+import ForgotPassword from "./pages/ForgotPassword";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentPayments from "./pages/StudentPayments";
 import StudentTimetable from "./pages/StudentTimetable";
