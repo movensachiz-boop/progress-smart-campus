@@ -219,9 +219,16 @@ const AdminExams = () => {
       <Dialog open={!!qrUrl} onOpenChange={(o) => { if (!o) setQrUrl(null); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>{qrTitle}</DialogTitle></DialogHeader>
-          {qrUrl && <div className="flex flex-col items-center gap-3 py-2"><img src={qrUrl} alt="QR" className="w-72 h-72"/><p className="text-xs text-muted-foreground text-center">Print this QR and stick it on the printed mark sheet. Any admin can scan it with their phone to open OCR for this exam.</p>
-            <Button onClick={() => window.print()} variant="outline" className="gap-2"><Printer size={14}/> Print</Button>
+          {qrUrl && <div className="flex flex-col items-center gap-3 py-2">
+            <img src={qrUrl} alt="QR" className="w-72 h-72"/>
+            <p className="text-xs text-muted-foreground text-center">Scan this QR or share the link below. The page only allows editing marks for this exam — no other access.</p>
+            <div className="w-full flex gap-2">
+              <Input readOnly value={qrShareUrl} className="text-xs font-mono" onFocus={(ev) => ev.currentTarget.select()} />
+              <Button type="button" variant="outline" onClick={() => { navigator.clipboard.writeText(qrShareUrl); toast({ title: "Link copied" }); }}>Copy</Button>
+            </div>
+            <Button onClick={() => window.print()} variant="outline" className="gap-2"><Printer size={14}/> Print QR</Button>
           </div>}
+
         </DialogContent>
       </Dialog>
     </DashboardLayout>
