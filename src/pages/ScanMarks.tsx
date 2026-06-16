@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ type Exam = {
   form_levels: number[]; published: boolean;
 };
 type Profile = { id: string; first_name: string; last_name: string; form: string | null; stream: string | null };
+
+const PREFERRED_ORDER = ["LIT", "RS", "HIS", "CS", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
 
 /**
  * Public mark-sheet capture page. Reached by scanning the QR printed on a mark
@@ -35,6 +37,8 @@ const ScanMarks = () => {
   const [saving, setSaving] = useState(false);
   const [newCode, setNewCode] = useState("");
   const [filter, setFilter] = useState("");
+  const [scanOrder, setScanOrder] = useState<string[]>([]);
+  const [scanStudentOrder, setScanStudentOrder] = useState<string[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -55,7 +59,9 @@ const ScanMarks = () => {
       codes.add(r.subject_code);
     }
     setGrid(g);
-    setSubjectCodes(Array.from(codes).sort());
+    setSubjectCodes(Array.from(codes));
+    setScanOrder([]);
+    setScanStudentOrder([]);
     setLoading(false);
   };
 
@@ -69,7 +75,7 @@ const ScanMarks = () => {
   const addColumn = () => {
     const c = normalizeSubjectCode(newCode);
     if (!c) return;
-    if (!subjectCodes.includes(c)) setSubjectCodes([...subjectCodes, c].sort());
+    if (!subjectCodes.includes(c)) setSubjectCodes([...subjectCodes, c]);
     setNewCode("");
   };
 
@@ -79,12 +85,15 @@ const ScanMarks = () => {
     try {
       const { data, error } = await supabase.functions.invoke("extract-marks", { body: { imageBase64: dataUrl } });
       if (error) throw error;
-      const { students: rows, subject_codes } = data as { students: { name: string; marks: Record<string, number> }[]; subject_codes?: string[] };
+      const { students: rows, subject_codes } = data as { students: { name: string; marks: Record<string, number>; row_number?: number }[]; subject_codes?: string[] };
       const codes = new Set(subjectCodes);
-      (subject_codes || []).forEach((c) => codes.add(normalizeSubjectCode(c)));
+      const orderList: string[] = [];
+      const pushOrder = (c: string) => { if (c && !orderList.includes(c)) orderList.push(c); };
+      (subject_codes || []).forEach((c) => { const n = normalizeSubjectCode(c); codes.add(n); pushOrder(n); });
       let matched = 0;
       const next = { ...grid };
       const norm = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, "").trim();
+      const matchedIds: string[] = [];
       for (const r of rows) {
         const target = norm(r.name);
         const s = students.find((p) => {
@@ -93,16 +102,21 @@ const ScanMarks = () => {
           return full === target || rev === target || full.includes(target) || target.includes(full);
         });
         if (!s) continue;
+        if (!matchedIds.includes(s.id)) matchedIds.push(s.id);
         matched++;
         next[s.id] = next[s.id] || {};
         for (const [code, mark] of Object.entries(r.marks || {})) {
           const c = normalizeSubjectCode(code);
           codes.add(c);
+          pushOrder(c);
           next[s.id][c] = Number(mark);
         }
       }
+      const unmatched = students.filter(s => !matchedIds.includes(s.id)).map(s => s.id);
       setGrid(next);
-      setSubjectCodes(Array.from(codes).sort());
+      setSubjectCodes(Array.from(codes));
+      setScanOrder(orderList);
+      setScanStudentOrder([...matchedIds, ...unmatched]);
       toast({ title: "OCR complete", description: `Matched ${matched} of ${rows.length} rows.` });
     } catch (err: any) {
       toast({ title: "OCR failed", description: err.message || "Try a clearer photo", variant: "destructive" });
@@ -149,6 +163,46 @@ const ScanMarks = () => {
     load();
   };
 
+  // Order students by scan order, then DB order
+  const orderedStudents = useMemo(() => {
+    if (!scanStudentOrder.length) return students;
+    const rank = new Map(scanStudentOrder.map((id, i) => [id, i]));
+    const origIdx = new Map(students.map((s, i) => [s.id, i]));
+    return [...students].sort((a, b) => {
+      const ra = rank.has(a.id) ? (rank.get(a.id) as number) : Number.POSITIVE_INFINITY;
+      const rb = rank.has(b.id) ? (rank.get(b.id) as number) : Number.POSITIVE_INFINITY;
+      if (ra !== rb) return ra - rb;
+      return (origIdx.get(a.id) ?? 0) - (origIdx.get(b.id) ?? 0);
+    });
+  }, [students, scanStudentOrder]);
+
+  // Order subject columns: preferred order first, then scan order, then alpha
+  const orderedCodes = useMemo(() => {
+    const preferredRank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
+    const scanRank = new Map(scanOrder.map((c, i) => [c, i]));
+    return [...subjectCodes].sort((a, b) => {
+      const pa = preferredRank.has(a) ? (preferredRank.get(a) as number) : Number.POSITIVE_INFINITY;
+      const pb = preferredRank.has(b) ? (preferredRank.get(b) as number) : Number.POSITIVE_INFINITY;
+      if (pa !== pb) return pa - pb;
+      const sa = scanRank.has(a) ? (scanRank.get(a) as number) : Number.POSITIVE_INFINITY;
+      const sb = scanRank.has(b) ? (scanRank.get(b) as number) : Number.POSITIVE_INFINITY;
+      if (sa !== sb) return sa - sb;
+      return a.localeCompare(b);
+    });
+  }, [subjectCodes, scanOrder]);
+
+  const computeRowPoints = (s: Profile): number => {
+    const level = formToLevel(s.form);
+    const row = grid[s.id] || {};
+    let total = 0;
+    for (const code of orderedCodes) {
+      const m = row[code];
+      if (m == null || isNaN(m)) continue;
+      total += computePoints(m, level);
+    }
+    return total;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -164,7 +218,7 @@ const ScanMarks = () => {
     );
   }
 
-  const visibleStudents = students.filter((s) => {
+  const visibleStudents = orderedStudents.filter((s) => {
     if (!filter.trim()) return true;
     const q = filter.toLowerCase();
     return `${s.first_name} ${s.last_name}`.toLowerCase().includes(q);
@@ -220,9 +274,10 @@ const ScanMarks = () => {
                 <tr>
                   <th className="text-left p-2 min-w-[180px]">Student</th>
                   <th className="text-left p-2">Form</th>
-                  {subjectCodes.map((c) => (
+                  {orderedCodes.map((c) => (
                     <th key={c} className="text-center p-2 min-w-[70px]" title={SUBJECT_CODES[c] || c}>{c}</th>
                   ))}
+                  <th className="text-center p-2 min-w-[70px]">POINTS</th>
                 </tr>
               </thead>
               <tbody>
@@ -230,7 +285,7 @@ const ScanMarks = () => {
                   <tr key={s.id} className="border-t">
                     <td className="p-2 whitespace-nowrap">{s.last_name} {s.first_name}</td>
                     <td className="p-2">{s.form}{s.stream ? ` ${s.stream}` : ""}</td>
-                    {subjectCodes.map((c) => (
+                    {orderedCodes.map((c) => (
                       <td key={c} className="p-1">
                         <Input
                           inputMode="numeric"
@@ -240,10 +295,11 @@ const ScanMarks = () => {
                         />
                       </td>
                     ))}
+                    <td className="p-2 text-center font-semibold">{computeRowPoints(s) || ""}</td>
                   </tr>
                 ))}
                 {visibleStudents.length === 0 && (
-                  <tr><td colSpan={2 + subjectCodes.length} className="p-6 text-center text-muted-foreground">
+                  <tr><td colSpan={3 + orderedCodes.length} className="p-6 text-center text-muted-foreground">
                     No students match the filter.
                   </td></tr>
                 )}
