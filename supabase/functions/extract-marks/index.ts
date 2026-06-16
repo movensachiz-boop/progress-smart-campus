@@ -179,7 +179,7 @@ CRITICAL COLUMN ALIGNMENT RULES — accuracy of column placement matters more th
 3. ALWAYS write each mark as "CODE: number" using the canonical code of the column the mark physically sits under. Never output a bare number without its CODE: prefix in a student row.
 4. If a cell is empty / blank / dashed, OMIT it entirely (do not guess, do not shift the next number leftwards into the blank column).
 5. Read column-by-column down the page when in doubt — vertical alignment of the handwritten digit with the printed header is the source of truth, not horizontal position relative to other numbers in the same row.
-6. Double-check: the count of CODE:number pairs you emit for a row MUST equal the number of non-blank cells you actually see in that row. If you are unsure which column a number belongs to, leave it out rather than guess.
+6. Capture EVERY visible handwritten mark. Do not skip a mark just because the column alignment is ambiguous — make your best column assignment based on horizontal/vertical position. It is far worse to silently drop a mark than to occasionally place one in the wrong column.
 
 If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form 6. Ignore POINTS/TOTAL columns; never treat them as a subject.
 
