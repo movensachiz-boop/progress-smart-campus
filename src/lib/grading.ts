@@ -96,6 +96,8 @@ export const normalizeSubjectCode = (raw: string): string => {
     FRE: "FRE", FRENCH: "FRE",
     HERI: "HERI", HERITAGE: "HERI",
     BS: "BS", BUILDING: "BS", BUILDINGSTUDIES: "BS",
+    SCI: "SCI", SCIENCE: "SCI",
+    MUS: "MUS", MUSIC: "MUS",
   };
   return map[stripped] || stripped;
 };
