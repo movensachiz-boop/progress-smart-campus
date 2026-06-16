@@ -32,11 +32,23 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [teachers, _setTeachers] = useState<Teacher[]>(() => loadLS('tt_teachers', generateDefaultTeachers()));
   const [classes, _setClasses] = useState<SchoolClass[]>(() => {
     const stored = loadLS<SchoolClass[]>('tt_classes', generateDefaultClasses());
-    // Migration: ensure default streams (incl. Leo) exist for forms 1-4
+    // Migration: ensure default streams (incl. Leo) exist for forms 1-4,
+    // and that existing classes include any missing default subjects (e.g. Chemistry for 3Leo).
     const defaults = generateDefaultClasses();
-    const missing = defaults.filter(d => !stored.some(c => c.id === d.id));
-    if (missing.length) {
-      const merged = [...stored, ...missing];
+    let changed = false;
+    const merged: SchoolClass[] = stored.map(c => {
+      const def = defaults.find(d => d.id === c.id);
+      if (!def) return c;
+      const missingSubs = def.subjectIds.filter(sId => !c.subjectIds.includes(sId));
+      if (missingSubs.length) {
+        changed = true;
+        return { ...c, subjectIds: [...c.subjectIds, ...missingSubs] };
+      }
+      return c;
+    });
+    const missingClasses = defaults.filter(d => !stored.some(c => c.id === d.id));
+    if (missingClasses.length) { changed = true; merged.push(...missingClasses); }
+    if (changed) {
       try { localStorage.setItem('tt_classes', JSON.stringify(merged)); } catch {}
       return merged;
     }
