@@ -193,16 +193,20 @@ const ScanMarks = () => {
     });
   }, [subjectCodes, scanOrder, exam]);
 
-  const computeRowPoints = (s: Profile): number => {
+  const computeRowResult = (s: Profile): { passed: string[]; failed: string[] } => {
     const level = formToLevel(s.form);
     const row = grid[s.id] || {};
-    let total = 0;
+    const passed: string[] = [];
+    const failed: string[] = [];
     for (const code of orderedCodes) {
       const m = row[code];
       if (m == null || isNaN(m)) continue;
-      total += computePoints(m, level);
+      const g = computeGrade(m, level);
+      if (!g) continue;
+      if (g === "U") failed.push(code);
+      else passed.push(code);
     }
-    return total;
+    return { passed, failed };
   };
 
   if (loading) {
