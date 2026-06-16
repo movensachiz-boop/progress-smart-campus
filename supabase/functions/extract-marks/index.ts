@@ -40,11 +40,16 @@ const detectFormLevel = (text: string): number | null => {
   return null;
 };
 
-const parseTranscriptRows = (text: string) => {
+const parseTranscriptRows = (text: string, fallbackCodes: string[] = []) => {
   const students: { name: string; marks: Record<string, number>; row_number?: number }[] = [];
   const subjectSet = new Set<string>();
   const subjectOrder: string[] = [];
-  let activeHeader: string[] = [];
+  const normalizedFallback = fallbackCodes
+    .map((c) => normalizeSubjectCode(c))
+    .filter((c, i, arr) => canonicalSubjectCodes.includes(c) && arr.indexOf(c) === i);
+  // If the sheet has no printed header, fall back to the historical/expected column order
+  // so we can still align "name then numbers" rows to subject codes immediately.
+  let activeHeader: string[] = [...normalizedFallback];
   let sequence = 0;
   const pushSubject = (raw: string) => {
     const code = normalizeSubjectCode(raw);
