@@ -18,7 +18,7 @@ type Exam = {
 type Profile = { id: string; first_name: string; last_name: string; form: string | null; stream: string | null };
 
 const ALEVEL_ORDER = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
-const OLEVEL_ORDER = ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC"];
+const OLEVEL_ORDER = ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "ACC", "AGR", "CSC", "RS", "HIS", "SCI", "MUS"];
 
 /**
  * Public mark-sheet capture page. Reached by scanning the QR printed on a mark

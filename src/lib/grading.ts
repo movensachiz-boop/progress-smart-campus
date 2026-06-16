@@ -67,6 +67,8 @@ export const SUBJECT_CODES: Record<string, string> = {
   FRE: "French",
   HERI: "Heritage",
   BS: "Building Studies",
+  SCI: "Science",
+  MUS: "Music",
 };
 
 export const normalizeSubjectCode = (raw: string): string => {
@@ -94,6 +96,8 @@ export const normalizeSubjectCode = (raw: string): string => {
     FRE: "FRE", FRENCH: "FRE",
     HERI: "HERI", HERITAGE: "HERI",
     BS: "BS", BUILDING: "BS", BUILDINGSTUDIES: "BS",
+    SCI: "SCI", SCIENCE: "SCI",
+    MUS: "MUS", MUSIC: "MUS",
   };
   return map[stripped] || stripped;
 };

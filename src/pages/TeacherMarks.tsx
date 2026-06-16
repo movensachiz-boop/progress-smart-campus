@@ -333,7 +333,7 @@ const TeacherMarks = () => {
           // Preferred mark-sheet column order (matches the printed form) — identical to ScanMarks.
           const isOlevel = activeExam && Math.max(...activeExam.form_levels) <= 4;
           const PREFERRED_ORDER = isOlevel
-            ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC"]
+            ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "ACC", "AGR", "CSC", "RS", "HIS", "SCI", "MUS"]
             : ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
           const preferredRank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
           const scanRank = new Map(scanOrder.map((c, i) => [c, i]));
