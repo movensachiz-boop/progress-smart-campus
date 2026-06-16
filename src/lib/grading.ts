@@ -64,6 +64,9 @@ export const SUBJECT_CODES: Record<string, string> = {
   AGR: "Agriculture",
   FN: "Food & Nutrition",
   ART: "Art",
+  FRE: "French",
+  HERI: "Heritage",
+  BS: "Building Studies",
 };
 
 export const normalizeSubjectCode = (raw: string): string => {
@@ -71,7 +74,7 @@ export const normalizeSubjectCode = (raw: string): string => {
   // Strip slashes/dots/dashes for variants like C/SC, R/S, C.S, F-N
   const stripped = c.replace(/[\/\.\-]/g, "");
   const map: Record<string, string> = {
-    CSC: "CSC", CCS: "CSC", COMP: "CSC", COMPSC: "CSC", COMPUTER: "CSC", COMPSCI: "CSC",
+    CSC: "CSC", CCS: "CSC", COMP: "CSC", COMPSC: "CSC", COMPUTER: "CSC", COMPSCI: "CSC", CS: "CSC", SCS: "CSC",
     RS: "RS", RE: "RS", RELIGIOUS: "RS", RELIGION: "RS",
     LIT: "LIT", LITERATURE: "LIT",
     BIO: "BIO", BIOLOGY: "BIO",
@@ -85,9 +88,12 @@ export const normalizeSubjectCode = (raw: string): string => {
     ENG: "ENG", ENGLISH: "ENG",
     SHO: "SHO", SHONA: "SHO",
     HIS: "HIS", HISTORY: "HIS",
-    AGR: "AGR", AGRIC: "AGR", AGRICULTURE: "AGR",
+    AGR: "AGR", AGRIC: "AGR", AGRICULTURE: "AGR", AGRI: "AGR",
     FN: "FN", FOOD: "FN", FOODNUTRITION: "FN",
     ART: "ART",
+    FRE: "FRE", FRENCH: "FRE",
+    HERI: "HERI", HERITAGE: "HERI",
+    BS: "BS", BUILDING: "BS", BUILDINGSTUDIES: "BS",
   };
   return map[stripped] || stripped;
 };

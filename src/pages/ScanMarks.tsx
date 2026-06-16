@@ -17,7 +17,8 @@ type Exam = {
 };
 type Profile = { id: string; first_name: string; last_name: string; form: string | null; stream: string | null };
 
-const PREFERRED_ORDER = ["LIT", "RS", "HIS", "CS", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
+const ALEVEL_ORDER = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
+const OLEVEL_ORDER = ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC"];
 
 /**
  * Public mark-sheet capture page. Reached by scanning the QR printed on a mark
@@ -178,7 +179,8 @@ const ScanMarks = () => {
 
   // Order subject columns: preferred order first, then scan order, then alpha
   const orderedCodes = useMemo(() => {
-    const preferredRank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
+    const preferredOrder = exam && Math.max(...exam.form_levels) <= 4 ? OLEVEL_ORDER : ALEVEL_ORDER;
+    const preferredRank = new Map(preferredOrder.map((c, i) => [c, i]));
     const scanRank = new Map(scanOrder.map((c, i) => [c, i]));
     return [...subjectCodes].sort((a, b) => {
       const pa = preferredRank.has(a) ? (preferredRank.get(a) as number) : Number.POSITIVE_INFINITY;
@@ -189,7 +191,7 @@ const ScanMarks = () => {
       if (sa !== sb) return sa - sb;
       return a.localeCompare(b);
     });
-  }, [subjectCodes, scanOrder]);
+  }, [subjectCodes, scanOrder, exam]);
 
   const computeRowPoints = (s: Profile): number => {
     const level = formToLevel(s.form);
