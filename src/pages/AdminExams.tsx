@@ -46,6 +46,8 @@ const AdminExams = () => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [qrTitle, setQrTitle] = useState<string>("");
+  const [qrShareUrl, setQrShareUrl] = useState<string>("");
+
 
   const [newExam, setNewExam] = useState({
     name: "2026 Mid-Term 2", exam_type: "Mid-Term", term: 2, year: 2026, form_levels: [6] as number[],
