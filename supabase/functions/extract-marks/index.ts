@@ -102,14 +102,16 @@ const parseTranscriptRows = (text: string, fallbackCodes: string[] = []) => {
       const numberMatches = [...withoutRowNumber.matchAll(/\b\d{1,3}\b/g)]
         .map((match) => ({ mark: parseMark(match[0]), index: match.index ?? withoutRowNumber.length }))
         .filter((match): match is { mark: number; index: number } => match.mark != null);
-      // Only fall back to positional assignment when the row has EXACTLY one number per header column.
-      // Otherwise blank cells would shift marks into the wrong subject — better to drop the row than misalign.
-      if (numberMatches.length === activeHeader.length) {
-        numberMatches.forEach(({ mark }, index) => {
-          const code = activeHeader[index];
-          marks[code] = mark;
+      // Positional fallback: assign numbers left-to-right to header columns. If there are fewer
+      // numbers than columns, the trailing columns are simply blank (do not drop the row). If
+      // there are more numbers than columns, ignore the extras (likely POINTS/TOTAL trailing cols).
+      if (numberMatches.length > 0) {
+        const take = Math.min(numberMatches.length, activeHeader.length);
+        for (let i = 0; i < take; i++) {
+          const code = activeHeader[i];
+          marks[code] = numberMatches[i].mark;
           pushSubject(code);
-        });
+        }
         firstSubjectIndex = line.indexOf(withoutRowNumber) + numberMatches[0].index;
       }
     }
