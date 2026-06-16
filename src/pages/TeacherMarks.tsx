@@ -337,15 +337,15 @@ const TeacherMarks = () => {
                     {studentSubs.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No subjects assigned for this student's form/stream. Click "+ Subject" to add one.</p>
                     ) : (
-                      <div className="relative overflow-auto max-h-[400px] border rounded-md">
+                      <div className="relative overflow-auto max-h-[70vh] border rounded-md">
                         <table className="w-full min-w-[420px] table-fixed caption-bottom text-sm border-separate border-spacing-0">
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="sticky left-0 top-0 bg-background z-50 w-[220px] min-w-[220px] border-r shadow-sm">Subject</TableHead>
-                              <TableHead className="sticky top-0 bg-background z-40 w-28 text-center shadow-sm">Mark</TableHead>
-                              <TableHead className="sticky top-0 bg-background z-40 w-20 text-center shadow-sm">Grade</TableHead>
-                            </TableRow>
-                          </TableHeader>
+                          <thead className="sticky top-0 z-50 bg-background">
+                            <tr className="border-b">
+                              <th className="sticky left-0 top-0 bg-background z-[60] w-[220px] min-w-[220px] border-r border-b h-12 px-4 text-left align-middle font-medium text-muted-foreground shadow-sm">Subject</th>
+                              <th className="sticky top-0 bg-background z-[55] w-28 border-b h-12 px-4 text-center align-middle font-medium text-muted-foreground shadow-sm">Mark</th>
+                              <th className="sticky top-0 bg-background z-[55] w-20 border-b h-12 px-4 text-center align-middle font-medium text-muted-foreground shadow-sm">Grade</th>
+                            </tr>
+                          </thead>
                           <TableBody>
                             {studentSubs.map(({ code, name }) => {
                               const m = row[code];

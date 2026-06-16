@@ -160,7 +160,7 @@ Transcribe the photo row by row. Include the form/level heading, printed subject
 
 If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form 6.
 
-Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART. Normalize C/SC to CSC and R/S to RS.
+Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART. Normalize C/SC to CSC and R/S to RS. NEVER skip the GEO column or any other subject column that appears in the header — even if some students have blank cells in that column, include marks for the students who do have them.
 
 Return plain text only, one student row per line, like:
 LOWER 6 (2026 MID-TERM 2 EXAMINATIONS)
