@@ -414,13 +414,25 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                   ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC", "ECO", "ACC", "ICT", "COMB"]
                   : ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
               const rank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
-              const combined = Array.from(new Set([...PREFERRED_ORDER, ...subjectCodes]));
+              // When a class is picked, restrict columns to that class's registered subjects (in preferred order).
+              const baseCodes = classSubjectCodes.length ? classSubjectCodes : PREFERRED_ORDER;
+              const combined = Array.from(new Set([...baseCodes, ...subjectCodes]));
               const orderedCodes = combined.sort((a, b) => {
                 const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
                 const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
                 if (ra !== rb) return ra - rb;
                 return a.localeCompare(b);
               });
+              // Filter students by selected class (match by form + stream/learning area)
+              const selectedClass = examClasses.find(c => c.id === selectedClassId);
+              const visibleStudents = selectedClass
+                ? students.filter(s => {
+                    if (String(s.form) !== String(selectedClass.form)) return false;
+                    const target = (selectedClass.learningArea || selectedClass.stream || "").toLowerCase();
+                    const stream = (s.stream || "").toLowerCase();
+                    return stream === target || stream.charAt(0) === target.charAt(0);
+                  })
+                : students;
               return (
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-10">
@@ -433,7 +445,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {students.map(s => {
+                  {visibleStudents.map(s => {
                     const level = formToLevel(s.form);
                     const row = results[s.id] || {};
                     const passed: string[] = [];
