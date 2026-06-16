@@ -327,16 +327,27 @@ const TeacherMarks = () => {
             if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c);
           }));
           let columns = Array.from(colMap, ([code, name]) => ({ code, name }));
+          // Preferred mark-sheet column order (matches the printed form)
+          const PREFERRED_ORDER = ["LIT", "RS", "HIS", "CS", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
+          const preferredRank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
           if (scanOrder.length) {
             const rank = new Map(scanOrder.map((c, i) => [c, i]));
             columns.sort((a, b) => {
               const ra = rank.has(a.code) ? (rank.get(a.code) as number) : Number.POSITIVE_INFINITY;
               const rb = rank.has(b.code) ? (rank.get(b.code) as number) : Number.POSITIVE_INFINITY;
               if (ra !== rb) return ra - rb;
+              const pa = preferredRank.has(a.code) ? (preferredRank.get(a.code) as number) : Number.POSITIVE_INFINITY;
+              const pb = preferredRank.has(b.code) ? (preferredRank.get(b.code) as number) : Number.POSITIVE_INFINITY;
+              if (pa !== pb) return pa - pb;
               return a.code.localeCompare(b.code);
             });
           } else {
-            columns.sort((a, b) => a.code.localeCompare(b.code));
+            columns.sort((a, b) => {
+              const pa = preferredRank.has(a.code) ? (preferredRank.get(a.code) as number) : Number.POSITIVE_INFINITY;
+              const pb = preferredRank.has(b.code) ? (preferredRank.get(b.code) as number) : Number.POSITIVE_INFINITY;
+              if (pa !== pb) return pa - pb;
+              return a.code.localeCompare(b.code);
+            });
           }
 
           const addColumn = () => {
