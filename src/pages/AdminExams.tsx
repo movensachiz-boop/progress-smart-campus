@@ -332,12 +332,15 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
       });
       if (error) throw error;
       const { students: rows, subject_codes } = data as { students: { name: string; marks: Record<string, number> }[]; subject_codes?: string[] };
-      // Add any new subject columns
+      // Add any new subject columns, preserving scan order
       const codes = new Set(subjectCodes);
-      (subject_codes || []).forEach((c) => codes.add(normalizeSubjectCode(c)));
-      // Try to match each row to a profile by fuzzy name
+      const orderList: string[] = [];
+      const pushOrder = (c: string) => { if (c && !orderList.includes(c)) orderList.push(c); };
+      (subject_codes || []).forEach((c) => { const n = normalizeSubjectCode(c); codes.add(n); pushOrder(n); });
+      // Try to match each row to a profile by fuzzy name, preserving row order
       let matched = 0;
       const nextResults = { ...results };
+      const matchedIds: string[] = [];
       for (const r of rows) {
         const norm = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, "").trim();
         const target = norm(r.name);
@@ -347,16 +350,21 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
           return full === target || rev === target || full.includes(target) || target.includes(full);
         });
         if (!s) continue;
+        if (!matchedIds.includes(s.id)) matchedIds.push(s.id);
         matched++;
         nextResults[s.id] = nextResults[s.id] || {};
         for (const [code, mark] of Object.entries(r.marks || {})) {
           const c = normalizeSubjectCode(code);
           codes.add(c);
+          pushOrder(c);
           nextResults[s.id][c] = Number(mark);
         }
       }
+      const unmatched = students.filter(s => !matchedIds.includes(s.id)).map(s => s.id);
       setResults(nextResults);
-      setSubjectCodes(Array.from(codes).sort());
+      setSubjectCodes(Array.from(codes));
+      setScanOrder(orderList);
+      setScanStudentOrder([...matchedIds, ...unmatched]);
       toast({ title: "OCR complete", description: `Matched ${matched} of ${rows.length} rows. Review then save.` });
     } catch (err: any) {
       toast({ title: "OCR failed", description: err.message || "Try a clearer photo", variant: "destructive" });
