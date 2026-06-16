@@ -252,11 +252,10 @@ const ScanMarks = () => {
     <div className="min-h-screen bg-background p-3 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
-          <Link to="/" className="text-sm text-muted-foreground inline-flex items-center gap-1">
-            <ArrowLeft size={14}/> Home
-          </Link>
-          <span className="text-xs text-muted-foreground">Public mark capture</span>
+          <span className="text-xs text-muted-foreground font-medium">Mark Sheet Editor</span>
+          <span className="text-xs text-muted-foreground">Verification-only access</span>
         </div>
+
 
         <Card>
           <CardHeader>
