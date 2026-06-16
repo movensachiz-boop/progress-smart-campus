@@ -387,6 +387,42 @@ OUTPUT via tool call only:
       });
     }
     parsed.form_level = parsed.form_level || detectedFormLevel;
+
+    // Confusable-code remap: if the AI returned a subject code that is NOT in the user's
+    // expected columns but a known visually-confusable code IS expected, remap to the
+    // expected one. This fixes common OCR mistakes like AGR being read as ACC.
+    if (normalizedExpected.length) {
+      const expectedSet = new Set(normalizedExpected);
+      const confusionPairs: Array<[string, string]> = [
+        ["ACC", "AGR"], ["AGR", "ACC"],
+        ["BS", "BIO"],  ["BIO", "BS"],
+        ["CSC", "CHE"], ["CHE", "CSC"],
+        ["HIS", "HERI"],["HERI", "HIS"],
+        ["SHO", "SCI"], ["SCI", "SHO"],
+      ];
+      const remapCode = (code: string) => {
+        if (expectedSet.has(code)) return code;
+        for (const [from, to] of confusionPairs) {
+          if (code === from && expectedSet.has(to) && !expectedSet.has(from)) return to;
+        }
+        return code;
+      };
+      parsed.students = (parsed.students || []).map((row: any) => {
+        const newMarks: Record<string, number> = {};
+        for (const [k, v] of Object.entries(row?.marks || {})) {
+          const nk = remapCode(k);
+          if (newMarks[nk] == null) newMarks[nk] = v as number;
+        }
+        return { ...row, marks: newMarks };
+      });
+      if (Array.isArray(parsed.subject_codes)) {
+        const seen = new Set<string>();
+        parsed.subject_codes = parsed.subject_codes
+          .map((c) => remapCode(c))
+          .filter((c) => (seen.has(c) ? false : (seen.add(c), true)));
+      }
+    }
+
     // Ensure students are sorted by row_number (top-to-bottom on the form)
     parsed.students = (parsed.students || []).map((row: any, i: number) => ({
       ...row,
