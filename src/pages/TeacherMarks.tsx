@@ -320,41 +320,33 @@ const TeacherMarks = () => {
         {loading ? (
           <div className="p-8 text-center"><Loader2 className="inline animate-spin mr-2" size={16}/>Loading…</div>
         ) : students.length > 0 && (() => {
-          // Build unified column list (union of all students' subjects + scan order + saved marks)
+          // Unified column source — MUST match ScanMarks so phone & system show the same sheet.
+          // Sources: saved marks + scan-detected codes + manually added subject columns.
+          // (Per-student allocations are NOT added as columns — they only control which cells are editable.)
           const colMap = new Map<string, string>();
-          orderedStudents.forEach(s => subjectsForStudent(s).forEach(({ code, name }) => {
-            if (!colMap.has(code)) colMap.set(code, name);
-          }));
+          subjects.forEach(c => { if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
           scanOrder.forEach(c => { if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
           Object.values(marks).forEach(r => Object.keys(r || {}).forEach(c => {
             if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c);
           }));
           let columns = Array.from(colMap, ([code, name]) => ({ code, name }));
-          // Preferred mark-sheet column order (matches the printed form)
+          // Preferred mark-sheet column order (matches the printed form) — identical to ScanMarks.
           const isOlevel = activeExam && Math.max(...activeExam.form_levels) <= 4;
           const PREFERRED_ORDER = isOlevel
             ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC"]
             : ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
           const preferredRank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
-          if (scanOrder.length) {
-            const rank = new Map(scanOrder.map((c, i) => [c, i]));
-            columns.sort((a, b) => {
-              const ra = rank.has(a.code) ? (rank.get(a.code) as number) : Number.POSITIVE_INFINITY;
-              const rb = rank.has(b.code) ? (rank.get(b.code) as number) : Number.POSITIVE_INFINITY;
-              if (ra !== rb) return ra - rb;
-              const pa = preferredRank.has(a.code) ? (preferredRank.get(a.code) as number) : Number.POSITIVE_INFINITY;
-              const pb = preferredRank.has(b.code) ? (preferredRank.get(b.code) as number) : Number.POSITIVE_INFINITY;
-              if (pa !== pb) return pa - pb;
-              return a.code.localeCompare(b.code);
-            });
-          } else {
-            columns.sort((a, b) => {
-              const pa = preferredRank.has(a.code) ? (preferredRank.get(a.code) as number) : Number.POSITIVE_INFINITY;
-              const pb = preferredRank.has(b.code) ? (preferredRank.get(b.code) as number) : Number.POSITIVE_INFINITY;
-              if (pa !== pb) return pa - pb;
-              return a.code.localeCompare(b.code);
-            });
-          }
+          const scanRank = new Map(scanOrder.map((c, i) => [c, i]));
+          columns.sort((a, b) => {
+            const pa = preferredRank.has(a.code) ? (preferredRank.get(a.code) as number) : Number.POSITIVE_INFINITY;
+            const pb = preferredRank.has(b.code) ? (preferredRank.get(b.code) as number) : Number.POSITIVE_INFINITY;
+            if (pa !== pb) return pa - pb;
+            const sa = scanRank.has(a.code) ? (scanRank.get(a.code) as number) : Number.POSITIVE_INFINITY;
+            const sb = scanRank.has(b.code) ? (scanRank.get(b.code) as number) : Number.POSITIVE_INFINITY;
+            if (sa !== sb) return sa - sb;
+            return a.code.localeCompare(b.code);
+          });
+
 
           const addColumn = () => {
             const raw = prompt("Add subject code (e.g. MAT, CHE, PHY)");
