@@ -383,7 +383,8 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                   ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC", "ECO", "ACC", "ICT", "COMB"]
                   : ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
               const rank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
-              const orderedCodes = [...subjectCodes].sort((a, b) => {
+              const combined = Array.from(new Set([...PREFERRED_ORDER, ...subjectCodes]));
+              const orderedCodes = combined.sort((a, b) => {
                 const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
                 const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
                 if (ra !== rb) return ra - rb;
