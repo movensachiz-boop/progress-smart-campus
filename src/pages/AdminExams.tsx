@@ -505,10 +505,11 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                     const totalPts = orderedCodes.reduce((acc, c) => acc + computePoints(row[c] ?? null, level), 0);
                     return (
                       <TableRow key={s.id}>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium sticky left-0 bg-card z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
                           {s.last_name} {s.first_name}
                           <div className="text-xs text-muted-foreground">F{s.form} {s.stream}</div>
                         </TableCell>
+
                         {orderedCodes.map(c => {
                           const m = row[c];
                           const g = m != null && !isNaN(m as number) ? computeGrade(m, level) : "";
