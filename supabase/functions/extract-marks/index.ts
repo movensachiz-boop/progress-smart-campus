@@ -239,9 +239,10 @@ NAME(S) LIT RS HIS CSC BIO CHE MAT ACC PHY GEO BUS ECO POINTS
             role: "system",
             content: `You convert OCR transcription of a school exam mark sheet into structured rows.
 
-Extract the visible CODE: number pairs exactly from the transcription. Do not drop numbers. Do not include POINTS/TOTAL. Use LOWER 6 = form_level 5 and UPPER 6 = form_level 6.
+Extract ONLY the visible CODE: number pairs exactly as written in the transcription. NEVER invent a CODE:number pair, NEVER move a number from one CODE to another, and NEVER fill in blank cells. Preserve the exact CODE each number was paired with by the transcriber — that pairing is the source of truth for column alignment. Do not include POINTS/TOTAL. Use LOWER 6 = form_level 5 and UPPER 6 = form_level 6.
 
 If the sheet has NO subject header row, treat the user-provided "Expected subject columns" as the header in that exact left-to-right order and align each row's numbers to those codes.
+
 
 CRITICAL: Emit students[] strictly in the TOP-TO-BOTTOM order they appear on the sheet. Include row_number for every student using the printed row number on the sheet (1, 2, 3, ...). If a row number is not printed, use the visual top-to-bottom sequence (1-based).
 
