@@ -96,8 +96,10 @@ const AdminExams = () => {
     const url = `${window.location.origin}/scan-marks/${e.id}`;
     const dataUrl = await QRCode.toDataURL(url, { width: 320, margin: 2 });
     setQrUrl(dataUrl);
-    setQrTitle(`${e.name} – Mark Sheet QR (scan to capture marks)`);
+    setQrShareUrl(url);
+    setQrTitle(`${e.name} – Mark Sheet Editing Link`);
   };
+
 
   return (
     <DashboardLayout role="admin">
