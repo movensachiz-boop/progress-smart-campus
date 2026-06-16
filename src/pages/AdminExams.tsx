@@ -238,6 +238,8 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
   const [ocrLoading, setOcrLoading] = useState(false);
   const [newCode, setNewCode] = useState("");
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
+  const [scanOrder, setScanOrder] = useState<string[]>([]);
+  const [scanStudentOrder, setScanStudentOrder] = useState<string[]>([]);
 
   // Classes whose form belongs to this exam
   const examClasses = useMemo(
@@ -260,7 +262,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
     setLoading(true);
     const [{ data: profs }, { data: rows }] = await Promise.all([
       supabase.from("profiles").select("id, first_name, last_name, form, stream")
-        .in("form", exam.form_levels.map(String)).order("last_name"),
+        .in("form", exam.form_levels.map(String)),
       supabase.from("exam_results").select("*").eq("exam_id", exam.id),
     ]);
     setStudents((profs || []) as Profile[]);
@@ -272,7 +274,9 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
       codes.add(r.subject_code);
     }
     setResults(grid);
-    setSubjectCodes(Array.from(codes).sort());
+    setSubjectCodes(Array.from(codes));
+    setScanOrder([]);
+    setScanStudentOrder([]);
     setLoading(false);
   };
 
@@ -286,7 +290,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
   const addColumn = () => {
     const c = normalizeSubjectCode(newCode);
     if (!c) return;
-    if (!subjectCodes.includes(c)) setSubjectCodes([...subjectCodes, c].sort());
+    if (!subjectCodes.includes(c)) setSubjectCodes([...subjectCodes, c]);
     setNewCode("");
   };
 
@@ -328,12 +332,15 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
       });
       if (error) throw error;
       const { students: rows, subject_codes } = data as { students: { name: string; marks: Record<string, number> }[]; subject_codes?: string[] };
-      // Add any new subject columns
+      // Add any new subject columns, preserving scan order
       const codes = new Set(subjectCodes);
-      (subject_codes || []).forEach((c) => codes.add(normalizeSubjectCode(c)));
-      // Try to match each row to a profile by fuzzy name
+      const orderList: string[] = [];
+      const pushOrder = (c: string) => { if (c && !orderList.includes(c)) orderList.push(c); };
+      (subject_codes || []).forEach((c) => { const n = normalizeSubjectCode(c); codes.add(n); pushOrder(n); });
+      // Try to match each row to a profile by fuzzy name, preserving row order
       let matched = 0;
       const nextResults = { ...results };
+      const matchedIds: string[] = [];
       for (const r of rows) {
         const norm = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, "").trim();
         const target = norm(r.name);
@@ -343,16 +350,21 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
           return full === target || rev === target || full.includes(target) || target.includes(full);
         });
         if (!s) continue;
+        if (!matchedIds.includes(s.id)) matchedIds.push(s.id);
         matched++;
         nextResults[s.id] = nextResults[s.id] || {};
         for (const [code, mark] of Object.entries(r.marks || {})) {
           const c = normalizeSubjectCode(code);
           codes.add(c);
+          pushOrder(c);
           nextResults[s.id][c] = Number(mark);
         }
       }
+      const unmatched = students.filter(s => !matchedIds.includes(s.id)).map(s => s.id);
       setResults(nextResults);
-      setSubjectCodes(Array.from(codes).sort());
+      setSubjectCodes(Array.from(codes));
+      setScanOrder(orderList);
+      setScanStudentOrder([...matchedIds, ...unmatched]);
       toast({ title: "OCR complete", description: `Matched ${matched} of ${rows.length} rows. Review then save.` });
     } catch (err: any) {
       toast({ title: "OCR failed", description: err.message || "Try a clearer photo", variant: "destructive" });
@@ -414,25 +426,47 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                   ? ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC", "ECO", "ACC", "ICT", "COMB"]
                   : ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
               const rank = new Map(PREFERRED_ORDER.map((c, i) => [c, i]));
+              const scanRank = new Map(scanOrder.map((c, i) => [c, i]));
               // When a class is picked, restrict columns to that class's registered subjects (in preferred order).
               const baseCodes = classSubjectCodes.length ? classSubjectCodes : PREFERRED_ORDER;
               const combined = Array.from(new Set([...baseCodes, ...subjectCodes]));
-              const orderedCodes = combined.sort((a, b) => {
-                const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
-                const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
-                if (ra !== rb) return ra - rb;
-                return a.localeCompare(b);
-              });
+              const orderedCodes = scanOrder.length
+                ? combined.sort((a, b) => {
+                    const sa = scanRank.has(a) ? (scanRank.get(a) as number) : Number.POSITIVE_INFINITY;
+                    const sb = scanRank.has(b) ? (scanRank.get(b) as number) : Number.POSITIVE_INFINITY;
+                    if (sa !== sb) return sa - sb;
+                    const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
+                    const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
+                    if (ra !== rb) return ra - rb;
+                    return a.localeCompare(b);
+                  })
+                : combined.sort((a, b) => {
+                    const ra = rank.has(a) ? (rank.get(a) as number) : Number.POSITIVE_INFINITY;
+                    const rb = rank.has(b) ? (rank.get(b) as number) : Number.POSITIVE_INFINITY;
+                    if (ra !== rb) return ra - rb;
+                    return a.localeCompare(b);
+                  });
+              // Order students by scan order first, then DB order (no alphabetical sort)
+              const studentRank = new Map(scanStudentOrder.map((id, i) => [id, i]));
+              const origIdx = new Map(students.map((s, i) => [s.id, i]));
+              const orderedStudents = scanStudentOrder.length
+                ? [...students].sort((a, b) => {
+                    const ra = studentRank.has(a.id) ? (studentRank.get(a.id) as number) : Number.POSITIVE_INFINITY;
+                    const rb = studentRank.has(b.id) ? (studentRank.get(b.id) as number) : Number.POSITIVE_INFINITY;
+                    if (ra !== rb) return ra - rb;
+                    return (origIdx.get(a.id) ?? 0) - (origIdx.get(b.id) ?? 0);
+                  })
+                : students;
               // Filter students by selected class (match by form + stream/learning area)
               const selectedClass = examClasses.find(c => c.id === selectedClassId);
               const visibleStudents = selectedClass
-                ? students.filter(s => {
+                ? orderedStudents.filter(s => {
                     if (String(s.form) !== String(selectedClass.form)) return false;
                     const target = (selectedClass.learningArea || selectedClass.stream || "").toLowerCase();
                     const stream = (s.stream || "").toLowerCase();
                     return stream === target || stream.charAt(0) === target.charAt(0);
                   })
-                : students;
+                : orderedStudents;
               return (
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-10">
