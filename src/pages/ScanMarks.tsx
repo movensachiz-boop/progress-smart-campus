@@ -186,19 +186,27 @@ const ScanMarks = () => {
     });
   }, [students, scanStudentOrder]);
 
-  // Order subject columns: preferred order first, then scan order, then alpha
+  // Order subject columns: scan order first (when available), else preferred order, then alpha
   const orderedCodes = useMemo(() => {
     const maxForm = exam ? Math.max(...exam.form_levels) : 0;
     const preferredOrder = maxForm <= 2 ? OLEVEL_JUNIOR_ORDER : maxForm <= 4 ? OLEVEL_SENIOR_ORDER : ALEVEL_ORDER;
     const preferredRank = new Map(preferredOrder.map((c, i) => [c, i]));
     const scanRank = new Map(scanOrder.map((c, i) => [c, i]));
+    if (scanOrder.length) {
+      return [...subjectCodes].sort((a, b) => {
+        const sa = scanRank.has(a) ? (scanRank.get(a) as number) : Number.POSITIVE_INFINITY;
+        const sb = scanRank.has(b) ? (scanRank.get(b) as number) : Number.POSITIVE_INFINITY;
+        if (sa !== sb) return sa - sb;
+        const pa = preferredRank.has(a) ? (preferredRank.get(a) as number) : Number.POSITIVE_INFINITY;
+        const pb = preferredRank.has(b) ? (preferredRank.get(b) as number) : Number.POSITIVE_INFINITY;
+        if (pa !== pb) return pa - pb;
+        return a.localeCompare(b);
+      });
+    }
     return [...subjectCodes].sort((a, b) => {
       const pa = preferredRank.has(a) ? (preferredRank.get(a) as number) : Number.POSITIVE_INFINITY;
       const pb = preferredRank.has(b) ? (preferredRank.get(b) as number) : Number.POSITIVE_INFINITY;
       if (pa !== pb) return pa - pb;
-      const sa = scanRank.has(a) ? (scanRank.get(a) as number) : Number.POSITIVE_INFINITY;
-      const sb = scanRank.has(b) ? (scanRank.get(b) as number) : Number.POSITIVE_INFINITY;
-      if (sa !== sb) return sa - sb;
       return a.localeCompare(b);
     });
   }, [subjectCodes, scanOrder, exam]);
