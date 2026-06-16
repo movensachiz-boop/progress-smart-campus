@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const canonicalSubjectCodes = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO", "ENG", "SHO", "AGR", "FN", "ART"];
+const canonicalSubjectCodes = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO", "ENG", "SHO", "AGR", "FN", "ART", "HERI", "FRE", "BS", "SCI", "MUS", "ICT", "COMB"];
 
 const normalizeSubjectCode = (raw: string) => {
   const stripped = raw.trim().toUpperCase().replace(/\s+/g, "").replace(/[\/\.\-]/g, "");
@@ -27,6 +27,13 @@ const normalizeSubjectCode = (raw: string) => {
     AGR: "AGR", AGRIC: "AGR", AGRICULTURE: "AGR",
     FN: "FN", FOOD: "FN", FOODNUTRITION: "FN",
     ART: "ART",
+    HERI: "HERI", HER: "HERI", HERITAGE: "HERI", HERITAGESTUDIES: "HERI",
+    FRE: "FRE", FRENCH: "FRE",
+    BS: "BS", BUSINESSSTUDIES: "BS",
+    SCI: "SCI", SCIENCE: "SCI",
+    MUS: "MUS", MUSIC: "MUS",
+    ICT: "ICT", INFORMATION: "ICT", INFORMATIONTECHNOLOGY: "ICT", COMPUTERSTUDIES: "ICT",
+    COMB: "COMB", COMBINED: "COMB", COMBINEDSCIENCE: "COMB", CLS: "COMB",
   };
   return map[stripped] || stripped;
 };
@@ -58,7 +65,7 @@ const parseTranscriptRows = (text: string, fallbackCodes: string[] = []) => {
       subjectOrder.push(code);
     }
   };
-  const codePattern = "LIT|R\\/?S|RS|HIS|C\\/?SC|CSC|BIO|CHE|MAT|ACC|PHY|GEO|BUS|ECO|ENG|SHO|AGR|F\\/?N|FN|ART";
+  const codePattern = "LIT|R\\/?S|RS|HIS|C\\/?SC|CSC|BIO|CHE|MAT|ACC|PHY|GEO|BUS|ECO|ENG|SHO|AGR|F\\/?N|FN|ART|HERI|HER|FRE|BS|SCI|MUS|ICT|COMB";
   const markRegex = new RegExp(`\\b(${codePattern})\\b\\s*[:=\\-]?\\s*(\\d{1,3})`, "gi");
   const subjectRegex = new RegExp(`\\b(${codePattern})\\b`, "gi");
   const parseMark = (raw: string) => {
