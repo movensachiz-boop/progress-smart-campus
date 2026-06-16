@@ -63,6 +63,11 @@ const ScanMarks = () => {
       codes.add(r.subject_code);
     }
     setGrid(g);
+    // Always seed default subject columns for the exam's form level so subjects
+    // like CHE appear even when no marks have been captured yet.
+    const maxForm = Math.max(...(data.exam.form_levels || [0]));
+    const defaults = maxForm <= 2 ? OLEVEL_JUNIOR_ORDER : maxForm <= 4 ? OLEVEL_SENIOR_ORDER : ALEVEL_ORDER;
+    defaults.forEach((c) => codes.add(c));
     setSubjectCodes(Array.from(codes));
     setScanOrder([]);
     setScanStudentOrder([]);
