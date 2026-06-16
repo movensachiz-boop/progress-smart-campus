@@ -480,13 +480,13 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                 : orderedStudents;
               return (
               <Table>
-                <TableHeader className="sticky top-0 bg-card z-10">
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[200px] sticky left-0 bg-card z-20 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">Student</TableHead>
-                    {orderedCodes.map(c => <TableHead key={c} className="text-center min-w-[70px]" title={SUBJECT_CODES[c] || c}>{c}</TableHead>)}
-                    <TableHead className="text-center min-w-[140px]">Passed</TableHead>
-                    <TableHead className="text-center min-w-[140px]">Failed</TableHead>
-                    <TableHead className="text-center">Pts</TableHead>
+                    <TableHead className="min-w-[200px] sticky left-0 top-0 bg-card z-20 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">Student</TableHead>
+                    {orderedCodes.map(c => <TableHead key={c} className="text-center min-w-[70px] sticky top-0 bg-card z-10" title={SUBJECT_CODES[c] || c}>{c}</TableHead>)}
+                    <TableHead className="text-center min-w-[140px] sticky top-0 bg-card z-10">Passed</TableHead>
+                    <TableHead className="text-center min-w-[140px] sticky top-0 bg-card z-10">Failed</TableHead>
+                    <TableHead className="text-center sticky top-0 bg-card z-10">Pts</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
