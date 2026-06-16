@@ -175,8 +175,11 @@ Deno.serve(async (req) => {
         return `- ${s.name || ""}${subs ? ` [${subs}]` : ""}`;
       }).join("\n")
       : "No roster provided.";
-    const expectedCodesText = Array.isArray(expectedSubjectCodes) && expectedSubjectCodes.length
-      ? expectedSubjectCodes.join(", ")
+    const normalizedExpected = (Array.isArray(expectedSubjectCodes) ? expectedSubjectCodes : [])
+      .map((c: string) => normalizeSubjectCode(c))
+      .filter((c: string, i: number, arr: string[]) => canonicalSubjectCodes.includes(c) && arr.indexOf(c) === i);
+    const expectedCodesText = normalizedExpected.length
+      ? normalizedExpected.join(", ")
       : "Use the subject headers visible on the sheet.";
 
 
@@ -206,6 +209,14 @@ CRITICAL COLUMN ALIGNMENT RULES — accuracy of column placement matters more th
 If the page says LOWER 6, that means Form 5. If it says UPPER 6, that means Form 6. Ignore POINTS/TOTAL columns; never treat them as a subject.
 
 Use canonical subject codes: LIT, RS, HIS, CSC, BIO, CHE, MAT, ACC, PHY, GEO, BUS, ECO, ENG, SHO, AGR, FN, ART, HERI, FRE, BS, SCI, MUS, ICT, COMB. Normalize C/SC to CSC, R/S to RS, HER to HERI (Heritage Studies).
+
+SUBJECT CODE DISAMBIGUATION — these pairs are commonly confused and you MUST read them carefully:
+- AGR (Agriculture) vs ACC (Accounts/Accounting): look at the third letter. R = AGR, C = ACC. If the column header word starts with "AG" it is AGR. If it starts with "AC" it is ACC. NEVER swap them.
+- BIO (Biology) vs BS (Business Studies): BIO has three letters ending in O; BS is two letters.
+- CHE (Chemistry) vs CSC (Computer Science): CHE has H as second letter; CSC has S.
+- HIS (History) vs HERI (Heritage): HIS ends in S; HERI ends in I.
+- SHO (Shona) vs SCI (Science): different first two letters.
+If a column code is ambiguous, prefer the code that appears in the user-provided "Expected subject columns" list over a confusable one that does NOT appear there.
 
 IF NO SUBJECT HEADER ROW IS VISIBLE on the sheet, ASSUME the columns are exactly the "Expected subject columns" provided by the user, IN THAT EXACT ORDER, and align each cell to those codes by horizontal position. Emit a synthetic header line and then CODE: number pairs.
 
@@ -376,6 +387,42 @@ OUTPUT via tool call only:
       });
     }
     parsed.form_level = parsed.form_level || detectedFormLevel;
+
+    // Confusable-code remap: if the AI returned a subject code that is NOT in the user's
+    // expected columns but a known visually-confusable code IS expected, remap to the
+    // expected one. This fixes common OCR mistakes like AGR being read as ACC.
+    if (normalizedExpected.length) {
+      const expectedSet = new Set(normalizedExpected);
+      const confusionPairs: Array<[string, string]> = [
+        ["ACC", "AGR"], ["AGR", "ACC"],
+        ["BS", "BIO"],  ["BIO", "BS"],
+        ["CSC", "CHE"], ["CHE", "CSC"],
+        ["HIS", "HERI"],["HERI", "HIS"],
+        ["SHO", "SCI"], ["SCI", "SHO"],
+      ];
+      const remapCode = (code: string) => {
+        if (expectedSet.has(code)) return code;
+        for (const [from, to] of confusionPairs) {
+          if (code === from && expectedSet.has(to) && !expectedSet.has(from)) return to;
+        }
+        return code;
+      };
+      parsed.students = (parsed.students || []).map((row: any) => {
+        const newMarks: Record<string, number> = {};
+        for (const [k, v] of Object.entries(row?.marks || {})) {
+          const nk = remapCode(k);
+          if (newMarks[nk] == null) newMarks[nk] = v as number;
+        }
+        return { ...row, marks: newMarks };
+      });
+      if (Array.isArray(parsed.subject_codes)) {
+        const seen = new Set<string>();
+        parsed.subject_codes = parsed.subject_codes
+          .map((c) => remapCode(c))
+          .filter((c) => (seen.has(c) ? false : (seen.add(c), true)));
+      }
+    }
+
     // Ensure students are sorted by row_number (top-to-bottom on the form)
     parsed.students = (parsed.students || []).map((row: any, i: number) => ({
       ...row,
