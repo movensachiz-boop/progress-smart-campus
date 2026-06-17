@@ -43,7 +43,7 @@ export const defaultSubjects: Subject[] = [
 
 export function generateDefaultClasses(): SchoolClass[] {
   const classes: SchoolClass[] = [];
-  const streams = ['G1', 'G2', 'G22', 'Blue', 'Orange'];
+  const streams = ['G1', 'G2', 'G22', 'Blue', 'Leo'];
 
   for (let form = 1; form <= 4; form++) {
     const allFormSubjects = defaultSubjects

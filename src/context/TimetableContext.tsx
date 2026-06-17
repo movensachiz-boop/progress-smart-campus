@@ -32,8 +32,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [teachers, _setTeachers] = useState<Teacher[]>(() => loadLS('tt_teachers', generateDefaultTeachers()));
   const [classes, _setClasses] = useState<SchoolClass[]>(() => {
     const stored = loadLS<SchoolClass[]>('tt_classes', generateDefaultClasses());
-    // Migration: ensure default streams (incl. Orange) exist for forms 1-4,
-    // and that existing classes include any missing default subjects (e.g. Chemistry for 3Orange).
+    // Migration: ensure default streams (incl. Leo) exist for forms 1-4,
+    // and that existing classes include any missing default subjects (e.g. Chemistry for 3Leo).
     const defaults = generateDefaultClasses();
     let changed = false;
     const merged: SchoolClass[] = stored.map(c => {
@@ -322,7 +322,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     })();
 
     // Specific Business Studies combined groups (custom school rules):
-    //   - Form 3 Orange + Virgo + Aries: combined ONLY on Monday & Tuesday.
+    //   - Form 3 Leo + Virgo + Aries: combined ONLY on Monday & Tuesday.
     //   - Form 4 Shark + Whale: combined every day.
     (() => {
       const bus = subjects.find(s => (s.code || '').toUpperCase() === 'BUS');
@@ -356,7 +356,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           combineGroups[cid][bus.id] = { teacherId: teacher.id, groupClassIds: ids, allowedDays };
         });
       };
-      applyGroup(pickGroup(3, ['Orange', 'Virgo', 'Aries']), new Set<DayOfWeek>(['Monday', 'Tuesday']));
+      applyGroup(pickGroup(3, ['Leo', 'Virgo', 'Aries']), new Set<DayOfWeek>(['Monday', 'Tuesday']));
       applyGroup(pickGroup(4, ['Shark', 'Whale']));
     })();
 

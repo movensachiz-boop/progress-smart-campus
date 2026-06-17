@@ -20,7 +20,7 @@ type Profile = { id: string; first_name: string; last_name: string; form: string
 const ALEVEL_ORDER = ["LIT", "RS", "HIS", "CSC", "BIO", "CHE", "MAT", "ACC", "PHY", "GEO", "BUS", "ECO"];
 // Form 1-2 mark sheet column order
 const OLEVEL_JUNIOR_ORDER = ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "ACC", "AGR", "CSC", "RS", "HIS", "SCI", "MUS"];
-// Form 3-4 mark sheet column order — union of Orange (Sciences) + Aries (Commercials)
+// Form 3-4 mark sheet column order — union of Leo (Sciences) + Aries (Commercials)
 const OLEVEL_SENIOR_ORDER = ["ENG", "MAT", "SHO", "FRE", "HERI", "GEO", "BS", "AGR", "CHE", "BIO", "PHY", "CSC", "ECO", "ACC", "ICT", "COMB"];
 
 /**
