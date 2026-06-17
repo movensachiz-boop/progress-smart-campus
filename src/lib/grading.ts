@@ -34,6 +34,18 @@ export const computeGrade = (
 ): string => {
   if (mark == null || isNaN(mark as number)) return "";
   const m = Number(mark);
+  const isZimsec = subjectCode && ZIMSEC_OLEVEL_SUBJECTS.has(subjectCode.toUpperCase());
+
+  // ZIMSEC O-level scale (Shona / Heritage Studies)
+  if (isZimsec) {
+    if (m >= 80) return "A";
+    if (m >= 70) return "B";
+    if (m >= 50) return "C";
+    if (m >= 40) return "D";
+    if (m >= 30) return "E";
+    return "U";
+  }
+
   const lvl = effectiveLevel(level, subjectCode);
 
   if (m >= 90) return "A*";
@@ -45,7 +57,7 @@ export const computeGrade = (
 
   if (lvl === "alevel") return "F";
 
-  // O-level extended bands
+  // Cambridge O-level extended bands
   if (m >= 30) return "F";
   if (m >= 20) return "G";
   return "U";
