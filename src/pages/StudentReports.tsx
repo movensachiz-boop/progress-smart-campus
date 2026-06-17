@@ -192,6 +192,7 @@ const StudentReports = () => {
         <th style="text-align:center;width:90px">Mark</th>
         <th style="text-align:center;width:90px">Grade</th>
         ${ptsHeader}
+        ${commentHeader}
       </tr>
     </thead>
     <tbody>${rows}</tbody>
