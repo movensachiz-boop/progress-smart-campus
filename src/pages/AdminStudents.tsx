@@ -821,7 +821,7 @@ const AdminStudents = () => {
                 toast({ title: "No Students", description: "No students to download.", variant: "destructive" });
                 return;
               }
-              // Group students by class (form + stream); generate a separate PDF per class
+              // Group students by class (form + stream); generate one combined PDF so browsers do not block later class downloads.
               const groups = new Map<string, typeof filtered>();
               for (const s of filtered) {
                 const key = `Form ${s.form || "—"} ${s.stream || "—"}`;
@@ -830,11 +830,12 @@ const AdminStudents = () => {
               }
               const sortedKeys = Array.from(groups.keys()).sort();
               const dateStr = new Date().toISOString().split("T")[0];
-              for (const key of sortedKeys) {
+              const doc = new jsPDF({ unit: "mm", format: "a4" });
+              sortedKeys.forEach((key, groupIndex) => {
+                if (groupIndex > 0) doc.addPage();
                 const list = (groups.get(key) || []).slice().sort((a, b) =>
                   `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`)
                 );
-                const doc = new jsPDF({ unit: "mm", format: "a4" });
                 doc.setFontSize(14);
                 doc.text("Progress Centre College — Student List", 105, 14, { align: "center" });
                 doc.setFontSize(11);
@@ -848,10 +849,9 @@ const AdminStudents = () => {
                   styles: { fontSize: 8 },
                   headStyles: { fillColor: [0, 51, 102], textColor: 255 },
                 });
-                const safeKey = key.replace(/[^a-z0-9]+/gi, "-");
-                doc.save(`student-list-${safeKey}-${dateStr}.pdf`);
-              }
-              toast({ title: "Downloaded", description: `${sortedKeys.length} class PDF(s) exported.` });
+              });
+              doc.save(`student-lists-all-classes-${dateStr}.pdf`);
+              toast({ title: "Downloaded", description: `${sortedKeys.length} class list(s) exported in one PDF.` });
             }}>
               <Download size={16} /> Download PDF
             </Button>
