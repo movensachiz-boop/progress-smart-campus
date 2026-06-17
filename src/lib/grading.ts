@@ -80,6 +80,20 @@ export const isPass = (mark: number | null | undefined): boolean => {
   return Number(mark) >= 60;
 };
 
+// IGCSE / O-level performance comments per mark band
+export const getMarkComment = (mark: number | null | undefined): string => {
+  if (mark == null || isNaN(mark as number)) return "";
+  const m = Number(mark);
+  if (m >= 90) return "Exceptional Performance";
+  if (m >= 80) return "Excellent Performance";
+  if (m >= 70) return "Good Performance";
+  if (m >= 60) return "Satisfactory Performance";
+  if (m >= 40) return "Sufficient Performance";
+  if (m >= 30) return "Poor Performance";
+  if (m >= 20) return "Very Poor Performance";
+  return "Ungraded";
+};
+
 // Canonical subject codes used on mark sheets
 export const SUBJECT_CODES: Record<string, string> = {
   LIT: "Literature in English",
