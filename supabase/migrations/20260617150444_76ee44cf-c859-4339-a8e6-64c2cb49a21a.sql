@@ -1,0 +1,1 @@
+UPDATE public.profiles SET stream = 'Orange' WHERE stream = 'Leo';
