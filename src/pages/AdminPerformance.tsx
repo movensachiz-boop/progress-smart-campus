@@ -106,7 +106,7 @@ const AdminPerformance = () => {
       const arr = byStudent.get(p.id) || [];
       const marks = arr.map(r => Number(r.mark));
       const subjectsCount = arr.length;
-      const passes = arr.filter(r => isPass(Number(r.mark))).length;
+      const passes = arr.filter(r => isPass(Number(r.mark), level, r.subject_code)).length;
       const points = arr.reduce((a, r) => a + computePoints(Number(r.mark), level, r.subject_code), 0);
       const average = marks.length ? marks.reduce((a, b) => a + b, 0) / marks.length : 0;
       return { profile: p, subjectsCount, passes, points, average };
