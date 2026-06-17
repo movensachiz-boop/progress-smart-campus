@@ -28,21 +28,21 @@ type Analytics = {
 };
 
 const gradeStyle = (g: string) => {
-  if (g === "A*" || g === "A") return "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white border-0 shadow-md shadow-emerald-500/30";
-  if (g === "B") return "bg-gradient-to-br from-sky-500 to-sky-700 text-white border-0 shadow-md shadow-sky-500/30";
-  if (g === "C") return "bg-gradient-to-br from-indigo-500 to-indigo-700 text-white border-0 shadow-md shadow-indigo-500/30";
-  if (g === "D") return "bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-md shadow-amber-500/30";
-  if (g === "E") return "bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-md shadow-orange-500/30";
-  return "bg-gradient-to-br from-rose-500 to-rose-700 text-white border-0 shadow-md shadow-rose-500/30";
+  if (g === "A*" || g === "A") return "bg-emerald-500 text-white border-0 shadow-md shadow-emerald-500/30";
+  if (g === "B") return "bg-sky-500 text-white border-0 shadow-md shadow-sky-500/30";
+  if (g === "C") return "bg-indigo-500 text-white border-0 shadow-md shadow-indigo-500/30";
+  if (g === "D") return "bg-amber-500 text-white border-0 shadow-md shadow-amber-500/30";
+  if (g === "E") return "bg-orange-500 text-white border-0 shadow-md shadow-orange-500/30";
+  return "bg-rose-500 text-white border-0 shadow-md shadow-rose-500/30";
 };
 
 const markBarColor = (m: number) => {
-  if (m >= 80) return "from-emerald-400 to-emerald-600";
-  if (m >= 70) return "from-sky-400 to-sky-600";
-  if (m >= 60) return "from-indigo-400 to-indigo-600";
-  if (m >= 50) return "from-amber-400 to-amber-600";
-  if (m >= 40) return "from-orange-400 to-orange-600";
-  return "from-rose-400 to-rose-600";
+  if (m >= 80) return "bg-emerald-500";
+  if (m >= 70) return "bg-sky-500";
+  if (m >= 60) return "bg-indigo-500";
+  if (m >= 50) return "bg-amber-500";
+  if (m >= 40) return "bg-orange-500";
+  return "bg-rose-500";
 };
 
 const StudentReports = () => {
