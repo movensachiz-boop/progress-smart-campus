@@ -237,18 +237,11 @@ const StudentReports = () => {
     return <DashboardLayout role="student"><div className="p-12 text-center"><Loader2 className="inline animate-spin mr-2" size={18}/>Loading your results…</div></DashboardLayout>;
   }
 
-  // Overall best across all exams
-  const allExamAverages = exams.map(e => {
-    const rs = results[e.id] || [];
-    return rs.length ? rs.reduce((s, r) => s + (Number(r.mark) || 0), 0) / rs.length : 0;
-  });
-  const bestAvg = allExamAverages.length ? Math.max(...allExamAverages) : 0;
-
   return (
     <DashboardLayout role="student">
       <div className="space-y-6">
         {/* Hero header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[hsl(217_91%_22%)] text-primary-foreground p-6 md:p-8 shadow-xl">
+        <div className="relative overflow-hidden rounded-2xl bg-primary text-primary-foreground p-6 md:p-8 shadow-xl">
           <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-accent/20 blur-3xl" />
           <div className="absolute -left-10 -bottom-10 w-48 h-48 rounded-full bg-white/10 blur-3xl" />
           <div className="relative flex items-start justify-between flex-wrap gap-4">
@@ -268,15 +261,9 @@ const StudentReports = () => {
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-3 min-w-[120px]">
-                <div className="text-xs text-primary-foreground/70">Exams</div>
-                <div className="text-2xl font-bold">{exams.length}</div>
-              </div>
-              <div className="rounded-xl bg-accent text-accent-foreground px-4 py-3 min-w-[120px] shadow-lg">
-                <div className="text-xs opacity-80">Best Avg</div>
-                <div className="text-2xl font-bold">{bestAvg ? `${bestAvg.toFixed(1)}%` : "—"}</div>
-              </div>
+            <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-3 min-w-[120px]">
+              <div className="text-xs text-primary-foreground/70">Exams</div>
+              <div className="text-2xl font-bold">{exams.length}</div>
             </div>
           </div>
         </div>
