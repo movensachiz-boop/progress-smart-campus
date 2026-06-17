@@ -324,7 +324,7 @@ const StudentReports = () => {
 
               {/* Analytics cards */}
               {a && (
-                <div className="px-5 md:px-6 pt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="px-5 md:px-6 pt-5 grid grid-cols-2 lg:grid-cols-4 gap-3 relative z-10">
                   <div className="rounded-xl border bg-secondary/40 p-4">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                       <div className="w-7 h-7 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center"><Users size={14}/></div>
@@ -360,7 +360,7 @@ const StudentReports = () => {
               )}
 
               {/* Results table */}
-              <CardContent className="pt-5">
+              <CardContent className="pt-5 relative z-10">
                 <div className="rounded-xl border overflow-hidden">
                   <Table>
                     <TableHeader>
