@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, QrCode, Printer, Trophy, Users, TrendingUp, Award, Sparkles, GraduationCap, Target, BookOpen, Calendar, FileText } from "lucide-react";
+import { Loader2, QrCode, Printer, Trophy, Users, TrendingUp, Award, GraduationCap, Target, BookOpen, Calendar, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import QRCode from "qrcode";
 import { formToLevel, computeGrade, computePoints } from "@/lib/grading";
@@ -418,7 +418,7 @@ const StudentReports = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>{qr?.title}</DialogTitle></DialogHeader>
           {qr && <div className="flex flex-col items-center gap-3 py-2">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-secondary to-background border shadow-inner">
+            <div className="p-4 rounded-2xl bg-secondary border shadow-inner">
               <img src={qr.url} alt="QR" className="w-72 h-72"/>
             </div>
             <p className="text-xs text-muted-foreground text-center max-w-sm">Scan this QR (or share the link inside it) to verify these results from anyone's phone.</p>
