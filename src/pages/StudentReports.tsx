@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, QrCode, Printer, Trophy, Users, TrendingUp, Award, Sparkles, GraduationCap, Target, BookOpen, Calendar } from "lucide-react";
+import { Loader2, QrCode, Printer, Trophy, Users, TrendingUp, Award, Sparkles, GraduationCap, Target, BookOpen, Calendar, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import QRCode from "qrcode";
 import { formToLevel, computeGrade, computePoints } from "@/lib/grading";
