@@ -270,7 +270,7 @@ const StudentReports = () => {
           const level = formToLevel(profile?.form);
           const totalPts = rs.reduce((a, r) => a + (r.mark != null ? computePoints(Number(r.mark), level, r.subject_code) : 0), 0);
           const avg = rs.length ? (rs.reduce((a, r) => a + (Number(r.mark) || 0), 0) / rs.length) : 0;
-          const passedCount = rs.filter(r => Number(r.mark) >= 50).length;
+          const passedCount = rs.filter(r => Number(r.mark) >= 60).length;
           const a = analytics[e.id];
           return (
             <Card key={e.id} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
