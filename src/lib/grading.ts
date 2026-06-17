@@ -55,7 +55,7 @@ export const computeGrade = (
   if (m >= 50) return "D";
   if (m >= 40) return "E";
 
-  if (lvl === "alevel") return "F";
+  if (lvl === "alevel") return "U";
 
   // Cambridge O-level extended bands
   if (m >= 30) return "F";
@@ -86,11 +86,22 @@ export const computePoints = (
   return gradeToPoints(computeGrade(mark, level, subjectCode), level);
 };
 
-// A "pass" at PCC = C or above (mark ≥ 60). A/B/C are passes; D and below are fails.
-export const isPass = (mark: number | null | undefined): boolean => {
+// A "pass" depends on syllabus:
+//  • A-level: E and above (mark ≥ 40)
+//  • ZIMSEC O-level (SHO/HERI): C and above (mark ≥ 50)
+//  • Cambridge O-level: C and above (mark ≥ 60)
+export const isPass = (
+  mark: number | null | undefined,
+  level: Level = "olevel",
+  subjectCode?: string | null,
+): boolean => {
   if (mark == null || isNaN(mark as number)) return false;
-  return Number(mark) >= 60;
+  const m = Number(mark);
+  if (level === "alevel") return m >= 40;
+  if (subjectCode && ZIMSEC_OLEVEL_SUBJECTS.has(subjectCode.toUpperCase())) return m >= 50;
+  return m >= 60;
 };
+
 
 // IGCSE / O-level performance comments per mark band
 export const getMarkComment = (mark: number | null | undefined): string => {
