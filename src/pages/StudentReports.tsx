@@ -374,6 +374,7 @@ const StudentReports = () => {
                         <TableHead className="text-center font-semibold w-[40%]">Mark</TableHead>
                         <TableHead className="text-center font-semibold">Grade</TableHead>
                         {level === "alevel" && <TableHead className="text-center font-semibold">Points</TableHead>}
+                        {level !== "alevel" && <TableHead className="font-semibold">Comment</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -381,6 +382,7 @@ const StudentReports = () => {
                         const mark = Number(r.mark) || 0;
                         const liveGrade = r.mark != null ? computeGrade(mark, level, r.subject_code) : (r.grade || "");
                         const livePts = r.mark != null ? computePoints(mark, level, r.subject_code) : (r.points ?? 0);
+                        const comment = r.mark != null ? getMarkComment(mark) : "";
                         return (
                           <TableRow key={r.id} className="hover:bg-secondary/30">
                             <TableCell>
@@ -396,6 +398,7 @@ const StudentReports = () => {
                               </span>
                             </TableCell>
                             {level === "alevel" && <TableCell className="text-center font-semibold">{livePts}</TableCell>}
+                            {level !== "alevel" && <TableCell className="text-sm italic text-muted-foreground">{comment}</TableCell>}
                           </TableRow>
                         );
                       })}
