@@ -232,9 +232,14 @@ const AdminPerformance = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Form</label>
-                    <Select value={form} onValueChange={(v) => { setForm(v); setStream(""); }}>
+                    <Select value={form} onValueChange={(v) => { setForm(v); setStream(""); setExamId(""); }}>
                       <SelectTrigger><SelectValue placeholder="Select form" /></SelectTrigger>
-                      <SelectContent>{forms.map(f => <SelectItem key={f} value={f}>Form {f}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {forms.map(f => <SelectItem key={f} value={f}>Form {f}</SelectItem>)}
+                        {forms.includes("5") && forms.includes("6") && (
+                          <SelectItem value="5+6">Forms 5 &amp; 6 (A-Level Combined)</SelectItem>
+                        )}
+                      </SelectContent>
                     </Select>
                   </div>
                   <div>
