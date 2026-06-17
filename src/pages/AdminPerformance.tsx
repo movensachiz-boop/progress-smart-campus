@@ -264,8 +264,8 @@ const AdminPerformance = () => {
                     <Select value={examId} onValueChange={setExamId}>
                       <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
                       <SelectContent>
-                        {exams.filter(e => !form || e.form_levels?.includes(Number(form))).map(e => (
-                          <SelectItem key={e.id} value={e.id}>{e.name} — T{e.term} {e.year}</SelectItem>
+                        {exams.filter(e => !activeForms.length || e.form_levels?.some(fl => activeForms.includes(String(fl)))).map(e => (
+                          <SelectItem key={e.id} value={e.id}>{e.name} — T{e.term} {e.year} (F{(e.form_levels||[]).join("/")})</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
