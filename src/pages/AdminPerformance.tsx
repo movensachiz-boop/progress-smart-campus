@@ -52,10 +52,14 @@ const AdminPerformance = () => {
   }, []);
 
   const forms = useMemo(() => Array.from(new Set(profiles.map(p => p.form).filter(Boolean) as string[])).sort(), [profiles]);
+
+  // Resolve which form codes are active (supports "5+6" combined A-Level)
+  const activeForms = useMemo(() => form === "5+6" ? ["5", "6"] : (form ? [form] : []), [form]);
+
   const streams = useMemo(() => {
-    if (!form) return [];
-    return Array.from(new Set(profiles.filter(p => p.form === form).map(p => p.stream || "").filter(Boolean))).sort();
-  }, [profiles, form]);
+    if (!activeForms.length) return [];
+    return Array.from(new Set(profiles.filter(p => activeForms.includes(p.form || "")).map(p => p.stream || "").filter(Boolean))).sort();
+  }, [profiles, activeForms]);
 
   const years = useMemo(() => Array.from(new Set(exams.map(e => e.year))).sort((a, b) => b - a), [exams]);
   const terms = useMemo(() => {
@@ -64,11 +68,11 @@ const AdminPerformance = () => {
   }, [exams, year]);
 
   const compute = async () => {
-    if (!form) return;
+    if (!activeForms.length) return;
     setBusy(true);
     setRanking([]);
 
-    const classProfiles = profiles.filter(p => p.form === form && (!stream || (p.stream || "") === stream));
+    const classProfiles = profiles.filter(p => activeForms.includes(p.form || "") && (!stream || (p.stream || "") === stream));
     if (!classProfiles.length) { setBusy(false); return; }
     const ids = classProfiles.map(p => p.id);
 
