@@ -52,10 +52,14 @@ const AdminPerformance = () => {
   }, []);
 
   const forms = useMemo(() => Array.from(new Set(profiles.map(p => p.form).filter(Boolean) as string[])).sort(), [profiles]);
+
+  // Resolve which form codes are active (supports "5+6" combined A-Level)
+  const activeForms = useMemo(() => form === "5+6" ? ["5", "6"] : (form ? [form] : []), [form]);
+
   const streams = useMemo(() => {
-    if (!form) return [];
-    return Array.from(new Set(profiles.filter(p => p.form === form).map(p => p.stream || "").filter(Boolean))).sort();
-  }, [profiles, form]);
+    if (!activeForms.length) return [];
+    return Array.from(new Set(profiles.filter(p => activeForms.includes(p.form || "")).map(p => p.stream || "").filter(Boolean))).sort();
+  }, [profiles, activeForms]);
 
   const years = useMemo(() => Array.from(new Set(exams.map(e => e.year))).sort((a, b) => b - a), [exams]);
   const terms = useMemo(() => {
@@ -64,11 +68,11 @@ const AdminPerformance = () => {
   }, [exams, year]);
 
   const compute = async () => {
-    if (!form) return;
+    if (!activeForms.length) return;
     setBusy(true);
     setRanking([]);
 
-    const classProfiles = profiles.filter(p => p.form === form && (!stream || (p.stream || "") === stream));
+    const classProfiles = profiles.filter(p => activeForms.includes(p.form || "") && (!stream || (p.stream || "") === stream));
     if (!classProfiles.length) { setBusy(false); return; }
     const ids = classProfiles.map(p => p.id);
 
@@ -129,20 +133,25 @@ const AdminPerformance = () => {
     return `Term ${term} ${year} – Aggregate`;
   };
 
+  const formLabel = form === "5+6" ? "Forms 5 & 6 (A-Level)" : (form ? `Form ${form}` : "");
+
   const printPDF = () => {
     if (!ranking.length) return;
-    const level = formToLevel(form);
+    const level = formToLevel(activeForms[0] || form);
     const logoUrl = `${window.location.origin}${pccLogo}`;
     const metricHeader = level === "alevel" ? "Total Points" : "Passes (C+)";
-    const classLine = `Form ${form}${stream ? " " + stream : ""}`;
+    const classLine = `${formLabel}${stream ? " · " + stream : ""}`;
 
     const rows = ranking.map((r, i) => {
       const pos = i + 1;
       const metric = level === "alevel" ? r.points : `${r.passes}/${r.subjectsCount}`;
+      const nameWithForm = activeForms.length > 1
+        ? `${r.profile.first_name} ${r.profile.last_name} <span style="color:#6b7280">(F${r.profile.form}${r.profile.stream ? " " + r.profile.stream : ""})</span>`
+        : `${r.profile.first_name} ${r.profile.last_name}`;
       return `
         <tr>
           <td style="text-align:center;padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700">${pos}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">${r.profile.first_name} ${r.profile.last_name}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">${nameWithForm}</td>
           <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">${r.profile.registration_number || ""}</td>
           <td style="text-align:center;padding:8px 10px;border-bottom:1px solid #e5e7eb">${r.subjectsCount}</td>
           <td style="text-align:center;padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:800">${metric}</td>
@@ -199,7 +208,7 @@ const AdminPerformance = () => {
     w.document.write(html); w.document.close();
   };
 
-  const level = formToLevel(form);
+  const level = formToLevel(activeForms[0] || form);
   const metricLabel = level === "alevel" ? "Total Points" : "Passes (C+)";
 
   return (
@@ -223,9 +232,14 @@ const AdminPerformance = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Form</label>
-                    <Select value={form} onValueChange={(v) => { setForm(v); setStream(""); }}>
+                    <Select value={form} onValueChange={(v) => { setForm(v); setStream(""); setExamId(""); }}>
                       <SelectTrigger><SelectValue placeholder="Select form" /></SelectTrigger>
-                      <SelectContent>{forms.map(f => <SelectItem key={f} value={f}>Form {f}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {forms.map(f => <SelectItem key={f} value={f}>Form {f}</SelectItem>)}
+                        {forms.includes("5") && forms.includes("6") && (
+                          <SelectItem value="5+6">Forms 5 &amp; 6 (A-Level Combined)</SelectItem>
+                        )}
+                      </SelectContent>
                     </Select>
                   </div>
                   <div>
@@ -250,8 +264,8 @@ const AdminPerformance = () => {
                     <Select value={examId} onValueChange={setExamId}>
                       <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
                       <SelectContent>
-                        {exams.filter(e => !form || e.form_levels?.includes(Number(form))).map(e => (
-                          <SelectItem key={e.id} value={e.id}>{e.name} — T{e.term} {e.year}</SelectItem>
+                        {exams.filter(e => !activeForms.length || e.form_levels?.some(fl => activeForms.includes(String(fl)))).map(e => (
+                          <SelectItem key={e.id} value={e.id}>{e.name} — T{e.term} {e.year} (F{(e.form_levels||[]).join("/")})</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -275,7 +289,7 @@ const AdminPerformance = () => {
                 </Tabs>
 
                 <div className="flex gap-2">
-                  <Button onClick={compute} disabled={busy || !form || (mode === "exam" ? !examId : (!year || !term))}>
+                  <Button onClick={compute} disabled={busy || !activeForms.length || (mode === "exam" ? !examId : (!year || !term))}>
                     {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Generate Ranking
                   </Button>
@@ -292,7 +306,7 @@ const AdminPerformance = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Ranking — Form {form}{stream ? ` ${stream}` : ""} · {scopeLabel()}
+                Ranking — {formLabel}{stream ? ` · ${stream}` : ""} · {scopeLabel()} <span className="text-muted-foreground font-normal">({ranking.length} students)</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -311,7 +325,12 @@ const AdminPerformance = () => {
                   {ranking.map((r, i) => (
                     <TableRow key={r.profile.id}>
                       <TableCell className="text-center font-bold">{i + 1}</TableCell>
-                      <TableCell>{r.profile.first_name} {r.profile.last_name}</TableCell>
+                      <TableCell>
+                        {r.profile.first_name} {r.profile.last_name}
+                        {activeForms.length > 1 && (
+                          <span className="ml-2 text-xs text-muted-foreground">(F{r.profile.form}{r.profile.stream ? ` ${r.profile.stream}` : ""})</span>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{r.profile.registration_number}</TableCell>
                       <TableCell className="text-center">{r.subjectsCount}</TableCell>
                       <TableCell className="text-center font-bold">
