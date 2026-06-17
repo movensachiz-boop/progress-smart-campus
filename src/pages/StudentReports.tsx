@@ -2,11 +2,11 @@ import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, QrCode, Printer, Trophy, Users, TrendingUp, Award, Sparkles, GraduationCap, Target, BookOpen, Calendar, FileText } from "lucide-react";
+import { Loader2, QrCode, Printer, Trophy, Users, TrendingUp, Award, GraduationCap, Target, BookOpen, Calendar, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import QRCode from "qrcode";
 import { formToLevel, computeGrade, computePoints } from "@/lib/grading";
@@ -28,21 +28,21 @@ type Analytics = {
 };
 
 const gradeStyle = (g: string) => {
-  if (g === "A*" || g === "A") return "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white border-0 shadow-md shadow-emerald-500/30";
-  if (g === "B") return "bg-gradient-to-br from-sky-500 to-sky-700 text-white border-0 shadow-md shadow-sky-500/30";
-  if (g === "C") return "bg-gradient-to-br from-indigo-500 to-indigo-700 text-white border-0 shadow-md shadow-indigo-500/30";
-  if (g === "D") return "bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-md shadow-amber-500/30";
-  if (g === "E") return "bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-md shadow-orange-500/30";
-  return "bg-gradient-to-br from-rose-500 to-rose-700 text-white border-0 shadow-md shadow-rose-500/30";
+  if (g === "A*" || g === "A") return "bg-emerald-500 text-white border-0 shadow-md shadow-emerald-500/30";
+  if (g === "B") return "bg-sky-500 text-white border-0 shadow-md shadow-sky-500/30";
+  if (g === "C") return "bg-indigo-500 text-white border-0 shadow-md shadow-indigo-500/30";
+  if (g === "D") return "bg-amber-500 text-white border-0 shadow-md shadow-amber-500/30";
+  if (g === "E") return "bg-orange-500 text-white border-0 shadow-md shadow-orange-500/30";
+  return "bg-rose-500 text-white border-0 shadow-md shadow-rose-500/30";
 };
 
 const markBarColor = (m: number) => {
-  if (m >= 80) return "from-emerald-400 to-emerald-600";
-  if (m >= 70) return "from-sky-400 to-sky-600";
-  if (m >= 60) return "from-indigo-400 to-indigo-600";
-  if (m >= 50) return "from-amber-400 to-amber-600";
-  if (m >= 40) return "from-orange-400 to-orange-600";
-  return "from-rose-400 to-rose-600";
+  if (m >= 80) return "bg-emerald-500";
+  if (m >= 70) return "bg-sky-500";
+  if (m >= 60) return "bg-indigo-500";
+  if (m >= 50) return "bg-amber-500";
+  if (m >= 40) return "bg-orange-500";
+  return "bg-rose-500";
 };
 
 const StudentReports = () => {
@@ -237,18 +237,11 @@ const StudentReports = () => {
     return <DashboardLayout role="student"><div className="p-12 text-center"><Loader2 className="inline animate-spin mr-2" size={18}/>Loading your results…</div></DashboardLayout>;
   }
 
-  // Overall best across all exams
-  const allExamAverages = exams.map(e => {
-    const rs = results[e.id] || [];
-    return rs.length ? rs.reduce((s, r) => s + (Number(r.mark) || 0), 0) / rs.length : 0;
-  });
-  const bestAvg = allExamAverages.length ? Math.max(...allExamAverages) : 0;
-
   return (
     <DashboardLayout role="student">
       <div className="space-y-6">
         {/* Hero header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[hsl(217_91%_22%)] text-primary-foreground p-6 md:p-8 shadow-xl">
+        <div className="relative overflow-hidden rounded-2xl bg-primary text-primary-foreground p-6 md:p-8 shadow-xl">
           <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-accent/20 blur-3xl" />
           <div className="absolute -left-10 -bottom-10 w-48 h-48 rounded-full bg-white/10 blur-3xl" />
           <div className="relative flex items-start justify-between flex-wrap gap-4">
@@ -268,15 +261,9 @@ const StudentReports = () => {
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-3 min-w-[120px]">
-                <div className="text-xs text-primary-foreground/70">Exams</div>
-                <div className="text-2xl font-bold">{exams.length}</div>
-              </div>
-              <div className="rounded-xl bg-accent text-accent-foreground px-4 py-3 min-w-[120px] shadow-lg">
-                <div className="text-xs opacity-80">Best Avg</div>
-                <div className="text-2xl font-bold">{bestAvg ? `${bestAvg.toFixed(1)}%` : "—"}</div>
-              </div>
+            <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-3 min-w-[120px]">
+              <div className="text-xs text-primary-foreground/70">Exams</div>
+              <div className="text-2xl font-bold">{exams.length}</div>
             </div>
           </div>
         </div>
@@ -300,21 +287,18 @@ const StudentReports = () => {
           const avg = rs.length ? (rs.reduce((a, r) => a + (Number(r.mark) || 0), 0) / rs.length) : 0;
           const passedCount = rs.filter(r => Number(r.mark) >= 50).length;
           const a = analytics[e.id];
-          const isBest = avg === bestAvg && avg > 0;
-
           return (
             <Card key={e.id} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
               {/* Exam header strip */}
-              <div className="relative bg-gradient-to-r from-secondary via-secondary to-background border-b p-5 md:p-6">
+              <div className="relative bg-secondary border-b p-5 md:p-6">
                 <div className="flex items-start justify-between flex-wrap gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-xl bg-gradient-to-br from-primary to-[hsl(217_91%_22%)] text-primary-foreground w-12 h-12 flex items-center justify-center shadow-md">
+                    <div className="rounded-xl bg-primary text-primary-foreground w-12 h-12 flex items-center justify-center shadow-md">
                       <Award size={22}/>
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-lg md:text-xl font-bold text-foreground">{e.name}</h2>
-                        {isBest && <Badge className="bg-accent text-accent-foreground border-0 gap-1"><Sparkles size={12}/> Best</Badge>}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                         <span className="inline-flex items-center gap-1"><Calendar size={12}/> Term {e.term} · {e.year}</span>
@@ -333,7 +317,7 @@ const StudentReports = () => {
                       <div className="text-base font-bold text-foreground">{passedCount}/{rs.length}</div>
                     </div>
                     {level === "alevel" && (
-                      <div className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-primary to-[hsl(217_91%_22%)] text-primary-foreground shadow-md">
+                      <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground shadow-md">
                         <div className="text-[10px] uppercase tracking-wide opacity-80">Points</div>
                         <div className="text-base font-bold">{totalPts}</div>
                       </div>
@@ -347,14 +331,14 @@ const StudentReports = () => {
               {/* Analytics cards */}
               {a && (
                 <div className="px-5 md:px-6 pt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/50 p-4">
+                  <div className="rounded-xl border bg-secondary/40 p-4">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                       <div className="w-7 h-7 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center"><Users size={14}/></div>
                       Class size
                     </div>
                     <div className="text-xl font-bold text-foreground">{a.total_students}</div>
                   </div>
-                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/50 p-4">
+                  <div className="rounded-xl border bg-secondary/40 p-4">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                       <div className="w-7 h-7 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center"><TrendingUp size={14}/></div>
                       Pass rate
@@ -362,7 +346,7 @@ const StudentReports = () => {
                     <div className="text-xl font-bold text-foreground">{Number(a.pass_rate).toFixed(1)}%</div>
                     <Progress value={Number(a.pass_rate)} className="h-1.5 mt-2" />
                   </div>
-                  <div className="rounded-xl border bg-gradient-to-br from-background to-amber-50/50 p-4">
+                  <div className="rounded-xl border bg-secondary/40 p-4">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                       <div className="w-7 h-7 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center"><Trophy size={14}/></div>
                       Top student
@@ -370,7 +354,7 @@ const StudentReports = () => {
                     <div className="text-sm font-bold text-foreground truncate">{a.top_student_name || "—"}</div>
                     <div className="text-xs text-muted-foreground">{a.top_student_avg != null ? `${Number(a.top_student_avg).toFixed(1)}% avg` : ""}</div>
                   </div>
-                  <div className="rounded-xl border bg-gradient-to-br from-primary/5 to-accent/10 p-4 relative overflow-hidden">
+                  <div className="rounded-xl border bg-primary/10 p-4 relative overflow-hidden">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                       <div className="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center"><Target size={14}/></div>
                       Your position
@@ -407,7 +391,7 @@ const StudentReports = () => {
                             <TableCell className="text-center">
                               <div className="flex items-center gap-3">
                                 <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                                  <div className={`h-full bg-gradient-to-r ${markBarColor(mark)} transition-all`} style={{ width: `${Math.min(100, mark)}%` }} />
+                                <div className={`h-full ${markBarColor(mark)} transition-all`} style={{ width: `${Math.min(100, mark)}%` }} />
                                 </div>
                                 <span className="font-semibold text-foreground w-10 text-right">{r.mark}</span>
                               </div>
@@ -434,7 +418,7 @@ const StudentReports = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>{qr?.title}</DialogTitle></DialogHeader>
           {qr && <div className="flex flex-col items-center gap-3 py-2">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-secondary to-background border shadow-inner">
+            <div className="p-4 rounded-2xl bg-secondary border shadow-inner">
               <img src={qr.url} alt="QR" className="w-72 h-72"/>
             </div>
             <p className="text-xs text-muted-foreground text-center max-w-sm">Scan this QR (or share the link inside it) to verify these results from anyone's phone.</p>
