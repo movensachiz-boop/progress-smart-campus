@@ -284,7 +284,7 @@ const StudentReports = () => {
                 <img src={pccLogo} alt="Progress Christian College" className="w-80 h-auto object-contain"/>
               </div>
               {/* Exam header strip */}
-              <div className="relative bg-secondary border-b p-5 md:p-6">
+              <div className="relative bg-secondary border-b p-5 md:p-6 z-10">
                 <div className="flex items-start justify-between flex-wrap gap-4">
                   <div className="flex items-start gap-3">
                     <div className="rounded-xl bg-primary text-primary-foreground w-12 h-12 flex items-center justify-center shadow-md">
