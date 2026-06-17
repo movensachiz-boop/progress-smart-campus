@@ -34,12 +34,13 @@ const StudentReports = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return setLoading(false);
       const { data: p } = await supabase.from("profiles")
-        .select("id, first_name, last_name, form, stream, registration_number").eq("id", user.id).maybeSingle();
+        .select("id, first_name, last_name, form, stream, registration_number").eq("user_id", user.id).maybeSingle();
       setProfile(p as any);
+      if (!p) return setLoading(false);
 
       const { data: rs } = await supabase.from("exam_results")
         .select("*, exams!inner(id, name, exam_type, term, year, published)")
-        .eq("student_profile_id", user.id);
+        .eq("student_profile_id", p.id);
       const examMap: Record<string, Exam> = {};
       const resMap: Record<string, Result[]> = {};
       for (const r of (rs || []) as any[]) {
