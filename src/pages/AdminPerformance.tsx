@@ -133,12 +133,14 @@ const AdminPerformance = () => {
     return `Term ${term} ${year} – Aggregate`;
   };
 
+  const formLabel = form === "5+6" ? "Forms 5 & 6 (A-Level)" : (form ? `Form ${form}` : "");
+
   const printPDF = () => {
     if (!ranking.length) return;
-    const level = formToLevel(form);
+    const level = formToLevel(activeForms[0] || form);
     const logoUrl = `${window.location.origin}${pccLogo}`;
     const metricHeader = level === "alevel" ? "Total Points" : "Passes (C+)";
-    const classLine = `Form ${form}${stream ? " " + stream : ""}`;
+    const classLine = `${formLabel}${stream ? " · " + stream : ""}`;
 
     const rows = ranking.map((r, i) => {
       const pos = i + 1;
