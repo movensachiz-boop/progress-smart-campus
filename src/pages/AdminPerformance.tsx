@@ -306,7 +306,7 @@ const AdminPerformance = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Ranking — Form {form}{stream ? ` ${stream}` : ""} · {scopeLabel()}
+                Ranking — {formLabel}{stream ? ` · ${stream}` : ""} · {scopeLabel()} <span className="text-muted-foreground font-normal">({ranking.length} students)</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
