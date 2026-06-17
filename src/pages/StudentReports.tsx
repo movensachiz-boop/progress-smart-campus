@@ -252,17 +252,21 @@ const StudentReports = () => {
           <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-accent/20 blur-3xl" />
           <div className="absolute -left-10 -bottom-10 w-48 h-48 rounded-full bg-white/10 blur-3xl" />
           <div className="relative flex items-start justify-between flex-wrap gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-accent text-sm font-medium mb-2">
-                <Sparkles size={16}/> Academic Report Centre
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-xl bg-white/95 p-1.5 shadow-lg flex items-center justify-center shrink-0">
+                <img src={pccLogo} alt="Progress Christian College" className="w-full h-full object-contain"/>
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold">
-                {profile ? `${profile.first_name} ${profile.last_name}` : "Your Results"}
-              </h1>
-              <p className="text-primary-foreground/80 text-sm mt-1 flex items-center gap-3 flex-wrap">
-                {profile?.registration_number && <span className="inline-flex items-center gap-1"><GraduationCap size={14}/> {profile.registration_number}</span>}
-                {profile?.form && <span className="inline-flex items-center gap-1"><BookOpen size={14}/> Form {profile.form}{profile?.stream ? ` · ${profile.stream}` : ""}</span>}
-              </p>
+              <div>
+                <div className="text-accent text-[11px] font-semibold tracking-[0.18em] uppercase mb-1">{SCHOOL_NAME}</div>
+                <div className="text-primary-foreground/70 text-xs mb-2">{SCHOOL_ADDRESS} · {SCHOOL_TEL}</div>
+                <h1 className="text-2xl md:text-3xl font-bold font-serif">
+                  {profile ? `${profile.first_name} ${profile.last_name}` : "Your Results"}
+                </h1>
+                <p className="text-primary-foreground/80 text-sm mt-1 flex items-center gap-3 flex-wrap">
+                  {profile?.registration_number && <span className="inline-flex items-center gap-1"><GraduationCap size={14}/> {profile.registration_number}</span>}
+                  {profile?.form && <span className="inline-flex items-center gap-1"><BookOpen size={14}/> Form {profile.form}{profile?.stream ? ` · ${profile.stream}` : ""}</span>}
+                </p>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-3 min-w-[120px]">
