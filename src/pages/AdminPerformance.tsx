@@ -145,10 +145,13 @@ const AdminPerformance = () => {
     const rows = ranking.map((r, i) => {
       const pos = i + 1;
       const metric = level === "alevel" ? r.points : `${r.passes}/${r.subjectsCount}`;
+      const nameWithForm = activeForms.length > 1
+        ? `${r.profile.first_name} ${r.profile.last_name} <span style="color:#6b7280">(F${r.profile.form}${r.profile.stream ? " " + r.profile.stream : ""})</span>`
+        : `${r.profile.first_name} ${r.profile.last_name}`;
       return `
         <tr>
           <td style="text-align:center;padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700">${pos}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">${r.profile.first_name} ${r.profile.last_name}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">${nameWithForm}</td>
           <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">${r.profile.registration_number || ""}</td>
           <td style="text-align:center;padding:8px 10px;border-bottom:1px solid #e5e7eb">${r.subjectsCount}</td>
           <td style="text-align:center;padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:800">${metric}</td>
