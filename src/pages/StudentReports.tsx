@@ -27,23 +27,8 @@ type Analytics = {
   my_rank: number | null;
 };
 
-const gradeStyle = (g: string) => {
-  if (g === "A*" || g === "A") return "bg-emerald-500 text-white border-0 shadow-md shadow-emerald-500/30";
-  if (g === "B") return "bg-sky-500 text-white border-0 shadow-md shadow-sky-500/30";
-  if (g === "C") return "bg-indigo-500 text-white border-0 shadow-md shadow-indigo-500/30";
-  if (g === "D") return "bg-amber-500 text-white border-0 shadow-md shadow-amber-500/30";
-  if (g === "E") return "bg-orange-500 text-white border-0 shadow-md shadow-orange-500/30";
-  return "bg-rose-500 text-white border-0 shadow-md shadow-rose-500/30";
-};
+const gradeStyle = (_g: string) => "bg-transparent text-foreground border border-border";
 
-const markBarColor = (m: number) => {
-  if (m >= 80) return "bg-emerald-500";
-  if (m >= 70) return "bg-sky-500";
-  if (m >= 60) return "bg-indigo-500";
-  if (m >= 50) return "bg-amber-500";
-  if (m >= 40) return "bg-orange-500";
-  return "bg-rose-500";
-};
 
 const StudentReports = () => {
   const [loading, setLoading] = useState(true);
