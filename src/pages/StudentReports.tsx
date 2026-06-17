@@ -123,32 +123,37 @@ const StudentReports = () => {
 <style>
   @page { size: A4; margin: 12mm; }
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; margin: 0; padding: 0; }
-  .certificate { max-width: 780px; margin: 0 auto; padding: 28px; border: 6px double #003366; position: relative; }
-  .certificate::before { content: ""; position: absolute; inset: 10px; border: 1px solid #c9a227; pointer-events: none; }
-  .header { text-align: center; padding: 8px 0 16px; border-bottom: 2px solid #003366; margin-bottom: 18px; position: relative; }
+  .certificate { max-width: 780px; margin: 0 auto; padding: 28px; border: 6px double #003366; position: relative; overflow: hidden; }
+  .certificate::before { content: ""; position: absolute; inset: 10px; border: 1px solid #c9a227; pointer-events: none; z-index: 1; }
+  .watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.07; pointer-events: none; z-index: 0; }
+  .watermark img { width: 380px; height: auto; object-fit: contain; }
+  .header { text-align: center; padding: 8px 0 16px; border-bottom: 2px solid #003366; margin-bottom: 18px; position: relative; z-index: 2; }
   .header img.logo { width: 78px; height: 78px; object-fit: contain; margin-bottom: 6px; }
   .header .school { font-family: Georgia, serif; font-size: 22px; font-weight: 700; color: #003366; letter-spacing: 0.08em; margin: 4px 0 2px; }
   .header .addr { font-size: 12px; color: #4b5563; margin: 0; letter-spacing: 0.02em; }
   .header h1 { font-family: Georgia, serif; margin: 14px 0 2px; font-size: 18px; color: #1a1a1a; letter-spacing: 0.14em; text-transform: uppercase; }
   .header .exam-line { font-size: 12px; color: #4b5563; margin-top: 4px; font-style: italic; }
-  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; font-size: 12px; }
+  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; font-size: 12px; position: relative; z-index: 2; }
   .meta .box { border: 1px solid #d1d5db; border-radius: 4px; padding: 8px 10px; background: #fafaf7; }
   .meta .box .label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; font-family: Georgia, serif; }
   .meta .box .value { font-size: 14px; font-weight: 700; color: #111827; font-family: Georgia, serif; margin-top: 2px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-family: Georgia, serif; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-family: Georgia, serif; position: relative; z-index: 2; }
   th { text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #fff; background: #003366; border: 1px solid #003366; }
   td { padding: 9px 10px; border: 1px solid #e5e7eb; font-size: 13px; }
-  .summary { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .summary { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; position: relative; z-index: 2; }
   .summary .chip { background: #fafaf7; border: 1px solid #c9a227; border-radius: 3px; padding: 5px 12px; font-size: 11px; font-weight: 600; color: #1a1a1a; font-family: Georgia, serif; }
-  .signatures { margin-top: 36px; display: flex; justify-content: space-between; gap: 40px; font-size: 12px; }
+  .signatures { margin-top: 36px; display: flex; justify-content: space-between; gap: 40px; font-size: 12px; position: relative; z-index: 2; }
   .sig { flex: 1; text-align: center; }
   .sig .line { border-top: 1px solid #1a1a1a; margin-bottom: 4px; padding-top: 4px; }
-  .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 10px; font-style: italic; }
+  .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 10px; font-style: italic; position: relative; z-index: 2; }
   @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 </head>
 <body>
 <div class="certificate">
+  <div class="watermark">
+    <img src="${logoUrl}" alt="${SCHOOL_NAME}"/>
+  </div>
   <div class="header">
     <img class="logo" src="${logoUrl}" alt="${SCHOOL_NAME}"/>
     <div class="school">${SCHOOL_NAME}</div>
