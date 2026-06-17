@@ -325,7 +325,12 @@ const AdminPerformance = () => {
                   {ranking.map((r, i) => (
                     <TableRow key={r.profile.id}>
                       <TableCell className="text-center font-bold">{i + 1}</TableCell>
-                      <TableCell>{r.profile.first_name} {r.profile.last_name}</TableCell>
+                      <TableCell>
+                        {r.profile.first_name} {r.profile.last_name}
+                        {activeForms.length > 1 && (
+                          <span className="ml-2 text-xs text-muted-foreground">(F{r.profile.form}{r.profile.stream ? ` ${r.profile.stream}` : ""})</span>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{r.profile.registration_number}</TableCell>
                       <TableCell className="text-center">{r.subjectsCount}</TableCell>
                       <TableCell className="text-center font-bold">
