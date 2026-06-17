@@ -1439,6 +1439,17 @@ export type Database = {
       }
     }
     Functions: {
+      get_exam_analytics: {
+        Args: { p_exam_id: string }
+        Returns: {
+          my_avg: number
+          my_rank: number
+          pass_rate: number
+          top_student_avg: number
+          top_student_name: string
+          total_students: number
+        }[]
+      }
       get_student_fee_summary: {
         Args: never
         Returns: {

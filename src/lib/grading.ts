@@ -1,6 +1,16 @@
 // Grade & point computation helpers
-// O-level (Form 1-4): A 75+, B 65+, C 50+, D 40+, E 30+, U <30
-// A-level (Form 5-6): A 80+, B 70+, C 60+, D 50+, E 40+, U <40 → points A=5 .. E=1 U=0
+//
+// Unified PCC grading scale (Cambridge A-Level & IGCSE O-Level):
+//   A* 90-100 → 5 pts (A-level) / O-level A*
+//   A  80-89  → 5 pts            / O-level A
+//   B  70-79  → 4 pts            / O-level B
+//   C  60-69  → 3 pts            / O-level C
+//   D  50-59  → 2 pts            / O-level D
+//   E  40-49  → 1 pt             / O-level E
+//   F  0-39 (A-level) → 0 pts
+// O-level only (extends below F):
+//   F  30-39, G 20-29, U 0-19
+// Shona (SHO) and Heritage (HERI) ALWAYS use ZIMSEC O-level bands regardless of form.
 
 export type Level = "olevel" | "alevel";
 
@@ -9,39 +19,65 @@ export const formToLevel = (form: number | string | null | undefined): Level => 
   return f >= 5 ? "alevel" : "olevel";
 };
 
-export const computeGrade = (mark: number | null | undefined, level: Level): string => {
+// Subjects that always grade on the ZIMSEC O-level scale
+const ZIMSEC_OLEVEL_SUBJECTS = new Set(["SHO", "HERI"]);
+
+const effectiveLevel = (level: Level, subjectCode?: string | null): Level => {
+  if (subjectCode && ZIMSEC_OLEVEL_SUBJECTS.has(subjectCode.toUpperCase())) return "olevel";
+  return level;
+};
+
+export const computeGrade = (
+  mark: number | null | undefined,
+  level: Level,
+  subjectCode?: string | null,
+): string => {
   if (mark == null || isNaN(mark as number)) return "";
   const m = Number(mark);
-  if (level === "alevel") {
-    if (m >= 80) return "A";
-    if (m >= 70) return "B";
-    if (m >= 60) return "C";
-    if (m >= 50) return "D";
-    if (m >= 40) return "E";
-    return "U";
-  }
-  if (m >= 75) return "A";
-  if (m >= 65) return "B";
-  if (m >= 50) return "C";
-  if (m >= 40) return "D";
-  if (m >= 30) return "E";
+  const lvl = effectiveLevel(level, subjectCode);
+
+  if (m >= 90) return "A*";
+  if (m >= 80) return "A";
+  if (m >= 70) return "B";
+  if (m >= 60) return "C";
+  if (m >= 50) return "D";
+  if (m >= 40) return "E";
+
+  if (lvl === "alevel") return "F";
+
+  // O-level extended bands
+  if (m >= 30) return "F";
+  if (m >= 20) return "G";
   return "U";
 };
 
 export const gradeToPoints = (grade: string, level: Level): number => {
   if (level !== "alevel") return 0;
   switch (grade) {
-    case "A": return 5;
-    case "B": return 4;
-    case "C": return 3;
-    case "D": return 2;
-    case "E": return 1;
-    default: return 0;
+    case "A*": return 5;
+    case "A":  return 5;
+    case "B":  return 4;
+    case "C":  return 3;
+    case "D":  return 2;
+    case "E":  return 1;
+    default:   return 0; // F / U / blank
   }
 };
 
-export const computePoints = (mark: number | null | undefined, level: Level): number => {
-  return gradeToPoints(computeGrade(mark, level), level);
+export const computePoints = (
+  mark: number | null | undefined,
+  level: Level,
+  subjectCode?: string | null,
+): number => {
+  // Shona/Heritage are O-level subjects → 0 A-level points
+  if (subjectCode && ZIMSEC_OLEVEL_SUBJECTS.has(subjectCode.toUpperCase())) return 0;
+  return gradeToPoints(computeGrade(mark, level, subjectCode), level);
+};
+
+// A "pass" at PCC = D or above (mark ≥ 50). Used for pass-rate analytics.
+export const isPass = (mark: number | null | undefined): boolean => {
+  if (mark == null || isNaN(mark as number)) return false;
+  return Number(mark) >= 50;
 };
 
 // Canonical subject codes used on mark sheets
@@ -75,7 +111,6 @@ export const SUBJECT_CODES: Record<string, string> = {
 
 export const normalizeSubjectCode = (raw: string): string => {
   const c = raw.trim().toUpperCase().replace(/\s+/g, "");
-  // Strip slashes/dots/dashes for variants like C/SC, R/S, C.S, F-N
   const stripped = c.replace(/[\/\.\-]/g, "");
   const map: Record<string, string> = {
     CSC: "CSC", CCS: "CSC", COMP: "CSC", COMPSC: "CSC", COMPUTER: "CSC", COMPSCI: "CSC", CS: "CSC", SCS: "CSC",
