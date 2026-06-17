@@ -161,8 +161,8 @@ const ScanMarks = () => {
           subject_code: code,
           subject_name: SUBJECT_CODES[code] || code,
           mark: m,
-          grade: computeGrade(m, level),
-          points: computePoints(m, level),
+          grade: computeGrade(m, level, code),
+          points: computePoints(m, level, code),
         });
       }
     }
@@ -224,9 +224,10 @@ const ScanMarks = () => {
     for (const code of orderedCodes) {
       const m = row[code];
       if (m == null || isNaN(m)) continue;
-      const g = computeGrade(m, level);
+      const g = computeGrade(m, level, code);
       if (!g) continue;
-      if (g === "U") failed.push(code);
+      // Fail = below 50 (F/G/U in any scale)
+      if (m < 50) failed.push(code);
       else passed.push(code);
     }
     return { passed, failed };

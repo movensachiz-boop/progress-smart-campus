@@ -316,11 +316,11 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
       for (const code of allCodes) {
         const mark = row[code];
         if (mark == null || isNaN(mark)) continue;
-        const grade = computeGrade(mark, level);
+        const grade = computeGrade(mark, level, code);
         payload.push({
           exam_id: exam.id, student_profile_id: s.id,
           subject_code: code, subject_name: SUBJECT_CODES[code] || code,
-          mark, grade, points: computePoints(mark, level),
+          mark, grade, points: computePoints(mark, level, code),
         });
       }
     }

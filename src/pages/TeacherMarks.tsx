@@ -106,7 +106,7 @@ const TeacherMarks = () => {
         payload.push({
           exam_id: examId, student_profile_id: s.id, subject_code: code,
           subject_name: SUBJECT_CODES[code] || code, mark,
-          grade: computeGrade(mark, level), points: computePoints(mark, level),
+          grade: computeGrade(mark, level, code), points: computePoints(mark, level, code),
         });
       }
     }
