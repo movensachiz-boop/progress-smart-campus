@@ -287,21 +287,18 @@ const StudentReports = () => {
           const avg = rs.length ? (rs.reduce((a, r) => a + (Number(r.mark) || 0), 0) / rs.length) : 0;
           const passedCount = rs.filter(r => Number(r.mark) >= 50).length;
           const a = analytics[e.id];
-          const isBest = avg === bestAvg && avg > 0;
-
           return (
             <Card key={e.id} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
               {/* Exam header strip */}
-              <div className="relative bg-gradient-to-r from-secondary via-secondary to-background border-b p-5 md:p-6">
+              <div className="relative bg-secondary border-b p-5 md:p-6">
                 <div className="flex items-start justify-between flex-wrap gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-xl bg-gradient-to-br from-primary to-[hsl(217_91%_22%)] text-primary-foreground w-12 h-12 flex items-center justify-center shadow-md">
+                    <div className="rounded-xl bg-primary text-primary-foreground w-12 h-12 flex items-center justify-center shadow-md">
                       <Award size={22}/>
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-lg md:text-xl font-bold text-foreground">{e.name}</h2>
-                        {isBest && <Badge className="bg-accent text-accent-foreground border-0 gap-1"><Sparkles size={12}/> Best</Badge>}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                         <span className="inline-flex items-center gap-1"><Calendar size={12}/> Term {e.term} · {e.year}</span>
