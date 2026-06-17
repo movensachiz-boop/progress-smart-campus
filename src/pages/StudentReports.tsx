@@ -10,6 +10,11 @@ import { Loader2, QrCode, Printer, Trophy, Users, TrendingUp, Award, Sparkles, G
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import QRCode from "qrcode";
 import { formToLevel, computeGrade, computePoints } from "@/lib/grading";
+import pccLogo from "@/assets/pcc-logo.png";
+
+const SCHOOL_NAME = "PROGRESS CHRISTIAN COLLEGE";
+const SCHOOL_ADDRESS = "LOT E Bonnyvale, Shurugwi Road";
+const SCHOOL_TEL = "Tel: 2255629";
 
 type Exam = { id: string; name: string; exam_type: string; term: number; year: number; published: boolean };
 type Result = { id: string; exam_id: string; subject_code: string; subject_name: string | null; mark: number | null; grade: string | null; points: number | null };
