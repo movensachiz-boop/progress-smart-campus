@@ -33,7 +33,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [classes, _setClasses] = useState<SchoolClass[]>(() => {
     const stored = loadLS<SchoolClass[]>('tt_classes', generateDefaultClasses());
     // Migration: ensure default streams (incl. Orange) exist for forms 1-4,
-    // and that existing classes include any missing default subjects (e.g. Chemistry for 3Leo).
+    // and that existing classes include any missing default subjects (e.g. Chemistry for 3Orange).
     const defaults = generateDefaultClasses();
     let changed = false;
     const merged: SchoolClass[] = stored.map(c => {
@@ -322,7 +322,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     })();
 
     // Specific Business Studies combined groups (custom school rules):
-    //   - Form 3 Leo + Virgo + Aries: combined ONLY on Monday & Tuesday.
+    //   - Form 3 Orange + Virgo + Aries: combined ONLY on Monday & Tuesday.
     //   - Form 4 Shark + Whale: combined every day.
     (() => {
       const bus = subjects.find(s => (s.code || '').toUpperCase() === 'BUS');
