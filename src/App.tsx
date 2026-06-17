@@ -48,6 +48,7 @@ import StudentReports from "./pages/StudentReports";
 import VerifyReport from "./pages/VerifyReport";
 import ScanMarks from "./pages/ScanMarks";
 import AdminPrincipalDocs from "./pages/AdminPrincipalDocs";
+import AdminPerformance from "./pages/AdminPerformance";
 
 // Sub-roles
 const DENY_TM_AND_CASHIER: ("cashier" | "timetable_manager")[] = ["cashier", "timetable_manager"];
@@ -103,6 +104,7 @@ const App = () => (
             <Route path="/verify-report/:examId/:studentId" element={<VerifyReport />} />
             <Route path="/scan-marks/:examId" element={<ScanMarks />} />
             <Route path="/admin/exams" element={<StaffGuard deny={DENY_TM}><AdminExams /></StaffGuard>} />
+            <Route path="/admin/performance" element={<StaffGuard deny={DENY_TM}><AdminPerformance /></StaffGuard>} />
             <Route path="/admin/principal-docs" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminPrincipalDocs /></StaffGuard>} />
             <Route path="/teacher/marks" element={<TeacherMarks />} />
             <Route path="/student/results" element={<StudentReports />} />

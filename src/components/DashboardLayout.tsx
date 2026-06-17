@@ -32,6 +32,7 @@ const adminLinks = [
   { label: "Master Timetable", icon: CalendarDays, path: "/admin/timetable/master" },
   { label: "Reports", icon: FileText, path: "/admin/reports" },
   { label: "Exam Results", icon: Award, path: "/admin/exams" },
+  { label: "Student Performance", icon: Trophy, path: "/admin/performance" },
   { label: "Principal's Documents", icon: Target, path: "/admin/principal-docs" },
   { label: "Audit Trail", icon: ShieldCheck, path: "/admin/audit" },
   { label: "Announcements", icon: Bell, path: "/admin/announcements" },
