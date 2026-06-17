@@ -27,23 +27,8 @@ type Analytics = {
   my_rank: number | null;
 };
 
-const gradeStyle = (g: string) => {
-  if (g === "A*" || g === "A") return "bg-emerald-500 text-white border-0 shadow-md shadow-emerald-500/30";
-  if (g === "B") return "bg-sky-500 text-white border-0 shadow-md shadow-sky-500/30";
-  if (g === "C") return "bg-indigo-500 text-white border-0 shadow-md shadow-indigo-500/30";
-  if (g === "D") return "bg-amber-500 text-white border-0 shadow-md shadow-amber-500/30";
-  if (g === "E") return "bg-orange-500 text-white border-0 shadow-md shadow-orange-500/30";
-  return "bg-rose-500 text-white border-0 shadow-md shadow-rose-500/30";
-};
+const gradeStyle = (_g: string) => "bg-transparent text-foreground border border-border";
 
-const markBarColor = (m: number) => {
-  if (m >= 80) return "bg-emerald-500";
-  if (m >= 70) return "bg-sky-500";
-  if (m >= 60) return "bg-indigo-500";
-  if (m >= 50) return "bg-amber-500";
-  if (m >= 40) return "bg-orange-500";
-  return "bg-rose-500";
-};
 
 const StudentReports = () => {
   const [loading, setLoading] = useState(true);
@@ -117,9 +102,9 @@ const StudentReports = () => {
             <div style="font-weight:600;color:#111827">${r.subject_name || r.subject_code}</div>
             <div style="font-size:11px;color:#6b7280">${r.subject_code}</div>
           </td>
-          <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:700">${r.mark ?? "—"}</td>
+          <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:800;font-size:15px;color:#111827">${r.mark ?? "—"}</td>
           <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e5e7eb">
-            <span style="display:inline-block;min-width:32px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;color:#fff;background:${grade === "A*" || grade === "A" ? "#10b981" : grade === "B" ? "#0ea5e9" : grade === "C" ? "#6366f1" : grade === "D" ? "#f59e0b" : grade === "E" ? "#f97316" : "#f43f5e"}">${grade}</span>
+            <span style="display:inline-block;min-width:32px;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:800;color:#111827;border:1px solid #d1d5db;background:#fff">${grade}</span>
           </td>
           ${ptsCell}
         </tr>
@@ -285,7 +270,7 @@ const StudentReports = () => {
           const level = formToLevel(profile?.form);
           const totalPts = rs.reduce((a, r) => a + (r.mark != null ? computePoints(Number(r.mark), level, r.subject_code) : 0), 0);
           const avg = rs.length ? (rs.reduce((a, r) => a + (Number(r.mark) || 0), 0) / rs.length) : 0;
-          const passedCount = rs.filter(r => Number(r.mark) >= 50).length;
+          const passedCount = rs.filter(r => Number(r.mark) >= 60).length;
           const a = analytics[e.id];
           return (
             <Card key={e.id} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
@@ -389,15 +374,10 @@ const StudentReports = () => {
                               <div className="text-xs text-muted-foreground">{r.subject_code}</div>
                             </TableCell>
                             <TableCell className="text-center">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                                <div className={`h-full ${markBarColor(mark)} transition-all`} style={{ width: `${Math.min(100, mark)}%` }} />
-                                </div>
-                                <span className="font-semibold text-foreground w-10 text-right">{r.mark}</span>
-                              </div>
+                              <span className="font-bold text-foreground text-base">{r.mark ?? "—"}</span>
                             </TableCell>
                             <TableCell className="text-center">
-                              <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2.5 py-1 rounded-md text-xs font-bold ${gradeStyle(liveGrade)}`}>
+                              <span className="inline-flex items-center justify-center min-w-[2.5rem] px-2.5 py-1 rounded-md text-xs font-bold border border-border text-foreground">
                                 {liveGrade}
                               </span>
                             </TableCell>

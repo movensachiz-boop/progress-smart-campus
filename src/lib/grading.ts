@@ -74,10 +74,10 @@ export const computePoints = (
   return gradeToPoints(computeGrade(mark, level, subjectCode), level);
 };
 
-// A "pass" at PCC = D or above (mark ≥ 50). Used for pass-rate analytics.
+// A "pass" at PCC = C or above (mark ≥ 60). A/B/C are passes; D and below are fails.
 export const isPass = (mark: number | null | undefined): boolean => {
   if (mark == null || isNaN(mark as number)) return false;
-  return Number(mark) >= 50;
+  return Number(mark) >= 60;
 };
 
 // Canonical subject codes used on mark sheets
