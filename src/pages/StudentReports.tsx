@@ -102,9 +102,9 @@ const StudentReports = () => {
             <div style="font-weight:600;color:#111827">${r.subject_name || r.subject_code}</div>
             <div style="font-size:11px;color:#6b7280">${r.subject_code}</div>
           </td>
-          <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:700">${r.mark ?? "—"}</td>
+          <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:800;font-size:15px;color:#111827">${r.mark ?? "—"}</td>
           <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e5e7eb">
-            <span style="display:inline-block;min-width:32px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;color:#fff;background:${grade === "A*" || grade === "A" ? "#10b981" : grade === "B" ? "#0ea5e9" : grade === "C" ? "#6366f1" : grade === "D" ? "#f59e0b" : grade === "E" ? "#f97316" : "#f43f5e"}">${grade}</span>
+            <span style="display:inline-block;min-width:32px;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:800;color:#111827;border:1px solid #d1d5db;background:#fff">${grade}</span>
           </td>
           ${ptsCell}
         </tr>
