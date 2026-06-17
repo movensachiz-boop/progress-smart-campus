@@ -128,6 +128,7 @@ const StudentReports = () => {
 
     const ptsHeader = level === "alevel" ? `<th style="text-align:center;padding:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;border-bottom:2px solid #e5e7eb">Points</th>` : "";
 
+    const logoUrl = `${window.location.origin}${pccLogo}`;
     const html = `
 <!DOCTYPE html>
 <html>
@@ -135,30 +136,40 @@ const StudentReports = () => {
 <meta charset="utf-8"/>
 <title>Results – ${exam.name}</title>
 <style>
-  @page { size: A4; margin: 18mm; }
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111827; background: #fff; margin: 0; padding: 0; }
-  .sheet { max-width: 760px; margin: 0 auto; padding: 24px; }
-  .header { text-align: center; border-bottom: 3px solid #003366; padding-bottom: 16px; margin-bottom: 20px; }
-  .header h1 { margin: 6px 0 2px; font-size: 22px; color: #003366; }
-  .header p { margin: 0; font-size: 13px; color: #4b5563; }
-  .meta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; margin-bottom: 18px; font-size: 13px; }
-  .meta .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; min-width: 120px; }
-  .meta .box .label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
-  .meta .box .value { font-size: 16px; font-weight: 700; color: #111827; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th { text-align: left; padding: 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
-  .summary { margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap; }
-  .summary .chip { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: #334155; }
-  .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
-  @media print { .no-print { display: none; } }
+  @page { size: A4; margin: 12mm; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; margin: 0; padding: 0; }
+  .certificate { max-width: 780px; margin: 0 auto; padding: 28px; border: 6px double #003366; position: relative; }
+  .certificate::before { content: ""; position: absolute; inset: 10px; border: 1px solid #c9a227; pointer-events: none; }
+  .header { text-align: center; padding: 8px 0 16px; border-bottom: 2px solid #003366; margin-bottom: 18px; position: relative; }
+  .header img.logo { width: 78px; height: 78px; object-fit: contain; margin-bottom: 6px; }
+  .header .school { font-family: Georgia, serif; font-size: 22px; font-weight: 700; color: #003366; letter-spacing: 0.08em; margin: 4px 0 2px; }
+  .header .addr { font-size: 12px; color: #4b5563; margin: 0; letter-spacing: 0.02em; }
+  .header h1 { font-family: Georgia, serif; margin: 14px 0 2px; font-size: 18px; color: #1a1a1a; letter-spacing: 0.14em; text-transform: uppercase; }
+  .header .exam-line { font-size: 12px; color: #4b5563; margin-top: 4px; font-style: italic; }
+  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; font-size: 12px; }
+  .meta .box { border: 1px solid #d1d5db; border-radius: 4px; padding: 8px 10px; background: #fafaf7; }
+  .meta .box .label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; font-family: Georgia, serif; }
+  .meta .box .value { font-size: 14px; font-weight: 700; color: #111827; font-family: Georgia, serif; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-family: Georgia, serif; }
+  th { text-align: left; padding: 9px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #fff; background: #003366; border: 1px solid #003366; }
+  td { padding: 9px 10px; border: 1px solid #e5e7eb; font-size: 13px; }
+  .summary { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .summary .chip { background: #fafaf7; border: 1px solid #c9a227; border-radius: 3px; padding: 5px 12px; font-size: 11px; font-weight: 600; color: #1a1a1a; font-family: Georgia, serif; }
+  .signatures { margin-top: 36px; display: flex; justify-content: space-between; gap: 40px; font-size: 12px; }
+  .sig { flex: 1; text-align: center; }
+  .sig .line { border-top: 1px solid #1a1a1a; margin-bottom: 4px; padding-top: 4px; }
+  .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 10px; font-style: italic; }
+  @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 </head>
 <body>
-<div class="sheet">
+<div class="certificate">
   <div class="header">
-    <div style="font-size:12px;letter-spacing:0.15em;text-transform:uppercase;color:#9ca3af;font-weight:600">Progress Christian College</div>
+    <img class="logo" src="${logoUrl}" alt="${SCHOOL_NAME}"/>
+    <div class="school">${SCHOOL_NAME}</div>
+    <p class="addr">${SCHOOL_ADDRESS} &nbsp;•&nbsp; ${SCHOOL_TEL}</p>
     <h1>Student Academic Report</h1>
-    <p>${exam.name} &nbsp;•&nbsp; Term ${exam.term}, ${exam.year} &nbsp;•&nbsp; ${level === "alevel" ? "Advanced Level" : "IGCSE / O Level"}</p>
+    <div class="exam-line">${exam.name} &nbsp;•&nbsp; Term ${exam.term}, ${exam.year} &nbsp;•&nbsp; ${level === "alevel" ? "Advanced Level (Cambridge)" : "IGCSE / O Level"}</div>
   </div>
 
   <div class="meta">
@@ -178,19 +189,14 @@ const StudentReports = () => {
       <div class="label">Average</div>
       <div class="value">${avg.toFixed(1)}%</div>
     </div>
-    ${level === "alevel" ? `
-    <div class="box" style="border-color:#003366;background:#f0f7ff">
-      <div class="label">Total Points</div>
-      <div class="value" style="color:#003366">${totalPts}</div>
-    </div>` : ""}
   </div>
 
   <table>
     <thead>
       <tr>
         <th>Subject</th>
-        <th style="text-align:center">Mark</th>
-        <th style="text-align:center">Grade</th>
+        <th style="text-align:center;width:90px">Mark</th>
+        <th style="text-align:center;width:90px">Grade</th>
         ${ptsHeader}
       </tr>
     </thead>
@@ -198,17 +204,24 @@ const StudentReports = () => {
   </table>
 
   <div class="summary">
+    ${level === "alevel" ? `<div class="chip">Total Points: ${totalPts}</div>` : ""}
     ${a ? `<div class="chip">Class size: ${a.total_students}</div>` : ""}
     ${a ? `<div class="chip">Pass rate: ${Number(a.pass_rate).toFixed(1)}%</div>` : ""}
     ${a ? `<div class="chip">Your rank: #${a.my_rank ?? "—"}</div>` : ""}
     ${a?.top_student_name ? `<div class="chip">Top: ${a.top_student_name}</div>` : ""}
   </div>
 
+  <div class="signatures">
+    <div class="sig"><div class="line">Class Teacher</div></div>
+    <div class="sig"><div class="line">Principal</div></div>
+    <div class="sig"><div class="line">Date</div></div>
+  </div>
+
   <div class="footer">
-    Generated on ${new Date().toLocaleDateString()} &nbsp;•&nbsp; Progress Christian College &nbsp;•&nbsp; progresschristiansys.com
+    This is an official academic report issued by ${SCHOOL_NAME}. Verify authenticity at progresschristiansys.com &nbsp;•&nbsp; Issued ${new Date().toLocaleDateString()}
   </div>
 </div>
-<script>window.onload = () => { setTimeout(() => window.print(), 300); };</script>
+<script>window.onload = () => { setTimeout(() => window.print(), 400); };</script>
 </body>
 </html>`;
 
