@@ -317,6 +317,7 @@ const StudentReports = () => {
                       </div>
                     )}
                     <Button variant="outline" size="sm" onClick={() => showQR(e)} className="gap-1.5 bg-background"><QrCode size={14}/> Verify</Button>
+                    <Button variant="outline" size="sm" onClick={() => printExam(e)} className="gap-1.5 bg-background"><FileText size={14}/> Print</Button>
                   </div>
                 </div>
               </div>
