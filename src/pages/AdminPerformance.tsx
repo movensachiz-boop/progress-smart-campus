@@ -208,7 +208,7 @@ const AdminPerformance = () => {
     w.document.write(html); w.document.close();
   };
 
-  const level = formToLevel(form);
+  const level = formToLevel(activeForms[0] || form);
   const metricLabel = level === "alevel" ? "Total Points" : "Passes (C+)";
 
   return (
