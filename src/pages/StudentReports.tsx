@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, QrCode, Printer, Trophy, Users, TrendingUp, Award, GraduationCap, Target, BookOpen, Calendar, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import QRCode from "qrcode";
-import { formToLevel, computeGrade, computePoints } from "@/lib/grading";
+import { formToLevel, computeGrade, computePoints, getMarkComment } from "@/lib/grading";
 import pccLogo from "@/assets/pcc-logo.png";
 
 const SCHOOL_NAME = "PROGRESS CHRISTIAN COLLEGE";
