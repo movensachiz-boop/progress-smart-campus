@@ -93,6 +93,128 @@ const StudentReports = () => {
     setQr({ url: dataUrl, title: `${exam.name} – Verification QR` });
   };
 
+  const printExam = (exam: Exam) => {
+    if (!profile) return;
+    const rs = results[exam.id] || [];
+    const level = formToLevel(profile.form);
+    const avg = rs.length ? (rs.reduce((a, r) => a + (Number(r.mark) || 0), 0) / rs.length) : 0;
+    const totalPts = rs.reduce((a, r) => a + (r.mark != null ? computePoints(Number(r.mark), level, r.subject_code) : 0), 0);
+    const a = analytics[exam.id];
+
+    const rows = rs.map(r => {
+      const mark = Number(r.mark) || 0;
+      const grade = r.mark != null ? computeGrade(mark, level, r.subject_code) : (r.grade || "");
+      const pts = r.mark != null ? computePoints(mark, level, r.subject_code) : (r.points ?? 0);
+      const ptsCell = level === "alevel" ? `<td style="text-align:center;font-weight:700">${pts}</td>` : "";
+      return `
+        <tr>
+          <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb">
+            <div style="font-weight:600;color:#111827">${r.subject_name || r.subject_code}</div>
+            <div style="font-size:11px;color:#6b7280">${r.subject_code}</div>
+          </td>
+          <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:700">${r.mark ?? "—"}</td>
+          <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e5e7eb">
+            <span style="display:inline-block;min-width:32px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;color:#fff;background:${grade === "A*" || grade === "A" ? "#10b981" : grade === "B" ? "#0ea5e9" : grade === "C" ? "#6366f1" : grade === "D" ? "#f59e0b" : grade === "E" ? "#f97316" : "#f43f5e"}">${grade}</span>
+          </td>
+          ${ptsCell}
+        </tr>
+      `;
+    }).join("");
+
+    const ptsHeader = level === "alevel" ? `<th style="text-align:center;padding:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;border-bottom:2px solid #e5e7eb">Points</th>` : "";
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Results – ${exam.name}</title>
+<style>
+  @page { size: A4; margin: 18mm; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111827; background: #fff; margin: 0; padding: 0; }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 24px; }
+  .header { text-align: center; border-bottom: 3px solid #003366; padding-bottom: 16px; margin-bottom: 20px; }
+  .header h1 { margin: 6px 0 2px; font-size: 22px; color: #003366; }
+  .header p { margin: 0; font-size: 13px; color: #4b5563; }
+  .meta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; margin-bottom: 18px; font-size: 13px; }
+  .meta .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; min-width: 120px; }
+  .meta .box .label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+  .meta .box .value { font-size: 16px; font-weight: 700; color: #111827; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; padding: 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+  .summary { margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .summary .chip { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600; color: #334155; }
+  .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+  @media print { .no-print { display: none; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="header">
+    <div style="font-size:12px;letter-spacing:0.15em;text-transform:uppercase;color:#9ca3af;font-weight:600">Progress Christian College</div>
+    <h1>Student Academic Report</h1>
+    <p>${exam.name} &nbsp;•&nbsp; Term ${exam.term}, ${exam.year} &nbsp;•&nbsp; ${level === "alevel" ? "Advanced Level" : "IGCSE / O Level"}</p>
+  </div>
+
+  <div class="meta">
+    <div class="box">
+      <div class="label">Student</div>
+      <div class="value">${profile.first_name} ${profile.last_name}</div>
+    </div>
+    <div class="box">
+      <div class="label">Reg No</div>
+      <div class="value">${profile.registration_number || "—"}</div>
+    </div>
+    <div class="box">
+      <div class="label">Form / Stream</div>
+      <div class="value">${profile.form || "—"}${profile.stream ? " / " + profile.stream : ""}</div>
+    </div>
+    <div class="box">
+      <div class="label">Average</div>
+      <div class="value">${avg.toFixed(1)}%</div>
+    </div>
+    ${level === "alevel" ? `
+    <div class="box" style="border-color:#003366;background:#f0f7ff">
+      <div class="label">Total Points</div>
+      <div class="value" style="color:#003366">${totalPts}</div>
+    </div>` : ""}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Subject</th>
+        <th style="text-align:center">Mark</th>
+        <th style="text-align:center">Grade</th>
+        ${ptsHeader}
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="summary">
+    ${a ? `<div class="chip">Class size: ${a.total_students}</div>` : ""}
+    ${a ? `<div class="chip">Pass rate: ${Number(a.pass_rate).toFixed(1)}%</div>` : ""}
+    ${a ? `<div class="chip">Your rank: #${a.my_rank ?? "—"}</div>` : ""}
+    ${a?.top_student_name ? `<div class="chip">Top: ${a.top_student_name}</div>` : ""}
+  </div>
+
+  <div class="footer">
+    Generated on ${new Date().toLocaleDateString()} &nbsp;•&nbsp; Progress Christian College &nbsp;•&nbsp; progresschristiansys.com
+  </div>
+</div>
+<script>window.onload = () => { setTimeout(() => window.print(), 300); };</script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank", "width=860,height=640");
+    if (w) {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    }
+  };
+
   if (loading) {
     return <DashboardLayout role="student"><div className="p-12 text-center"><Loader2 className="inline animate-spin mr-2" size={18}/>Loading your results…</div></DashboardLayout>;
   }
