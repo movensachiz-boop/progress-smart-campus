@@ -374,15 +374,10 @@ const StudentReports = () => {
                               <div className="text-xs text-muted-foreground">{r.subject_code}</div>
                             </TableCell>
                             <TableCell className="text-center">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                                <div className={`h-full ${markBarColor(mark)} transition-all`} style={{ width: `${Math.min(100, mark)}%` }} />
-                                </div>
-                                <span className="font-semibold text-foreground w-10 text-right">{r.mark}</span>
-                              </div>
+                              <span className="font-bold text-foreground text-base">{r.mark ?? "—"}</span>
                             </TableCell>
                             <TableCell className="text-center">
-                              <span className={`inline-flex items-center justify-center min-w-[2.5rem] px-2.5 py-1 rounded-md text-xs font-bold ${gradeStyle(liveGrade)}`}>
+                              <span className="inline-flex items-center justify-center min-w-[2.5rem] px-2.5 py-1 rounded-md text-xs font-bold border border-border text-foreground">
                                 {liveGrade}
                               </span>
                             </TableCell>
