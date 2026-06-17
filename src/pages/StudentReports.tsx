@@ -95,7 +95,9 @@ const StudentReports = () => {
       const mark = Number(r.mark) || 0;
       const grade = r.mark != null ? computeGrade(mark, level, r.subject_code) : (r.grade || "");
       const pts = r.mark != null ? computePoints(mark, level, r.subject_code) : (r.points ?? 0);
+      const comment = r.mark != null ? getMarkComment(mark) : "";
       const ptsCell = level === "alevel" ? `<td style="text-align:center;font-weight:700">${pts}</td>` : "";
+      const commentCell = level !== "alevel" ? `<td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;font-style:italic;color:#374151">${comment}</td>` : "";
       return `
         <tr>
           <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb">
@@ -107,11 +109,13 @@ const StudentReports = () => {
             <span style="display:inline-block;min-width:32px;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:800;color:#111827;border:1px solid #d1d5db;background:#fff">${grade}</span>
           </td>
           ${ptsCell}
+          ${commentCell}
         </tr>
       `;
     }).join("");
 
     const ptsHeader = level === "alevel" ? `<th style="text-align:center;padding:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;border-bottom:2px solid #e5e7eb">Points</th>` : "";
+    const commentHeader = level !== "alevel" ? `<th style="text-align:left;padding:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;border-bottom:2px solid #e5e7eb">Comment</th>` : "";
 
     const logoUrl = `${window.location.origin}${pccLogo}`;
     const html = `
