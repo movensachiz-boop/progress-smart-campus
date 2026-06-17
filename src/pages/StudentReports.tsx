@@ -317,7 +317,7 @@ const StudentReports = () => {
                       <div className="text-base font-bold text-foreground">{passedCount}/{rs.length}</div>
                     </div>
                     {level === "alevel" && (
-                      <div className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-primary to-[hsl(217_91%_22%)] text-primary-foreground shadow-md">
+                      <div className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground shadow-md">
                         <div className="text-[10px] uppercase tracking-wide opacity-80">Points</div>
                         <div className="text-base font-bold">{totalPts}</div>
                       </div>
@@ -331,14 +331,14 @@ const StudentReports = () => {
               {/* Analytics cards */}
               {a && (
                 <div className="px-5 md:px-6 pt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/50 p-4">
+                  <div className="rounded-xl border bg-secondary/40 p-4">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                       <div className="w-7 h-7 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center"><Users size={14}/></div>
                       Class size
                     </div>
                     <div className="text-xl font-bold text-foreground">{a.total_students}</div>
                   </div>
-                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/50 p-4">
+                  <div className="rounded-xl border bg-secondary/40 p-4">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                       <div className="w-7 h-7 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center"><TrendingUp size={14}/></div>
                       Pass rate
@@ -346,7 +346,7 @@ const StudentReports = () => {
                     <div className="text-xl font-bold text-foreground">{Number(a.pass_rate).toFixed(1)}%</div>
                     <Progress value={Number(a.pass_rate)} className="h-1.5 mt-2" />
                   </div>
-                  <div className="rounded-xl border bg-gradient-to-br from-background to-amber-50/50 p-4">
+                  <div className="rounded-xl border bg-secondary/40 p-4">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                       <div className="w-7 h-7 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center"><Trophy size={14}/></div>
                       Top student
@@ -354,7 +354,7 @@ const StudentReports = () => {
                     <div className="text-sm font-bold text-foreground truncate">{a.top_student_name || "—"}</div>
                     <div className="text-xs text-muted-foreground">{a.top_student_avg != null ? `${Number(a.top_student_avg).toFixed(1)}% avg` : ""}</div>
                   </div>
-                  <div className="rounded-xl border bg-gradient-to-br from-primary/5 to-accent/10 p-4 relative overflow-hidden">
+                  <div className="rounded-xl border bg-primary/10 p-4 relative overflow-hidden">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                       <div className="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center"><Target size={14}/></div>
                       Your position
