@@ -289,7 +289,7 @@ const AdminPerformance = () => {
                 </Tabs>
 
                 <div className="flex gap-2">
-                  <Button onClick={compute} disabled={busy || !form || (mode === "exam" ? !examId : (!year || !term))}>
+                  <Button onClick={compute} disabled={busy || !activeForms.length || (mode === "exam" ? !examId : (!year || !term))}>
                     {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Generate Ranking
                   </Button>
