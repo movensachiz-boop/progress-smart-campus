@@ -278,7 +278,11 @@ const StudentReports = () => {
           const passedCount = rs.filter(r => Number(r.mark) >= 60).length;
           const a = analytics[e.id];
           return (
-            <Card key={e.id} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <Card key={e.id} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow relative">
+              {/* Watermark */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none z-0">
+                <img src={pccLogo} alt="Progress Christian College" className="w-80 h-auto object-contain"/>
+              </div>
               {/* Exam header strip */}
               <div className="relative bg-secondary border-b p-5 md:p-6">
                 <div className="flex items-start justify-between flex-wrap gap-4">
