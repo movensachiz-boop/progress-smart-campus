@@ -139,7 +139,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
           })}
         </nav>
 
-        {/* User Guide + Sign out */}
+        {/* User Guide + Parent Guide + Sign out */}
         <div className="p-3 border-t border-sidebar-border space-y-1">
           <a
             href="/PCC_Connect_Hub_User_Guide.pdf"
@@ -148,6 +148,14 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
           >
             <HelpCircle size={18} />
             User Guide (PDF)
+          </a>
+          <a
+            href="/PCC_Parent_Account_Setup_Guide.pdf"
+            download
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all"
+          >
+            <HelpCircle size={18} />
+            Parent Setup Guide (1-Page)
           </a>
           <Button
             variant="ghost"
