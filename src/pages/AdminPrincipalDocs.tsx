@@ -9,6 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { generateTargetsFormBatch, TargetsStudent } from "@/lib/generateTargetsForm";
+import { generateAttendanceRegister } from "@/lib/generateAttendanceRegister";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
 import { FileDown, Users, Loader2 } from "lucide-react";
