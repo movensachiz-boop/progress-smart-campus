@@ -1,18 +1,10 @@
 import jsPDF from "jspdf";
 
-export interface AttendanceRow {
-  learnerName: string;
-  guardianName: string;
-  contact: string;
-}
-
 export interface AttendanceRegisterOptions {
-  className: string;
-  term: string;
-  year: string;
+  title?: string;
   meetingTitle?: string;
   meetingDate?: string;
-  rows: AttendanceRow[];
+  rows?: number;
 }
 
 export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
@@ -22,7 +14,6 @@ export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
   const margin = 12;
 
   const drawHeader = () => {
-    // Blue header bar
     doc.setFillColor(0, 51, 102);
     doc.rect(0, 0, pageW, 22, "F");
     doc.setTextColor(255, 215, 0);
@@ -37,23 +28,20 @@ export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     const infoY = 28;
-    doc.text(`Class: ${opts.className}`, margin, infoY);
-    doc.text(`Term: ${opts.term}    Year: ${opts.year}`, pageW / 2, infoY, { align: "center" });
-    doc.text(`Date: ${opts.meetingDate || "____________"}`, pageW - margin, infoY, { align: "right" });
     if (opts.meetingTitle) {
       doc.setFont("helvetica", "bold");
-      doc.text(`Meeting: ${opts.meetingTitle}`, margin, infoY + 6);
+      doc.text(`Meeting: ${opts.meetingTitle}`, margin, infoY);
       doc.setFont("helvetica", "normal");
     }
+    doc.text(`Date: ${opts.meetingDate || "____________"}`, pageW - margin, infoY, { align: "right" });
   };
 
-  // Column layout
   const cols = [
     { key: "no", label: "#", w: 8 },
     { key: "parent", label: "Name of Parent / Guardian", w: 55 },
     { key: "learner", label: "Name of Learner", w: 50 },
     { key: "contact", label: "Contact", w: 30 },
-    { key: "signature", label: "Signature", w: 0 }, // remainder
+    { key: "signature", label: "Signature", w: 0 },
   ];
   const usableW = pageW - margin * 2;
   const fixedW = cols.reduce((s, c) => s + c.w, 0);
@@ -83,7 +71,7 @@ export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
     doc.setFont("helvetica", "normal");
   };
 
-  const drawRow = (index: number, r?: AttendanceRow) => {
+  const drawBlankRow = (index: number) => {
     doc.setDrawColor(180, 180, 180);
     doc.setLineWidth(0.2);
     doc.rect(margin, y, usableW, rowH);
@@ -93,32 +81,16 @@ export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
       x += c.w;
     });
     doc.setFontSize(9);
-    let cx = margin;
-    const cells = [
-      String(index + 1),
-      r?.guardianName || "",
-      r?.learnerName || "",
-      r?.contact || "",
-      "",
-    ];
-    cells.forEach((val, i) => {
-      doc.text(val, cx + 2, y + 6.5, { maxWidth: cols[i].w - 3 });
-      cx += cols[i].w;
-    });
+    doc.text(String(index + 1), margin + 2, y + 6.5);
     y += rowH;
   };
 
   drawHeader();
   drawTableHeader();
 
-  // Always render at least all rows; add blank rows to fill page if list is short
-  const rowsToDraw = [...opts.rows];
-  const minRows = 25;
-  while (rowsToDraw.length < minRows) rowsToDraw.push({ learnerName: "", guardianName: "", contact: "" });
-
-  rowsToDraw.forEach((r, i) => {
+  const totalRows = opts.rows || 30;
+  for (let i = 0; i < totalRows; i++) {
     if (y + rowH > pageH - 20) {
-      // footer & new page
       doc.setFontSize(8);
       doc.setTextColor(120, 120, 120);
       doc.text("Progress Christian College — Parent/Guardian Attendance Register", pageW / 2, pageH - 8, { align: "center" });
@@ -127,13 +99,16 @@ export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
       drawHeader();
       drawTableHeader();
     }
-    drawRow(i, r.learnerName || r.guardianName || r.contact ? r : undefined);
-  });
+    drawBlankRow(i);
+  }
 
-  // Footer
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
   doc.text("Progress Christian College — Parent/Guardian Attendance Register", pageW / 2, pageH - 8, { align: "center" });
 
-  doc.save(`Attendance_Register_${opts.className}_${opts.term}_${opts.year}.pdf`);
+  const fileName = opts.meetingTitle
+    ? `Attendance_Register_${opts.meetingTitle.replace(/\s+/g, "_")}.pdf`
+    : "Attendance_Register.pdf";
+  doc.save(fileName);
 };
+
