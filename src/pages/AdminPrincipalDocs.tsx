@@ -22,6 +22,8 @@ interface StudentRow {
   registration_number: string | null;
   form: string | null;
   stream: string | null;
+  guardian_name?: string | null;
+  guardian_phone?: string | null;
 }
 
 const ALL_FORMS = [
