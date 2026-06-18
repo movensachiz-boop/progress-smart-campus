@@ -79,9 +79,7 @@ export default function StudentRequirements() {
             )}
             {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
           </div>
-          {item.amount > 0 && (
-            <span className="font-mono font-semibold text-sm">US${item.amount}</span>
-          )}
+          <span className="font-mono font-semibold text-sm text-muted-foreground">Processing</span>
         </div>
       ))}
       {catItems.length === 0 && (
@@ -125,15 +123,15 @@ export default function StudentRequirements() {
           </Select>
         </div>
 
-        {/* Total fees card */}
+        {/* Processing Notice */}
         <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="py-4 flex items-center gap-4">
+          <CardContent className="py-6 flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
               <DollarSign className="text-primary" size={24} />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Fees for Form {selectedForm}{isUpperForm && selectedArea !== "all" ? ` (${selectedArea})` : ""}</p>
-              <p className="text-2xl font-bold text-foreground">US${totalFees}</p>
+              <p className="text-lg font-semibold text-foreground">Processing</p>
             </div>
           </CardContent>
         </Card>
