@@ -48,19 +48,7 @@ export function installAntiInspect() {
     } catch {}
   };
 
-  const threshold = 160;
-  const checkSize = () => {
-    const widthDiff = window.outerWidth - window.innerWidth;
-    const heightDiff = window.outerHeight - window.innerHeight;
-    if (widthDiff > threshold || heightDiff > threshold) blank();
-  };
-  setInterval(checkSize, 1000);
-
-  const checkDebugger = () => {
-    const start = performance.now();
-    // eslint-disable-next-line no-debugger
-    (function () { debugger; })();
-    if (performance.now() - start > 100) blank();
-  };
-  setInterval(checkDebugger, 2000);
+  // DevTools open detection disabled — too many false positives across
+  // browsers, zoom levels, docked toolbars, and mobile viewports.
+  void blank;
 }
