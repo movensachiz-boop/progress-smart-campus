@@ -58,7 +58,7 @@ const AdminPrincipalDocs = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, registration_number, form, stream")
+        .select("id, first_name, last_name, registration_number, form, stream, guardian_name, guardian_phone")
         .not("form", "is", null)
         .order("form")
         .order("stream")
