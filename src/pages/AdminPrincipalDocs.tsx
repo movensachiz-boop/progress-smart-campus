@@ -9,9 +9,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { generateTargetsFormBatch, TargetsStudent } from "@/lib/generateTargetsForm";
+import { generateAttendanceRegister } from "@/lib/generateAttendanceRegister";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
-import { FileDown, Users, Loader2 } from "lucide-react";
+import { FileDown, Users, Loader2, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudentRow {
@@ -21,6 +22,8 @@ interface StudentRow {
   registration_number: string | null;
   form: string | null;
   stream: string | null;
+  guardian_name?: string | null;
+  guardian_phone?: string | null;
 }
 
 const ALL_FORMS = [
@@ -49,13 +52,15 @@ const AdminPrincipalDocs = () => {
   const [selForm, setSelForm] = useState<string>("");
   const [selStream, setSelStream] = useState<string>("ALL");
   const [generating, setGenerating] = useState(false);
+  const [meetingTitle, setMeetingTitle] = useState<string>("Parents' Meeting");
+  const [meetingDate, setMeetingDate] = useState<string>(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, registration_number, form, stream")
+        .select("id, first_name, last_name, registration_number, form, stream, guardian_name, guardian_phone")
         .not("form", "is", null)
         .order("form")
         .order("stream")
@@ -126,6 +131,26 @@ const AdminPrincipalDocs = () => {
       setGenerating(false);
     }
   };
+
+  const handleAttendance = () => {
+    if (!selForm) return toast.error("Select a class/form first");
+    if (!filteredStudents.length) return toast.error("No students in this class");
+    const rows = filteredStudents.map(s => ({
+      learnerName: `${s.first_name || ""} ${s.last_name || ""}`.trim(),
+      guardianName: s.guardian_name || "",
+      contact: s.guardian_phone || "",
+    }));
+    generateAttendanceRegister({
+      className: `Form ${selForm}${selStream !== "ALL" ? " " + selStream : ""}`,
+      term, year,
+      meetingTitle,
+      meetingDate,
+      rows,
+    });
+    toast.success("Attendance register downloaded");
+  };
+
+
 
   return (
     <DashboardLayout role="admin">
@@ -233,6 +258,38 @@ const AdminPrincipalDocs = () => {
                 No subjects defined yet. Add subjects in the Subjects module first.
               </p>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ClipboardList size={18} /> Parent / Guardian Attendance Register</CardTitle>
+            <CardDescription>
+              Generate a printable attendance register for parents' meetings. Uses the same selected class above. Columns: Name of Parent, Name of Learner, Contact, Signature.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Meeting Title</Label>
+                <Input value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)} placeholder="e.g. Term 1 Parents' Consultation" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Meeting Date</Label>
+                <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="h-9 px-3 flex items-center">
+                {filteredStudents.length} learner{filteredStudents.length === 1 ? "" : "s"}
+              </Badge>
+              <Button onClick={handleAttendance} disabled={!selForm || !filteredStudents.length} className="gap-2 ml-auto">
+                <FileDown size={16} /> Download Attendance Register
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Parent names and contacts are pre-filled from each learner's guardian details. Blank rows are added for walk-ins.
+            </p>
           </CardContent>
         </Card>
       </div>
