@@ -148,6 +148,9 @@ const AdminPrincipalDocs = () => {
       rows,
     });
     toast.success("Attendance register downloaded");
+  };
+
+
 
   return (
     <DashboardLayout role="admin">
