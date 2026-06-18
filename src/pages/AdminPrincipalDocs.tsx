@@ -52,6 +52,8 @@ const AdminPrincipalDocs = () => {
   const [selForm, setSelForm] = useState<string>("");
   const [selStream, setSelStream] = useState<string>("ALL");
   const [generating, setGenerating] = useState(false);
+  const [meetingTitle, setMeetingTitle] = useState<string>("Parents' Meeting");
+  const [meetingDate, setMeetingDate] = useState<string>(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     (async () => {
