@@ -133,19 +133,9 @@ const AdminPrincipalDocs = () => {
   };
 
   const handleAttendance = () => {
-    if (!selForm) return toast.error("Select a class/form first");
-    if (!filteredStudents.length) return toast.error("No students in this class");
-    const rows = filteredStudents.map(s => ({
-      learnerName: `${s.first_name || ""} ${s.last_name || ""}`.trim(),
-      guardianName: s.guardian_name || "",
-      contact: s.guardian_phone || "",
-    }));
     generateAttendanceRegister({
-      className: `Form ${selForm}${selStream !== "ALL" ? " " + selStream : ""}`,
-      term, year,
       meetingTitle,
       meetingDate,
-      rows,
     });
     toast.success("Attendance register downloaded");
   };
