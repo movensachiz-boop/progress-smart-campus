@@ -260,6 +260,38 @@ const AdminPrincipalDocs = () => {
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ClipboardList size={18} /> Parent / Guardian Attendance Register</CardTitle>
+            <CardDescription>
+              Generate a printable attendance register for parents' meetings. Uses the same selected class above. Columns: Name of Parent, Name of Learner, Contact, Signature.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Meeting Title</Label>
+                <Input value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)} placeholder="e.g. Term 1 Parents' Consultation" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Meeting Date</Label>
+                <Input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="h-9 px-3 flex items-center">
+                {filteredStudents.length} learner{filteredStudents.length === 1 ? "" : "s"}
+              </Badge>
+              <Button onClick={handleAttendance} disabled={!selForm || !filteredStudents.length} className="gap-2 ml-auto">
+                <FileDown size={16} /> Download Attendance Register
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Parent names and contacts are pre-filled from each learner's guardian details. Blank rows are added for walk-ins.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
