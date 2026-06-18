@@ -201,83 +201,20 @@ const StudentPayments = () => {
           </Button>
         </div>
 
-        {/* Balance Card */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="shadow-card">
-            <CardHeader className="pb-2">
-              <CardDescription>Outstanding Balance</CardDescription>
-              <CardTitle className="text-2xl text-destructive">
-                ${profile?.balance?.toFixed(2) || "0.00"}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className="shadow-card">
-            <CardHeader className="pb-2">
-              <CardDescription>Total Paid</CardDescription>
-              <CardTitle className="text-2xl text-success">
-                ${payments.filter(p => p.status === "confirmed").reduce((s, p) => s + p.amount, 0).toFixed(2)}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className="shadow-card">
-            <CardHeader className="pb-2">
-              <CardDescription>Pending</CardDescription>
-              <CardTitle className="text-2xl text-warning">
-                ${payments.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0).toFixed(2)}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-
-        {/* Payment History */}
+        {/* Processing Notice */}
         <Card className="shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Payment History</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
-            ) : payments.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No payments yet</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-secondary">
-                    <TableHead>Receipt</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.receipt_number || "—"}</TableCell>
-                      <TableCell>{new Date(p.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell>${p.amount.toFixed(2)}</TableCell>
-                      <TableCell>{p.method}</TableCell>
-                      <TableCell>
-                        <Badge className={statusColor(p.status)}>{p.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {p.status === "confirmed" && (
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => handlePrint(p)} title="Print">
-                              <Printer size={16} />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(p)} title="Download PDF">
-                              <Download size={16} />
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center justify-center text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <DollarSign className="text-primary" size={32} />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-foreground">Fee Information Processing</p>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  We are currently updating our fee records. Payment details will be available soon. Please contact the school office for any urgent payment inquiries.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

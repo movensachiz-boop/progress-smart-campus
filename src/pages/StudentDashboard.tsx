@@ -124,9 +124,9 @@ const StudentDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Term Fees" value={`$${termFees}`} icon={DollarSign} variant="primary" />
-          <StatCard title="Paid" value={`$${totalPaid}`} icon={CreditCard} variant="success" />
-          <StatCard title="Outstanding" value={`$${outstanding}`} icon={AlertTriangle} variant="warning" />
+          <StatCard title="Term Fees" value="Processing" icon={DollarSign} variant="primary" />
+          <StatCard title="Paid" value="Processing" icon={CreditCard} variant="success" />
+          <StatCard title="Outstanding" value="Processing" icon={AlertTriangle} variant="warning" />
           <StatCard title="Notices" value="3" icon={Bell} variant="accent" />
         </div>
 
@@ -135,43 +135,18 @@ const StudentDashboard = () => {
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base">Payment History</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-secondary">
-                    <TableHead>Receipt</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">No payments recorded yet</TableCell>
-                    </TableRow>
-                  ) : payments.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.receipt_number || "—"}</TableCell>
-                      <TableCell>{new Date(p.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell>${p.amount}</TableCell>
-                      <TableCell className="capitalize">{p.method}</TableCell>
-                      <TableCell>
-                        <Badge variant={p.status === "paid" || p.status === "completed" ? "default" : "secondary"} className={p.status === "paid" || p.status === "completed" ? "bg-success text-success-foreground" : "bg-warning text-warning-foreground"}>
-                          {p.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {(p.status === "paid" || p.status === "completed") && (
-                          <Button variant="ghost" size="icon"><Download size={16} /></Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <DollarSign className="text-primary" size={32} />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-foreground">Fee Information Processing</p>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    We are currently updating our fee records. Please check back soon or contact the school office for your latest payment details.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
