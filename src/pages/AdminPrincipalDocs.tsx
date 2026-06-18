@@ -12,7 +12,7 @@ import { generateTargetsFormBatch, TargetsStudent } from "@/lib/generateTargetsF
 import { generateAttendanceRegister } from "@/lib/generateAttendanceRegister";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
-import { FileDown, Users, Loader2 } from "lucide-react";
+import { FileDown, Users, Loader2, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudentRow {
