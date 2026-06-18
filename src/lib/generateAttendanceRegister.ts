@@ -7,27 +7,56 @@ export interface AttendanceRegisterOptions {
   rows?: number;
 }
 
-export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
+export const generateAttendanceRegister = async (opts: AttendanceRegisterOptions) => {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 12;
 
+  // ── Load logo ──
+  let logoH = 0;
+  try {
+    const logoModule = await import("@/assets/pcc-logo.png");
+    const logoUrl = logoModule.default;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject();
+      img.src = logoUrl;
+    });
+    const logoW = 18;
+    logoH = 18;
+    doc.addImage(img, "PNG", pageW / 2 - logoW / 2, 6, logoW, logoH);
+  } catch {
+    // logo failed — continue without it
+  }
+
   const drawHeader = () => {
+    // Blue header bar
     doc.setFillColor(0, 51, 102);
-    doc.rect(0, 0, pageW, 22, "F");
+    const headerY = logoH > 0 ? 28 : 0;
+    const headerH = logoH > 0 ? 20 : 22;
+    doc.rect(0, headerY, pageW, headerH, "F");
+
     doc.setTextColor(255, 215, 0);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text("PROGRESS CHRISTIAN COLLEGE", pageW / 2, 9, { align: "center" });
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
-    doc.text("PARENT / GUARDIAN ATTENDANCE REGISTER", pageW / 2, 16, { align: "center" });
+    doc.setFontSize(13);
+    doc.text("PROGRESS CHRISTIAN COLLEGE", pageW / 2, headerY + 7, { align: "center" });
 
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.text("BONNYVALE, GWERU  |  +263 77 400 0143", pageW / 2, headerY + 13, { align: "center" });
+
+    doc.setTextColor(255, 215, 0);
+    doc.setFontSize(10);
+    doc.text("PARENT / GUARDIAN ATTENDANCE REGISTER", pageW / 2, headerY + 18, { align: "center" });
+
+    // Meeting info below header
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    const infoY = 28;
+    const infoY = headerY + headerH + 6;
     if (opts.meetingTitle) {
       doc.setFont("helvetica", "bold");
       doc.text(`Meeting: ${opts.meetingTitle}`, margin, infoY);
@@ -49,7 +78,8 @@ export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
 
   const rowH = 10;
   const headerRowH = 8;
-  let y = 40;
+  const startY = logoH > 0 ? 58 : 40;
+  let y = startY;
 
   const drawTableHeader = () => {
     doc.setFillColor(230, 235, 245);
@@ -95,7 +125,7 @@ export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
       doc.setTextColor(120, 120, 120);
       doc.text("Progress Christian College — Parent/Guardian Attendance Register", pageW / 2, pageH - 8, { align: "center" });
       doc.addPage();
-      y = 40;
+      y = startY;
       drawHeader();
       drawTableHeader();
     }
@@ -111,4 +141,5 @@ export const generateAttendanceRegister = (opts: AttendanceRegisterOptions) => {
     : "Attendance_Register.pdf";
   doc.save(fileName);
 };
+
 
