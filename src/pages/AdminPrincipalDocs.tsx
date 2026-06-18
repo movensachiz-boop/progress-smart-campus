@@ -132,8 +132,8 @@ const AdminPrincipalDocs = () => {
     }
   };
 
-  const handleAttendance = () => {
-    generateAttendanceRegister({
+  const handleAttendance = async () => {
+    await generateAttendanceRegister({
       meetingTitle,
       meetingDate,
     });
