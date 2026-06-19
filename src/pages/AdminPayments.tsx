@@ -470,7 +470,6 @@ const AdminPayments = () => {
         }
       }
       toast({ title: "Payment Recorded", description: "Payment saved successfully." });
-      setConfirmDialogOpen(false);
       setScannedData(null);
       setSlipFile(null);
       setPatternWarnings([]);
@@ -483,7 +482,9 @@ const AdminPayments = () => {
       setManualAmount("");
       setManualMethod("");
       setManualRef("");
+      setStudentSearch("");
       fetchPayments();
+      setTimeout(() => studentSearchRef.current?.focus(), 100);
     }
     setSaving(false);
   };
