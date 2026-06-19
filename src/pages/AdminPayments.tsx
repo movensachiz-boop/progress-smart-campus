@@ -129,6 +129,7 @@ const AdminPayments = () => {
   const [manualMethod, setManualMethod] = useState("");
   const [manualRef, setManualRef] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const studentSearchRef = useRef<HTMLInputElement>(null);
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [patternWarnings, setPatternWarnings] = useState<string[]>([]);
   const [quickRegister, setQuickRegister] = useState(false);
