@@ -1048,12 +1048,44 @@ const AdminStudents = () => {
                            <Button
                              variant="ghost"
                              size="sm"
+                             className="gap-1"
+                             onClick={async () => {
+                               try {
+                                 await generateStudentReport({
+                                   id: s.id,
+                                   registration_number: s.registration_number,
+                                   first_name: s.first_name,
+                                   last_name: s.last_name,
+                                   form: s.form,
+                                   stream: s.stream,
+                                   gender: s.gender,
+                                   guardian_name: s.guardian_name,
+                                   guardian_phone: s.guardian_phone,
+                                   status: s.status,
+                                   total_fees: s.total_fees,
+                                   total_paid: s.total_paid,
+                                   computed_balance: s.computed_balance,
+                                   payment_status: s.payment_status,
+                                 });
+                                 toast({ title: "Report Downloaded", description: `Student report for ${s.first_name} saved.` });
+                               } catch (e: any) {
+                                 toast({ title: "Failed to generate report", description: e?.message || "Try again", variant: "destructive" });
+                               }
+                             }}
+                             title="Download student report"
+                           >
+                             <FileText size={14} /> Report
+                           </Button>
+                           <Button
+                             variant="ghost"
+                             size="sm"
                              className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
                              onClick={() => handleDeleteStudent(s)}
                              title="Delete student"
                            >
                              <Trash2 size={14} /> Delete
                            </Button>
+
                          </div>
                        </TableCell>
                     </TableRow>
