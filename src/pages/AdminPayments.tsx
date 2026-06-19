@@ -469,8 +469,7 @@ const AdminPayments = () => {
           // Payment saved, notification failed silently
         }
       }
-      toast({ title: "Payment Recorded", description: "Payment saved successfully." });
-      setScannedData(null);
+      setScannedData({ depositor_name: "", bank_name: "", date: "", amount: "", method: "Cash", reference_number: "" });
       setSlipFile(null);
       setPatternWarnings([]);
       setSelectedStudentId("");
@@ -480,7 +479,7 @@ const AdminPayments = () => {
       setNewStream("");
       setNewGender("male");
       setManualAmount("");
-      setManualMethod("");
+      setManualMethod("Cash");
       setManualRef("");
       setStudentSearch("");
       fetchPayments();
