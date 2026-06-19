@@ -79,7 +79,7 @@ export default function StudentRequirements() {
             )}
             {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
           </div>
-          <span className="font-mono font-semibold text-sm text-muted-foreground">Processing</span>
+          <span className="font-mono font-semibold text-sm">${item.amount.toFixed(2)}</span>
         </div>
       ))}
       {catItems.length === 0 && (
