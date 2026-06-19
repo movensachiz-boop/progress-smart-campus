@@ -693,7 +693,7 @@ const AdminPayments = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payments.map((p) => (
+                  {filteredPayments.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.receipt_number || p.id.slice(0, 8)}</TableCell>
                       <TableCell>{p.studentName}</TableCell>
