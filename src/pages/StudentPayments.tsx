@@ -69,7 +69,7 @@ const StudentPayments = () => {
 
     const { data: profileData } = await supabase
       .from("profiles")
-      .select("id, first_name, last_name, registration_number, balance, form, stream")
+      .select("id, first_name, last_name, registration_number, balance, form, stream, gender, is_beginner, residency")
       .eq("user_id", user.id)
       .maybeSingle();
     if (profileData) setProfile(profileData);
@@ -81,6 +81,32 @@ const StudentPayments = () => {
         .eq("student_profile_id", profileData.id)
         .order("created_at", { ascending: false });
       if (paymentData) setPayments(paymentData);
+
+      if (profileData.form) {
+        const { data: feeItems } = await supabase
+          .from("fee_requirements")
+          .select("*")
+          .eq("is_active", true);
+        if (feeItems) {
+          const formNum = profileData.form;
+          const stream = profileData.stream || "";
+          const studentGender = profileData.gender === "female" ? "girls" : "boys";
+          const isBeginner = !!profileData.is_beginner;
+          const residency = profileData.residency || "day";
+          const learningArea = ["Sciences", "Commercials", "Arts"].includes(stream) ? stream : null;
+          const applicable = feeItems.filter((item: any) => {
+            if (item.category !== "fees" && !isBeginner) return false;
+            if (item.beginner_only && !isBeginner) return false;
+            if (item.returning_only && isBeginner) return false;
+            if (!item.form_levels.includes(formNum)) return false;
+            if (item.gender !== "all" && item.gender !== studentGender) return false;
+            if (item.residency && item.residency !== "all" && item.residency !== residency) return false;
+            if (item.learning_area) return item.learning_area === learningArea;
+            return true;
+          });
+          setTermFees(applicable.reduce((sum: number, i: any) => sum + Number(i.amount), 0));
+        }
+      }
     }
     setLoading(false);
   };
