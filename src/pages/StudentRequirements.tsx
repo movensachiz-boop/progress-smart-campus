@@ -131,7 +131,7 @@ export default function StudentRequirements() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Fees for Form {selectedForm}{isUpperForm && selectedArea !== "all" ? ` (${selectedArea})` : ""}</p>
-              <p className="text-lg font-semibold text-foreground">Processing</p>
+              <p className="text-lg font-semibold text-foreground">${totalFees.toFixed(2)}</p>
             </div>
           </CardContent>
         </Card>
