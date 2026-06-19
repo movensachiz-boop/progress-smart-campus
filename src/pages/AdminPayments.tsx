@@ -129,6 +129,7 @@ const AdminPayments = () => {
   const [manualMethod, setManualMethod] = useState("");
   const [manualRef, setManualRef] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const studentSearchRef = useRef<HTMLInputElement>(null);
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [patternWarnings, setPatternWarnings] = useState<string[]>([]);
   const [quickRegister, setQuickRegister] = useState(false);
@@ -150,6 +151,12 @@ const AdminPayments = () => {
     fetchStudents();
     fetchFeeSummary();
   }, []);
+
+  useEffect(() => {
+    if (confirmDialogOpen) {
+      setTimeout(() => studentSearchRef.current?.focus(), 100);
+    }
+  }, [confirmDialogOpen]);
 
   const fetchStudents = async () => {
     const { data } = await supabase.from("profiles").select("id, first_name, last_name, registration_number, guardian_phone, form, stream").order("first_name");
@@ -1007,9 +1014,19 @@ const AdminPayments = () => {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
+                      ref={studentSearchRef}
                       placeholder="Search student..."
                       value={studentSearch}
                       onChange={(e) => setStudentSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && filteredStudents.length > 0) {
+                          const first = filteredStudents[0];
+                          setSelectedStudentId(first.id);
+                          setNewFirstName(first.first_name);
+                          setNewLastName(first.last_name);
+                          setStudentSearch(`${first.first_name} ${first.last_name}`);
+                        }
+                      }}
                       className="pl-9 h-8 text-xs"
                     />
                   </div>
