@@ -152,6 +152,12 @@ const AdminPayments = () => {
     fetchFeeSummary();
   }, []);
 
+  useEffect(() => {
+    if (confirmDialogOpen) {
+      setTimeout(() => studentSearchRef.current?.focus(), 100);
+    }
+  }, [confirmDialogOpen]);
+
   const fetchStudents = async () => {
     const { data } = await supabase.from("profiles").select("id, first_name, last_name, registration_number, guardian_phone, form, stream").order("first_name");
     if (data) setStudents(data);
