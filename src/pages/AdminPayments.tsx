@@ -1067,6 +1067,7 @@ const AdminPayments = () => {
                 <div className="space-y-2">
                   <Label>Amount ($) *</Label>
                   <Input
+                    ref={amountRef}
                     value={manualAmount}
                     onChange={(e) => setManualAmount(e.target.value)}
                     type="number"
