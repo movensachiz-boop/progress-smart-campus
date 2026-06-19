@@ -137,7 +137,7 @@ export async function generateStudentReport(student: StudentReportInput) {
   // Exam results
   const { data: results } = await supabase
     .from("exam_results")
-    .select("subject, mark, grade, exam_id, exams(name, term, year)")
+    .select("subject_name, mark, grade, exams(name, term, year)")
     .eq("student_profile_id", student.id);
 
   if (results && results.length > 0) {
@@ -154,7 +154,7 @@ export async function generateStudentReport(student: StudentReportInput) {
         r.exams?.name || "—",
         r.exams?.term || "—",
         r.exams?.year || "—",
-        r.subject || "—",
+        r.subject_name || "—",
         r.mark != null ? String(r.mark) : "—",
         r.grade || "—",
       ]),
@@ -164,6 +164,7 @@ export async function generateStudentReport(student: StudentReportInput) {
       margin: { left: 14, right: 14 },
     });
   }
+
 
   // Footer
   const pageCount = doc.getNumberOfPages();
