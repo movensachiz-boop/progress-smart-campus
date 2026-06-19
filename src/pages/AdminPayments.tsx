@@ -1039,6 +1039,7 @@ const AdminPayments = () => {
                           setNewFirstName(first.first_name);
                           setNewLastName(first.last_name);
                           setStudentSearch(`${first.first_name} ${first.last_name}`);
+                          setTimeout(() => amountRef.current?.focus(), 50);
                         }
                       }}
                       className="pl-9 h-8 text-xs"
