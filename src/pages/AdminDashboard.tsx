@@ -54,6 +54,8 @@ const AdminDashboard = () => {
       const totalOutstanding = Math.max(totalFees - totalPaid, 0);
       setFeesCollected(totalPaid);
       setOutstanding(totalOutstanding);
+      setTotalExpected(totalFees);
+
 
       // Inventory sales (separate from fees)
       const { data: invSales } = await supabase
