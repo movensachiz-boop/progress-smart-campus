@@ -29,7 +29,7 @@ export async function generateStudentReport(student: StudentReportInput) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Pioneer Christian College", pageWidth / 2, 12, { align: "center" });
+  doc.text("Progress Christian College", pageWidth / 2, 12, { align: "center" });
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   doc.text("Student Comprehensive Report", pageWidth / 2, 20, { align: "center" });
@@ -106,33 +106,6 @@ export async function generateStudentReport(student: StudentReportInput) {
 
   y = (doc as any).lastAutoTable.finalY + 8;
 
-  // Attendance summary
-  const { data: att } = await supabase
-    .from("attendance")
-    .select("status")
-    .eq("student_profile_id", student.id);
-  const attTotal = att?.length || 0;
-  const present = att?.filter(a => a.status === "present").length || 0;
-  const absent = att?.filter(a => a.status === "absent").length || 0;
-  const late = att?.filter(a => a.status === "late").length || 0;
-  const attPct = attTotal ? Math.round(((present + late) / attTotal) * 100) : 0;
-
-  if (y > 240) { doc.addPage(); y = 20; }
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(0, 51, 102);
-  doc.text("Attendance Summary", 14, y);
-  y += 3;
-  autoTable(doc, {
-    startY: y,
-    head: [["Total Days", "Present", "Absent", "Late", "Attendance %"]],
-    body: [[String(attTotal), String(present), String(absent), String(late), `${attPct}%`]],
-    theme: "grid",
-    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 9 },
-    bodyStyles: { fontSize: 9 },
-    margin: { left: 14, right: 14 },
-  });
-  y = (doc as any).lastAutoTable.finalY + 8;
 
   // Exam results
   const { data: results } = await supabase
@@ -173,7 +146,7 @@ export async function generateStudentReport(student: StudentReportInput) {
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
     doc.text(
-      `Pioneer Christian College · Confidential · Page ${i} of ${pageCount}`,
+      `Progress Christian College · Confidential · Page ${i} of ${pageCount}`,
       pageWidth / 2,
       doc.internal.pageSize.height - 8,
       { align: "center" }
