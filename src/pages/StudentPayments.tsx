@@ -35,6 +35,9 @@ interface Profile {
   balance: number;
   form?: string | null;
   stream?: string | null;
+  gender?: string;
+  is_beginner?: boolean;
+  residency?: string;
 }
 
 const StudentPayments = () => {
