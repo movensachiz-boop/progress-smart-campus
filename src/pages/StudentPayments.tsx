@@ -35,12 +35,16 @@ interface Profile {
   balance: number;
   form?: string | null;
   stream?: string | null;
+  gender?: string;
+  is_beginner?: boolean;
+  residency?: string;
 }
 
 const StudentPayments = () => {
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [termFees, setTermFees] = useState(0);
   const [loading, setLoading] = useState(true);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("ecocash");
@@ -65,7 +69,7 @@ const StudentPayments = () => {
 
     const { data: profileData } = await supabase
       .from("profiles")
-      .select("id, first_name, last_name, registration_number, balance, form, stream")
+      .select("id, first_name, last_name, registration_number, balance, form, stream, gender, is_beginner, residency")
       .eq("user_id", user.id)
       .maybeSingle();
     if (profileData) setProfile(profileData);
@@ -77,6 +81,32 @@ const StudentPayments = () => {
         .eq("student_profile_id", profileData.id)
         .order("created_at", { ascending: false });
       if (paymentData) setPayments(paymentData);
+
+      if (profileData.form) {
+        const { data: feeItems } = await supabase
+          .from("fee_requirements")
+          .select("*")
+          .eq("is_active", true);
+        if (feeItems) {
+          const formNum = profileData.form;
+          const stream = profileData.stream || "";
+          const studentGender = profileData.gender === "female" ? "girls" : "boys";
+          const isBeginner = !!profileData.is_beginner;
+          const residency = profileData.residency || "day";
+          const learningArea = ["Sciences", "Commercials", "Arts"].includes(stream) ? stream : null;
+          const applicable = feeItems.filter((item: any) => {
+            if (item.category !== "fees" && !isBeginner) return false;
+            if (item.beginner_only && !isBeginner) return false;
+            if (item.returning_only && isBeginner) return false;
+            if (!item.form_levels.includes(formNum)) return false;
+            if (item.gender !== "all" && item.gender !== studentGender) return false;
+            if (item.residency && item.residency !== "all" && item.residency !== residency) return false;
+            if (item.learning_area) return item.learning_area === learningArea;
+            return true;
+          });
+          setTermFees(applicable.reduce((sum: number, i: any) => sum + Number(i.amount), 0));
+        }
+      }
     }
     setLoading(false);
   };
@@ -201,20 +231,70 @@ const StudentPayments = () => {
           </Button>
         </div>
 
-        {/* Processing Notice */}
-        <Card className="shadow-card">
-          <CardContent className="p-8">
-            <div className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <DollarSign className="text-primary" size={32} />
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-foreground">Fee Information Processing</p>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  We are currently updating our fee records. Payment details will be available soon. Please contact the school office for any urgent payment inquiries.
-                </p>
-              </div>
+        {(() => {
+          const totalPaid = payments
+            .filter((p) => p.status === "paid" || p.status === "completed" || p.status === "confirmed")
+            .reduce((s, p) => s + Number(p.amount), 0);
+          const outstanding = Math.max(0, termFees - totalPaid);
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card className="shadow-card"><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">Term Fees</p>
+                <p className="text-2xl font-bold">${termFees.toFixed(2)}</p>
+              </CardContent></Card>
+              <Card className="shadow-card"><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">Paid</p>
+                <p className="text-2xl font-bold text-success">${totalPaid.toFixed(2)}</p>
+              </CardContent></Card>
+              <Card className="shadow-card"><CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">Outstanding</p>
+                <p className={`text-2xl font-bold ${outstanding > 0 ? "text-warning" : "text-success"}`}>${outstanding.toFixed(2)}</p>
+              </CardContent></Card>
             </div>
+          );
+        })()}
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="text-base">Payment History</CardTitle>
+            <CardDescription>All payments recorded against your account</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-center text-muted-foreground py-8">Loading...</p>
+            ) : payments.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No payments recorded yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Receipt</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Receipt</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-mono text-xs">{p.receipt_number || p.id.slice(0, 8)}</TableCell>
+                      <TableCell>{new Date(p.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>{p.method}</TableCell>
+                      <TableCell className="text-right font-medium">${Number(p.amount).toFixed(2)}</TableCell>
+                      <TableCell><Badge className={statusColor(p.status) + " capitalize"}>{p.status}</Badge></TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button size="sm" variant="ghost" onClick={() => handleDownloadReceipt(p)} title="Download A4"><Download size={14} /></Button>
+                          <Button size="sm" variant="ghost" onClick={() => handlePrint(p)} title="Print"><Printer size={14} /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

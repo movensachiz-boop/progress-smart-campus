@@ -79,7 +79,7 @@ export default function StudentRequirements() {
             )}
             {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
           </div>
-          <span className="font-mono font-semibold text-sm text-muted-foreground">Processing</span>
+          <span className="font-mono font-semibold text-sm">${item.amount.toFixed(2)}</span>
         </div>
       ))}
       {catItems.length === 0 && (
@@ -131,7 +131,7 @@ export default function StudentRequirements() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Fees for Form {selectedForm}{isUpperForm && selectedArea !== "all" ? ` (${selectedArea})` : ""}</p>
-              <p className="text-lg font-semibold text-foreground">Processing</p>
+              <p className="text-lg font-semibold text-foreground">${totalFees.toFixed(2)}</p>
             </div>
           </CardContent>
         </Card>
