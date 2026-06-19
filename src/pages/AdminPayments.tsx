@@ -130,6 +130,7 @@ const AdminPayments = () => {
   const [manualRef, setManualRef] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const studentSearchRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [patternWarnings, setPatternWarnings] = useState<string[]>([]);
   const [quickRegister, setQuickRegister] = useState(false);
@@ -1038,6 +1039,7 @@ const AdminPayments = () => {
                           setNewFirstName(first.first_name);
                           setNewLastName(first.last_name);
                           setStudentSearch(`${first.first_name} ${first.last_name}`);
+                          setTimeout(() => amountRef.current?.focus(), 50);
                         }
                       }}
                       className="pl-9 h-8 text-xs"
@@ -1065,6 +1067,7 @@ const AdminPayments = () => {
                 <div className="space-y-2">
                   <Label>Amount ($) *</Label>
                   <Input
+                    ref={amountRef}
                     value={manualAmount}
                     onChange={(e) => setManualAmount(e.target.value)}
                     type="number"
