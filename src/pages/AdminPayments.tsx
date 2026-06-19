@@ -139,6 +139,7 @@ const AdminPayments = () => {
   const [newGender, setNewGender] = useState("male");
   const [registering, setRegistering] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [paymentSearch, setPaymentSearch] = useState("");
   const [editPayment, setEditPayment] = useState<PaymentRow | null>(null);
   const [editForm, setEditForm] = useState({ amount: "", method: "", status: "paid", description: "" });
   const [editSaving, setEditSaving] = useState(false);
