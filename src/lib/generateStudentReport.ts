@@ -78,9 +78,9 @@ export async function generateStudentReport(student: StudentReportInput) {
   // Fetch payments
   const { data: payments } = await supabase
     .from("payments")
-    .select("payment_date, amount, payment_method, reference_number, description, status")
+    .select("created_at, amount, method, receipt_number, description, status")
     .eq("student_profile_id", student.id)
-    .order("payment_date", { ascending: false });
+    .order("created_at", { ascending: false });
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
@@ -89,12 +89,12 @@ export async function generateStudentReport(student: StudentReportInput) {
   y += 3;
   autoTable(doc, {
     startY: y,
-    head: [["Date", "Amount", "Method", "Reference", "Description", "Status"]],
-    body: (payments || []).map(p => [
-      p.payment_date ? new Date(p.payment_date).toLocaleDateString() : "—",
+    head: [["Date", "Amount", "Method", "Receipt", "Description", "Status"]],
+    body: (payments || []).map((p: any) => [
+      p.created_at ? new Date(p.created_at).toLocaleDateString() : "—",
       `$${Number(p.amount).toFixed(2)}`,
-      p.payment_method || "—",
-      p.reference_number || "—",
+      p.method || "—",
+      p.receipt_number || "—",
       p.description || "—",
       p.status || "—",
     ]),
@@ -103,6 +103,7 @@ export async function generateStudentReport(student: StudentReportInput) {
     bodyStyles: { fontSize: 8 },
     margin: { left: 14, right: 14 },
   });
+
   y = (doc as any).lastAutoTable.finalY + 8;
 
   // Attendance summary
