@@ -44,6 +44,7 @@ const StudentPayments = () => {
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [termFees, setTermFees] = useState(0);
   const [loading, setLoading] = useState(true);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("ecocash");
