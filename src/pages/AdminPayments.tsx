@@ -888,7 +888,20 @@ const AdminPayments = () => {
 
       {/* Confirm Scanned Payment Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
+        <DialogContent
+          className="sm:max-w-lg max-h-[90vh] flex flex-col"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !saving) {
+              const target = e.target as HTMLElement;
+              const tag = target.tagName;
+              // Skip textarea and the student search (which has its own Enter handler to pick a student)
+              if (tag === "TEXTAREA") return;
+              if (target === studentSearchRef.current) return;
+              e.preventDefault();
+              handleSavePayment();
+            }
+          }}
+        >
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-success" /> Payment Details Extracted
