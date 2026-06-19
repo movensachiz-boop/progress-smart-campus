@@ -24,6 +24,43 @@ export const generateFeesByClassPDF = (groups: FeesByClassEntry[]) => {
   let y = 26;
   doc.setTextColor(0, 0, 0);
 
+  // ── Grand totals across all classes ──
+  let grandExpected = 0;
+  let grandCollected = 0;
+  let grandOwing = 0;
+  let grandStudents = 0;
+  let grandPaidCount = 0;
+  groups.forEach((g) => {
+    grandExpected += [...g.paid, ...g.unpaid].reduce((s, x) => s + (x.expected || 0), 0);
+    grandCollected += g.paid.reduce((s, x) => s + (x.amount || 0), 0) + g.unpaid.reduce((s, x) => s + (x.paid || 0), 0);
+    grandOwing += g.unpaid.reduce((s, x) => s + (x.balance || 0), 0);
+    grandStudents += g.paid.length + g.unpaid.length;
+    grandPaidCount += g.paid.length;
+  });
+  const grandPct = grandStudents ? Math.round((grandPaidCount / grandStudents) * 100) : 0;
+
+  doc.setFillColor(...navy);
+  doc.rect(10, y - 5, 190, 18, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("SCHOOL-WIDE TOTALS", 12, y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(
+    `Students: ${grandStudents}  •  Fully Paid: ${grandPaidCount} (${grandPct}%)`,
+    12,
+    y + 5
+  );
+  doc.text(
+    `Total Expected: $${grandExpected.toFixed(2)}  •  Total Collected: $${grandCollected.toFixed(2)}  •  Total Owing to Date: $${grandOwing.toFixed(2)}`,
+    12,
+    y + 10
+  );
+  doc.setTextColor(0, 0, 0);
+  y += 22;
+
+
   groups.forEach((g) => {
     const total = g.paid.length + g.unpaid.length;
     const pct = total ? Math.round((g.paid.length / total) * 100) : 0;
