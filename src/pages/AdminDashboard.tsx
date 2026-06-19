@@ -264,9 +264,8 @@ const AdminDashboard = () => {
               )}
             </CardContent>
           </Card>
-        </div>
-      </DashboardLayout>
-    </PinGate>
+      </div>
+    </DashboardLayout>
   );
 };
 
