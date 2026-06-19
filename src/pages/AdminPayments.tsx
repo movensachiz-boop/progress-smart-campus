@@ -1075,6 +1075,7 @@ const AdminPayments = () => {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !saving) {
                         e.preventDefault();
+                        e.stopPropagation();
                         handleSavePayment();
                       }
                     }}
