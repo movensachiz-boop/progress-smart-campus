@@ -537,6 +537,13 @@ const AdminPayments = () => {
     })
     .slice(0, 80);
 
+  const filteredPayments = payments.filter(p => {
+    if (!paymentSearch.trim()) return true;
+    const queryTokens = lookupTokens(paymentSearch);
+    const target = normalizeLookupText(`${p.studentName || ""} ${p.regNo || ""} ${p.receipt_number || ""} ${p.method || ""}`);
+    return queryTokens.every(token => target.includes(token));
+  });
+
   const getPaidStudentList = (): PaidStudent[] => {
     const paidStatuses = ["paid", "completed", "confirmed"];
     const byStudent = new Map<string, PaidStudent>();
@@ -650,16 +657,27 @@ const AdminPayments = () => {
         )}
 
         <Card className="shadow-card">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="text-base">All Transactions</CardTitle>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by student name, reg no, receipt..."
+                value={paymentSearch}
+                onChange={e => setPaymentSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : payments.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground">No payments recorded yet.</div>
+            ) : filteredPayments.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">
+                {paymentSearch.trim() ? "No payments match your search." : "No payments recorded yet."}
+              </div>
             ) : (
               <Table>
                 <TableHeader>
