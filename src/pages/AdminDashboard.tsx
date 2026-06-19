@@ -144,8 +144,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const collectionRate = feesCollected + outstanding > 0
-    ? Math.round((feesCollected / (feesCollected + outstanding)) * 100)
+  const collectionRate = totalExpected > 0
+    ? Math.round((feesCollected / totalExpected) * 100)
     : 0;
 
   return (
@@ -158,14 +158,16 @@ const AdminDashboard = () => {
               {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 w-full" />)}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
               <StatCard title="Total Students" value={totalStudents.toLocaleString()} subtitle="Registered" icon={Users} variant="primary" />
+              <StatCard title="Total Expected" value={`$${totalExpected.toLocaleString()}`} subtitle="From fee requirements" icon={DollarSign} variant="primary" />
               <StatCard title="Fees Collected" value={`$${feesCollected.toLocaleString()}`} subtitle="School fees only" icon={DollarSign} variant="success" />
               <StatCard title="Inventory Sales" value={`$${inventoryRevenue.toLocaleString()}`} subtitle="Shop revenue" icon={ShoppingBag} variant="accent" />
-              <StatCard title="Outstanding" value={`$${outstanding.toLocaleString()}`} subtitle={totalStudents > 0 ? `${Math.round((outstanding / (feesCollected + outstanding || 1)) * 100)}% of total` : "—"} icon={AlertTriangle} variant="warning" />
-              <StatCard title="Collection Rate" value={`${collectionRate}%`} subtitle="Based on fee requirements" icon={TrendingUp} variant="accent" />
+              <StatCard title="Total Owing to Date" value={`$${outstanding.toLocaleString()}`} subtitle={totalExpected > 0 ? `${Math.round((outstanding / totalExpected) * 100)}% of expected` : "—"} icon={AlertTriangle} variant="warning" />
+              <StatCard title="Collection Rate" value={`${collectionRate}%`} subtitle="Collected ÷ expected" icon={TrendingUp} variant="accent" />
             </div>
           )}
+
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2 shadow-card">
