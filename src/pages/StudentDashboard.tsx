@@ -124,9 +124,9 @@ const StudentDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Term Fees" value="Processing" icon={DollarSign} variant="primary" />
-          <StatCard title="Paid" value="Processing" icon={CreditCard} variant="success" />
-          <StatCard title="Outstanding" value="Processing" icon={AlertTriangle} variant="warning" />
+          <StatCard title="Term Fees" value={`$${termFees.toFixed(2)}`} icon={DollarSign} variant="primary" />
+          <StatCard title="Paid" value={`$${totalPaid.toFixed(2)}`} icon={CreditCard} variant="success" />
+          <StatCard title="Outstanding" value={`$${outstanding.toFixed(2)}`} icon={AlertTriangle} variant={outstanding > 0 ? "warning" : "success"} />
           <StatCard title="Notices" value="3" icon={Bell} variant="accent" />
         </div>
 
@@ -135,18 +135,40 @@ const StudentDashboard = () => {
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base">Payment History</CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <DollarSign className="text-primary" size={32} />
+            <CardContent>
+              {payments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center space-y-2">
+                  <DollarSign className="text-muted-foreground" size={32} />
+                  <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
                 </div>
-                <div>
-                  <p className="text-lg font-semibold text-foreground">Fee Information Processing</p>
-                  <p className="text-sm text-muted-foreground max-w-sm">
-                    We are currently updating our fee records. Please check back soon or contact the school office for your latest payment details.
-                  </p>
-                </div>
-              </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Receipt</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Method</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-mono text-xs">{p.receipt_number || p.id.slice(0, 8)}</TableCell>
+                        <TableCell>{new Date(p.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>{p.method}</TableCell>
+                        <TableCell className="text-right font-medium">${Number(p.amount).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge variant={p.status === "paid" || p.status === "completed" ? "default" : "secondary"} className="capitalize">
+                            {p.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
 
