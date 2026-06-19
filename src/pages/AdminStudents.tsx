@@ -14,6 +14,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Textarea } from "@/components/ui/textarea";
 import { generateStudentID, generateBulkStudentIDs } from "@/lib/generateStudentID";
+import { generateStudentReport } from "@/lib/generateStudentReport";
+import { FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
