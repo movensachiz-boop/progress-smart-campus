@@ -58,7 +58,8 @@ export async function generateStudentReport(student: StudentReportInput) {
   // Fees summary box
   const totalFees = student.total_fees ?? 0;
   const totalPaid = student.total_paid ?? 0;
-  const bal = student.computed_balance ?? totalFees - totalPaid;
+  // Convention: positive owing = Outstanding; negative owing = Overpaid (credit).
+  const owing = totalFees - totalPaid;
   doc.setFillColor(245, 247, 250);
   doc.rect(14, y, pageWidth - 28, 22, "F");
   doc.setFont("helvetica", "bold");
@@ -69,9 +70,13 @@ export async function generateStudentReport(student: StudentReportInput) {
   doc.setTextColor(51, 51, 51);
   doc.text(`Total Expected: $${totalFees.toFixed(2)}`, 18, y + 13);
   doc.text(`Total Paid: $${totalPaid.toFixed(2)}`, 80, y + 13);
-  const balLabel = bal > 0 ? `Outstanding: $${bal.toFixed(2)}` : bal < 0 ? `Overpaid: $${Math.abs(bal).toFixed(2)}` : "Cleared";
+  const balLabel = owing > 0
+    ? `Outstanding: $${owing.toFixed(2)}`
+    : owing < 0
+      ? `Overpaid: $${Math.abs(owing).toFixed(2)}`
+      : "Cleared";
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(bal > 0 ? 200 : bal < 0 ? 0 : 0, bal > 0 ? 30 : bal < 0 ? 102 : 128, bal > 0 ? 30 : bal < 0 ? 204 : 0);
+  doc.setTextColor(owing > 0 ? 200 : 0, owing > 0 ? 30 : owing < 0 ? 102 : 128, owing > 0 ? 30 : owing < 0 ? 204 : 0);
   doc.text(balLabel, 140, y + 13);
   y += 28;
 
