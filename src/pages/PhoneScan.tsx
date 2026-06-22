@@ -65,6 +65,14 @@ const PhoneScan = () => {
 
   const startStream = async (mode: "environment" | "user") => {
     stopStream();
+    if (!window.isSecureContext) {
+      setPermError("This page must be opened over HTTPS for the camera to work.");
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setPermError("Your browser does not support camera access. Try Chrome or Safari.");
+      return;
+    }
     try {
       const stream = await createCameraStream(mode);
       streamRef.current = stream;
@@ -74,14 +82,26 @@ const PhoneScan = () => {
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(() => {});
         setReady(true);
+        setPermError(null);
       }
     } catch (err: any) {
-      toast({
-        title: "Camera unavailable",
-        description: err?.message || "Could not access the camera.",
-        variant: "destructive",
-      });
+      const name = err?.name || "";
+      let msg = err?.message || "Could not access the camera.";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        msg = "Camera permission denied. Open browser settings for this site and allow Camera, then reload.";
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        msg = "No back camera found. Try flipping to front camera.";
+      } else if (name === "NotReadableError") {
+        msg = "Camera is in use by another app. Close other camera apps and try again.";
+      }
+      setPermError(msg);
+      toast({ title: "Camera unavailable", description: msg, variant: "destructive" });
     }
+  };
+
+  const requestStart = async () => {
+    setStarted(true);
+    await startStream(facingMode);
   };
 
   useEffect(() => {
