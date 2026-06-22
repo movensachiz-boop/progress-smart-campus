@@ -22,6 +22,8 @@ const PhoneScan = () => {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [torchOn, setTorchOn] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [permError, setPermError] = useState<string | null>(null);
 
   const applyTorch = async (on: boolean) => {
     const track = streamRef.current?.getVideoTracks?.()[0];
@@ -63,6 +65,14 @@ const PhoneScan = () => {
 
   const startStream = async (mode: "environment" | "user") => {
     stopStream();
+    if (!window.isSecureContext) {
+      setPermError("This page must be opened over HTTPS for the camera to work.");
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setPermError("Your browser does not support camera access. Try Chrome or Safari.");
+      return;
+    }
     try {
       const stream = await createCameraStream(mode);
       streamRef.current = stream;
@@ -72,14 +82,26 @@ const PhoneScan = () => {
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(() => {});
         setReady(true);
+        setPermError(null);
       }
     } catch (err: any) {
-      toast({
-        title: "Camera unavailable",
-        description: err?.message || "Could not access the camera.",
-        variant: "destructive",
-      });
+      const name = err?.name || "";
+      let msg = err?.message || "Could not access the camera.";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        msg = "Camera permission denied. Open browser settings for this site and allow Camera, then reload.";
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        msg = "No back camera found. Try flipping to front camera.";
+      } else if (name === "NotReadableError") {
+        msg = "Camera is in use by another app. Close other camera apps and try again.";
+      }
+      setPermError(msg);
+      toast({ title: "Camera unavailable", description: msg, variant: "destructive" });
     }
+  };
+
+  const requestStart = async () => {
+    setStarted(true);
+    await startStream(facingMode);
   };
 
   useEffect(() => {
@@ -99,10 +121,11 @@ const PhoneScan = () => {
   }, [sessionId]);
 
   useEffect(() => {
+    if (!started) return;
     if (!preview) startStream(facingMode);
     return () => stopStream();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facingMode]);
+  }, [facingMode, started]);
 
   const downscale = (dataUrl: string, maxDim = 1600, quality = 0.85): Promise<string> =>
     new Promise((resolve) => {
@@ -195,9 +218,29 @@ const PhoneScan = () => {
         {!preview ? (
           <>
             <video ref={videoRef} className="max-h-full max-w-full object-contain" playsInline muted />
-            {!ready && (
+            {!started && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center">
+                <Camera size={48} className="text-white/70" />
+                <p className="text-sm text-white/80 max-w-xs">
+                  Tap below to enable the camera. Your browser will ask permission — please allow it.
+                </p>
+                <Button onClick={requestStart} className="gap-2 h-12 px-6 text-base">
+                  <Camera size={18} /> Start Camera
+                </Button>
+                {permError && <p className="text-xs text-red-400 max-w-xs">{permError}</p>}
+              </div>
+            )}
+            {started && !ready && !permError && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="animate-spin" />
+              </div>
+            )}
+            {started && permError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center bg-black/80">
+                <p className="text-sm text-red-300 max-w-xs">{permError}</p>
+                <Button onClick={() => startStream(facingMode)} variant="outline" className="bg-transparent text-white border-white/30 gap-2">
+                  <RefreshCw size={16} /> Retry
+                </Button>
               </div>
             )}
           </>
@@ -206,6 +249,7 @@ const PhoneScan = () => {
         )}
         <canvas ref={canvasRef} className="hidden" />
       </div>
+
 
       <footer className="p-4 bg-black/90 border-t border-white/10 flex items-center justify-around gap-2">
         {!preview ? (
