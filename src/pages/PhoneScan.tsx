@@ -218,9 +218,29 @@ const PhoneScan = () => {
         {!preview ? (
           <>
             <video ref={videoRef} className="max-h-full max-w-full object-contain" playsInline muted />
-            {!ready && (
+            {!started && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center">
+                <Camera size={48} className="text-white/70" />
+                <p className="text-sm text-white/80 max-w-xs">
+                  Tap below to enable the camera. Your browser will ask permission — please allow it.
+                </p>
+                <Button onClick={requestStart} className="gap-2 h-12 px-6 text-base">
+                  <Camera size={18} /> Start Camera
+                </Button>
+                {permError && <p className="text-xs text-red-400 max-w-xs">{permError}</p>}
+              </div>
+            )}
+            {started && !ready && !permError && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="animate-spin" />
+              </div>
+            )}
+            {started && permError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center bg-black/80">
+                <p className="text-sm text-red-300 max-w-xs">{permError}</p>
+                <Button onClick={() => startStream(facingMode)} variant="outline" className="bg-transparent text-white border-white/30 gap-2">
+                  <RefreshCw size={16} /> Retry
+                </Button>
               </div>
             )}
           </>
@@ -229,6 +249,7 @@ const PhoneScan = () => {
         )}
         <canvas ref={canvasRef} className="hidden" />
       </div>
+
 
       <footer className="p-4 bg-black/90 border-t border-white/10 flex items-center justify-around gap-2">
         {!preview ? (
