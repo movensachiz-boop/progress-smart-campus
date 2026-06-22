@@ -121,10 +121,11 @@ const PhoneScan = () => {
   }, [sessionId]);
 
   useEffect(() => {
+    if (!started) return;
     if (!preview) startStream(facingMode);
     return () => stopStream();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facingMode]);
+  }, [facingMode, started]);
 
   const downscale = (dataUrl: string, maxDim = 1600, quality = 0.85): Promise<string> =>
     new Promise((resolve) => {
