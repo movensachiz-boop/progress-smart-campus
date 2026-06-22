@@ -148,22 +148,57 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Find user by registration number
-      const { data: profile } = await supabaseAdmin
+      const regNo = String(registrationNumber).trim().toUpperCase();
+
+      // Case-insensitive lookup
+      const { data: profile, error: profErr } = await supabaseAdmin
         .from("profiles")
-        .select("user_id")
-        .eq("registration_number", registrationNumber)
+        .select("id, user_id, registration_number")
+        .ilike("registration_number", regNo)
         .maybeSingle();
 
-      if (!profile || !profile.user_id) {
-        return new Response(JSON.stringify({ error: "Student not found or account not yet set up" }), {
+      if (profErr || !profile) {
+        return new Response(JSON.stringify({ error: "Student not found with that registration number" }), {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
+      let userId = profile.user_id as string | null;
+
+      // Auto-provision auth account if not yet claimed (virtual email mapping)
+      if (!userId) {
+        const virtualEmail = `${regNo.toLowerCase()}@pcc.local`;
+        const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+          email: virtualEmail,
+          password: newPassword,
+          email_confirm: true,
+          user_metadata: { registration_number: regNo, role: "student" },
+        });
+        if (createErr || !created?.user) {
+          return new Response(JSON.stringify({ error: createErr?.message || "Failed to create account" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        userId = created.user.id;
+        const { error: linkErr } = await supabaseAdmin
+          .from("profiles")
+          .update({ user_id: userId })
+          .eq("id", profile.id);
+        if (linkErr) {
+          return new Response(JSON.stringify({ error: linkErr.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify({ success: true, provisioned: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        profile.user_id,
+        userId,
         { password: newPassword }
       );
 
