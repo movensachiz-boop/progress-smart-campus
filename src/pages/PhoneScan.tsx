@@ -22,6 +22,8 @@ const PhoneScan = () => {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [torchOn, setTorchOn] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [permError, setPermError] = useState<string | null>(null);
 
   const applyTorch = async (on: boolean) => {
     const track = streamRef.current?.getVideoTracks?.()[0];
