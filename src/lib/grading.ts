@@ -1,16 +1,13 @@
 // Grade & point computation helpers
 //
-// Unified PCC grading scale (Cambridge A-Level & IGCSE O-Level):
-//   A* 90-100 → 5 pts (A-level) / O-level A*
-//   A  80-89  → 5 pts            / O-level A
-//   B  70-79  → 4 pts            / O-level B
-//   C  60-69  → 3 pts            / O-level C
-//   D  50-59  → 2 pts            / O-level D
-//   E  40-49  → 1 pt             / O-level E
-//   F  0-39 (A-level) → 0 pts
-// O-level only (extends below F):
-//   F  30-39, G 20-29, U 0-19
-// Shona (SHO) and Heritage (HERI) ALWAYS use ZIMSEC O-level bands regardless of form.
+// UNIFIED PCC grading scale (applied to ALL subjects and ALL forms):
+//   A+ 90-100 → 5 pts
+//   A  80-89  → 5 pts
+//   B  70-79  → 4 pts
+//   C  60-69  → 3 pts
+//   D  50-59  → 2 pts
+//   E  40-49  → 1 pt
+//   U  0-39   → 0 pts
 
 export type Level = "olevel" | "alevel";
 
@@ -19,88 +16,52 @@ export const formToLevel = (form: number | string | null | undefined): Level => 
   return f >= 5 ? "alevel" : "olevel";
 };
 
-// Subjects that always grade on the ZIMSEC O-level scale
-const ZIMSEC_OLEVEL_SUBJECTS = new Set(["SHO", "HERI"]);
-
-const effectiveLevel = (level: Level, subjectCode?: string | null): Level => {
-  if (subjectCode && ZIMSEC_OLEVEL_SUBJECTS.has(subjectCode.toUpperCase())) return "olevel";
-  return level;
-};
-
 export const computeGrade = (
   mark: number | null | undefined,
-  level: Level,
-  subjectCode?: string | null,
+  _level?: Level,
+  _subjectCode?: string | null,
 ): string => {
   if (mark == null || isNaN(mark as number)) return "";
   const m = Number(mark);
-  const isZimsec = subjectCode && ZIMSEC_OLEVEL_SUBJECTS.has(subjectCode.toUpperCase());
-
-  // ZIMSEC O-level scale (Shona / Heritage Studies)
-  if (isZimsec) {
-    if (m >= 80) return "A";
-    if (m >= 70) return "B";
-    if (m >= 50) return "C";
-    if (m >= 40) return "D";
-    if (m >= 30) return "E";
-    return "U";
-  }
-
-  const lvl = effectiveLevel(level, subjectCode);
-
-  if (m >= 90) return "A*";
+  if (m >= 90) return "A+";
   if (m >= 80) return "A";
   if (m >= 70) return "B";
   if (m >= 60) return "C";
   if (m >= 50) return "D";
   if (m >= 40) return "E";
-
-  if (lvl === "alevel") return "U";
-
-  // Cambridge O-level extended bands
-  if (m >= 30) return "F";
-  if (m >= 20) return "G";
   return "U";
 };
 
-export const gradeToPoints = (grade: string, level: Level): number => {
-  if (level !== "alevel") return 0;
+export const gradeToPoints = (grade: string, _level?: Level): number => {
   switch (grade) {
-    case "A*": return 5;
+    case "A+": return 5;
     case "A":  return 5;
     case "B":  return 4;
     case "C":  return 3;
     case "D":  return 2;
     case "E":  return 1;
-    default:   return 0; // F / U / blank
+    default:   return 0;
   }
 };
 
 export const computePoints = (
   mark: number | null | undefined,
-  level: Level,
+  level?: Level,
   subjectCode?: string | null,
 ): number => {
-  // Shona/Heritage are O-level subjects → 0 A-level points
-  if (subjectCode && ZIMSEC_OLEVEL_SUBJECTS.has(subjectCode.toUpperCase())) return 0;
   return gradeToPoints(computeGrade(mark, level, subjectCode), level);
 };
 
-// A "pass" depends on syllabus:
-//  • A-level: E and above (mark ≥ 40)
-//  • ZIMSEC O-level (SHO/HERI): C and above (mark ≥ 50)
-//  • Cambridge O-level: C and above (mark ≥ 60)
+// A pass = E or better (mark ≥ 40) under the unified scale.
 export const isPass = (
   mark: number | null | undefined,
-  level: Level = "olevel",
-  subjectCode?: string | null,
+  _level: Level = "olevel",
+  _subjectCode?: string | null,
 ): boolean => {
   if (mark == null || isNaN(mark as number)) return false;
-  const m = Number(mark);
-  if (level === "alevel") return m >= 40;
-  if (subjectCode && ZIMSEC_OLEVEL_SUBJECTS.has(subjectCode.toUpperCase())) return m >= 50;
-  return m >= 60;
+  return Number(mark) >= 40;
 };
+
 
 
 // IGCSE / O-level performance comments per mark band
