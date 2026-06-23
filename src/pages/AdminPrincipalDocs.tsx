@@ -55,6 +55,8 @@ const AdminPrincipalDocs = () => {
   const [generating, setGenerating] = useState(false);
   const [meetingTitle, setMeetingTitle] = useState<string>("Parents' Meeting");
   const [meetingDate, setMeetingDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [enrolmentYear, setEnrolmentYear] = useState<string>("2027");
+  const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
     (async () => {
