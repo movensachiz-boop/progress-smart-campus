@@ -282,6 +282,47 @@ const AdminPrincipalDocs = () => {
             </p>
           </CardContent>
         </Card>
+
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><FileText size={18} /> Enrolment Requirements</CardTitle>
+            <CardDescription>
+              Download the official school enrolment requirements (fees & uniform list) with the school letterhead and logo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Year</Label>
+                <Input value={enrolmentYear} onChange={(e) => setEnrolmentYear(e.target.value)} placeholder="2027" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={async () => {
+                  setEnrolling(true);
+                  try {
+                    await generateEnrolmentRequirements({ year: enrolmentYear });
+                    toast.success("Enrolment requirements downloaded");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to generate document");
+                  } finally {
+                    setEnrolling(false);
+                  }
+                }}
+                disabled={enrolling}
+                className="gap-2"
+              >
+                {enrolling ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+                Download Enrolment Requirements {enrolmentYear}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Includes fees structure (Day Scholar & Boarding) for Form 1-4, Sciences, A-Level Commercials/Arts and Sciences, plus the full Form 1-4 Girls uniform price list.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
