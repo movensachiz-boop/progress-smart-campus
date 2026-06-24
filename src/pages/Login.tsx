@@ -220,11 +220,6 @@ const Login = () => {
                     Back to Student Login
                   </Button>
                 )}
-                <p className="text-xs text-center text-muted-foreground">
-                  <button type="button" className="text-primary font-medium hover:underline" onClick={() => navigate("/forgot-password")}>
-                    Forgot password?
-                  </button>
-                </p>
                 <p className="text-xs text-center text-muted-foreground pt-1 border-t mt-2">
                   <button type="button" className="text-primary font-medium hover:underline inline-flex items-center gap-1" onClick={() => window.open("https://progresschristiansys.com/verify", "_blank", "noopener,noreferrer")}>
                     <Shield size={12} /> Verify a Receipt
