@@ -369,7 +369,7 @@ const AdminPrincipalDocs = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Mail size={18} /> Business Letter</CardTitle>
             <CardDescription>
-              Paste or type the letter details below. The PDF will be generated on the official school letterhead with the logo.
+              Paste or type the letter details below. Use <strong>Improve with AI</strong> to fix grammar and rewrite in formal English before generating the PDF on the official school letterhead.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
