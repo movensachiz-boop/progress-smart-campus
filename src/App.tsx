@@ -110,7 +110,7 @@ const App = () => (
             <Route path="/admin/performance" element={<StaffGuard deny={DENY_TM}><AdminPerformance /></StaffGuard>} />
             <Route path="/admin/principal-docs" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminPrincipalDocs /></StaffGuard>} />
             <Route path="/teacher/marks" element={<TeacherMarks />} />
-            <Route path="/student/results" element={<StudentReports />} />
+            <Route path="/student/results" element={<StudentProfileGate><StudentReports /></StudentProfileGate>} />
             <Route path="/phone-scan/:sessionId" element={<PhoneScan />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
