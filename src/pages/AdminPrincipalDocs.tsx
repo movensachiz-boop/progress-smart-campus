@@ -370,6 +370,47 @@ const AdminPrincipalDocs = () => {
 
         <Card>
           <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ClipboardList size={18} /> Student Application Form</CardTitle>
+            <CardDescription>
+              Download a blank enrolment application form for new students. Parents fill it in by hand and submit it with supporting documents.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Intake Year</Label>
+                <Input value={applicationYear} onChange={(e) => setApplicationYear(e.target.value)} placeholder="2027" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={async () => {
+                  setGeneratingApplication(true);
+                  try {
+                    await generateApplicationForm({ year: applicationYear });
+                    toast.success("Application form downloaded");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to generate application form");
+                  } finally {
+                    setGeneratingApplication(false);
+                  }
+                }}
+                disabled={generatingApplication}
+                className="gap-2"
+              >
+                {generatingApplication ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+                Download Application Form {applicationYear}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Sections: Learner details, Previous school, Parent/Guardian details, Medical information, Documents checklist, Declaration, and Office use.
+            </p>
+          </CardContent>
+        </Card>
+
+
+        <Card>
+          <CardHeader>
             <CardTitle className="flex items-center gap-2"><Mail size={18} /> Business Letter</CardTitle>
             <CardDescription>
               Paste or type the letter details below. Use <strong>Improve with AI</strong> to fix grammar and rewrite in formal English before generating the PDF on the official school letterhead.
