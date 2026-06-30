@@ -411,18 +411,19 @@ const AdminPrincipalDocs = () => {
                   if (!letterBody.trim()) { toast.error("Please paste or type the letter body"); return; }
                   setWritingLetter(true);
                   try {
-                    await generateBusinessLetter({
-                      recipientName: letterRecipientName,
-                      recipientAddress: letterRecipientAddress,
-                      date: letterDate,
-                      reference: letterRef,
-                      subject: letterSubject,
-                      salutation: letterSalutation,
-                      body: letterBody,
-                      closing: letterClosing,
-                      senderName: letterSenderName,
-                      senderTitle: letterSenderTitle,
-                    });
+                  await generateBusinessLetter({
+                    recipientName: letterRecipientName,
+                    recipientAddress: letterRecipientAddress,
+                    senderAddress: letterSenderAddress,
+                    date: letterDate,
+                    reference: letterRef,
+                    subject: letterSubject,
+                    salutation: letterSalutation,
+                    body: letterBody,
+                    closing: letterClosing,
+                    senderName: letterSenderName,
+                    senderTitle: letterSenderTitle,
+                  });
                     toast.success("Business letter downloaded");
                   } catch (e: any) {
                     toast.error(e?.message || "Failed to generate letter");
