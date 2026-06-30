@@ -77,14 +77,14 @@ const StudentProfileDrawer = ({ open, onOpenChange, studentId }: Props) => {
     if (!open || !studentId) return;
     setEditing(false);
     setLoading(true);
-    supabase.from("profiles").select("*").eq("id", studentId).maybeSingle()
-      .then(({ data }) => {
-        setData(data);
-        const d: Record<string, string> = {};
-        SECTIONS.forEach(s => s.fields.forEach(f => { d[f.k] = (data as any)?.[f.k] ?? ""; }));
-        setDraft(d);
-      })
-      .finally(() => setLoading(false));
+    (async () => {
+      const { data } = await supabase.from("profiles").select("*").eq("id", studentId).maybeSingle();
+      setData(data);
+      const d: Record<string, string> = {};
+      SECTIONS.forEach(s => s.fields.forEach(f => { d[f.k] = (data as any)?.[f.k] ?? ""; }));
+      setDraft(d);
+      setLoading(false);
+    })();
   }, [open, studentId]);
 
   const save = async () => {
