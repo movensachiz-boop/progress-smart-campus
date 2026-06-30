@@ -338,6 +338,100 @@ const AdminPrincipalDocs = () => {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Mail size={18} /> Business Letter</CardTitle>
+            <CardDescription>
+              Paste or type the letter details below. The PDF will be generated on the official school letterhead with the logo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Recipient Name / Title</Label>
+                <Input value={letterRecipientName} onChange={(e) => setLetterRecipientName(e.target.value)} placeholder="e.g. The Director, ABC Suppliers (Pvt) Ltd" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Reference (optional)</Label>
+                <Input value={letterRef} onChange={(e) => setLetterRef(e.target.value)} placeholder="e.g. PCC/ADM/2026/014" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Recipient Address (one line per row)</Label>
+              <Textarea rows={3} value={letterRecipientAddress} onChange={(e) => setLetterRecipientAddress(e.target.value)} placeholder={"123 Main Street\nGweru\nZimbabwe"} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Date (leave blank for today)</Label>
+                <Input value={letterDate} onChange={(e) => setLetterDate(e.target.value)} placeholder="e.g. 30 June 2026" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Salutation</Label>
+                <Input value={letterSalutation} onChange={(e) => setLetterSalutation(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Subject (RE:)</Label>
+              <Input value={letterSubject} onChange={(e) => setLetterSubject(e.target.value)} placeholder="e.g. Request for Quotation - Stationery Supplies" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Body — paste your letter content here. Separate paragraphs with a blank line.</Label>
+              <Textarea
+                rows={12}
+                value={letterBody}
+                onChange={(e) => setLetterBody(e.target.value)}
+                placeholder={"Paste or type the body of your letter here.\n\nLeave a blank line between paragraphs."}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Closing</Label>
+                <Input value={letterClosing} onChange={(e) => setLetterClosing(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sender Name</Label>
+                <Input value={letterSenderName} onChange={(e) => setLetterSenderName(e.target.value)} placeholder="e.g. Mr. T. Moyo" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sender Title</Label>
+                <Input value={letterSenderTitle} onChange={(e) => setLetterSenderTitle(e.target.value)} placeholder="e.g. Principal" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={async () => {
+                  if (!letterBody.trim()) { toast.error("Please paste or type the letter body"); return; }
+                  setWritingLetter(true);
+                  try {
+                    await generateBusinessLetter({
+                      recipientName: letterRecipientName,
+                      recipientAddress: letterRecipientAddress,
+                      date: letterDate,
+                      reference: letterRef,
+                      subject: letterSubject,
+                      salutation: letterSalutation,
+                      body: letterBody,
+                      closing: letterClosing,
+                      senderName: letterSenderName,
+                      senderTitle: letterSenderTitle,
+                    });
+                    toast.success("Business letter downloaded");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to generate letter");
+                  } finally {
+                    setWritingLetter(false);
+                  }
+                }}
+                disabled={writingLetter}
+                className="gap-2"
+              >
+                {writingLetter ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+                Generate Letter PDF
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
