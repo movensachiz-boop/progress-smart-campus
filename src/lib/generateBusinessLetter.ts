@@ -122,19 +122,22 @@ export const generateBusinessLetter = async (opts: BusinessLetterOptions) => {
     doc.setFont("helvetica", "normal");
   }
 
-  // Body - preserve paragraphs
-  const paragraphs = (opts.body || "").split(/\n\s*\n/);
+  // Body - split into paragraphs. Treat blank lines as paragraph breaks AND
+  // split inline numbered/bulleted items (e.g. " 1. ", " 2. ") onto new paragraphs.
+  const rawBody = sanitize(opts.body || "")
+    // promote inline " 1. ", " 2) " etc to their own paragraphs
+    .replace(/\s+(?=\d{1,2}[.)]\s)/g, "\n\n");
+  const paragraphs = rawBody.split(/\n\s*\n/);
   paragraphs.forEach(p => {
     const clean = p.replace(/\s*\n\s*/g, " ").trim();
     if (!clean) return;
     const lines = doc.splitTextToSize(clean, contentW);
-    // page break
     lines.forEach((line: string) => {
       if (y > pageH - 50) {
         doc.addPage();
         y = margin;
       }
-      doc.text(line, margin, y, { align: "justify", maxWidth: contentW });
+      doc.text(line, margin, y);
       y += 5.5;
     });
     y += 3;
