@@ -73,6 +73,31 @@ const AdminPrincipalDocs = () => {
   const [letterSenderName, setLetterSenderName] = useState("");
   const [letterSenderTitle, setLetterSenderTitle] = useState("Principal");
   const [writingLetter, setWritingLetter] = useState(false);
+  const [improvingLetter, setImprovingLetter] = useState(false);
+
+  const handleImproveLetter = async () => {
+    if (!letterBody.trim()) { toast.error("Type or paste the letter body first"); return; }
+    setImprovingLetter(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("improve-letter", {
+        body: {
+          subject: letterSubject,
+          body: letterBody,
+          salutation: letterSalutation,
+          closing: letterClosing,
+          recipientName: letterRecipientName,
+        },
+      });
+      if (error) throw error;
+      if (data?.body) setLetterBody(data.body);
+      if (data?.subject) setLetterSubject(data.subject);
+      toast.success("Letter polished with AI");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to improve letter");
+    } finally {
+      setImprovingLetter(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
