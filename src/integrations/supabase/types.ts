@@ -1125,61 +1125,136 @@ export type Database = {
       }
       profiles: {
         Row: {
+          allergies: string | null
           balance: number
+          blood_group: string | null
           claimed: boolean
           created_at: string
+          date_of_birth: string | null
+          doctor_contact: string | null
+          email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
           first_name: string
           form: string | null
           gender: string
+          guardian_address: string | null
+          guardian_email: string | null
           guardian_name: string | null
+          guardian_occupation: string | null
           guardian_phone: string | null
+          guardian_relationship: string | null
+          guardian2_email: string | null
+          guardian2_name: string | null
+          guardian2_phone: string | null
+          guardian2_relationship: string | null
+          home_address: string | null
           id: string
           is_beginner: boolean
           last_name: string
+          medical_conditions: string | null
+          national_id: string | null
+          nationality: string | null
+          phone: string | null
+          previous_school: string | null
+          profile_completed: boolean
           registration_number: string
           residency: string
+          selfie_url: string | null
           status: string
           stream: string | null
           updated_at: string
           user_id: string | null
+          year_joined: string | null
         }
         Insert: {
+          allergies?: string | null
           balance?: number
+          blood_group?: string | null
           claimed?: boolean
           created_at?: string
+          date_of_birth?: string | null
+          doctor_contact?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           first_name: string
           form?: string | null
           gender?: string
+          guardian_address?: string | null
+          guardian_email?: string | null
           guardian_name?: string | null
+          guardian_occupation?: string | null
           guardian_phone?: string | null
+          guardian_relationship?: string | null
+          guardian2_email?: string | null
+          guardian2_name?: string | null
+          guardian2_phone?: string | null
+          guardian2_relationship?: string | null
+          home_address?: string | null
           id?: string
           is_beginner?: boolean
           last_name: string
+          medical_conditions?: string | null
+          national_id?: string | null
+          nationality?: string | null
+          phone?: string | null
+          previous_school?: string | null
+          profile_completed?: boolean
           registration_number: string
           residency?: string
+          selfie_url?: string | null
           status?: string
           stream?: string | null
           updated_at?: string
           user_id?: string | null
+          year_joined?: string | null
         }
         Update: {
+          allergies?: string | null
           balance?: number
+          blood_group?: string | null
           claimed?: boolean
           created_at?: string
+          date_of_birth?: string | null
+          doctor_contact?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           first_name?: string
           form?: string | null
           gender?: string
+          guardian_address?: string | null
+          guardian_email?: string | null
           guardian_name?: string | null
+          guardian_occupation?: string | null
           guardian_phone?: string | null
+          guardian_relationship?: string | null
+          guardian2_email?: string | null
+          guardian2_name?: string | null
+          guardian2_phone?: string | null
+          guardian2_relationship?: string | null
+          home_address?: string | null
           id?: string
           is_beginner?: boolean
           last_name?: string
+          medical_conditions?: string | null
+          national_id?: string | null
+          nationality?: string | null
+          phone?: string | null
+          previous_school?: string | null
+          profile_completed?: boolean
           registration_number?: string
           residency?: string
+          selfie_url?: string | null
           status?: string
           stream?: string | null
           updated_at?: string
           user_id?: string | null
+          year_joined?: string | null
         }
         Relationships: []
       }
