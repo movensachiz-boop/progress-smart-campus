@@ -15,7 +15,7 @@ import { generateBusinessLetter } from "@/lib/generateBusinessLetter";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
-import { FileDown, Users, Loader2, ClipboardList, FileText, Mail } from "lucide-react";
+import { FileDown, Users, Loader2, ClipboardList, FileText, Mail, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudentRow {
@@ -73,6 +73,31 @@ const AdminPrincipalDocs = () => {
   const [letterSenderName, setLetterSenderName] = useState("");
   const [letterSenderTitle, setLetterSenderTitle] = useState("Principal");
   const [writingLetter, setWritingLetter] = useState(false);
+  const [improvingLetter, setImprovingLetter] = useState(false);
+
+  const handleImproveLetter = async () => {
+    if (!letterBody.trim()) { toast.error("Type or paste the letter body first"); return; }
+    setImprovingLetter(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("improve-letter", {
+        body: {
+          subject: letterSubject,
+          body: letterBody,
+          salutation: letterSalutation,
+          closing: letterClosing,
+          recipientName: letterRecipientName,
+        },
+      });
+      if (error) throw error;
+      if (data?.body) setLetterBody(data.body);
+      if (data?.subject) setLetterSubject(data.subject);
+      toast.success("Letter polished with AI");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to improve letter");
+    } finally {
+      setImprovingLetter(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -344,7 +369,7 @@ const AdminPrincipalDocs = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Mail size={18} /> Business Letter</CardTitle>
             <CardDescription>
-              Paste or type the letter details below. The PDF will be generated on the official school letterhead with the logo.
+              Paste or type the letter details below. Use <strong>Improve with AI</strong> to fix grammar and rewrite in formal English before generating the PDF on the official school letterhead.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -390,6 +415,19 @@ const AdminPrincipalDocs = () => {
                 onChange={(e) => setLetterBody(e.target.value)}
                 placeholder={"Paste or type the body of your letter here.\n\nLeave a blank line between paragraphs."}
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleImproveLetter}
+                disabled={improvingLetter || !letterBody.trim()}
+                className="gap-2"
+              >
+                {improvingLetter ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                Improve with AI (fix grammar &amp; rewrite formally)
+              </Button>
+              <span className="text-xs text-muted-foreground">Rewrites the body (and refines the subject) into polished, formal English.</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1.5">
