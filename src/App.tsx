@@ -50,6 +50,7 @@ import ScanMarks from "./pages/ScanMarks";
 import AdminPrincipalDocs from "./pages/AdminPrincipalDocs";
 import AdminPerformance from "./pages/AdminPerformance";
 import StudentCompleteProfile from "./pages/StudentCompleteProfile";
+import StudentProfile from "./pages/StudentProfile";
 import StudentProfileGate from "./components/StudentProfileGate";
 
 // Sub-roles
