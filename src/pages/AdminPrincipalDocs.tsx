@@ -15,7 +15,7 @@ import { generateBusinessLetter } from "@/lib/generateBusinessLetter";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
-import { FileDown, Users, Loader2, ClipboardList, FileText, Mail } from "lucide-react";
+import { FileDown, Users, Loader2, ClipboardList, FileText, Mail, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudentRow {
