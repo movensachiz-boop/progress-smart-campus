@@ -3,6 +3,7 @@ import jsPDF from "jspdf";
 export interface BusinessLetterOptions {
   recipientName?: string;
   recipientAddress?: string;
+  senderAddress?: string;
   date?: string;
   subject?: string;
   salutation?: string;
@@ -59,6 +60,17 @@ export const generateBusinessLetter = async (opts: BusinessLetterOptions) => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
 
+  // Sender address (right side)
+  const senderYStart = y;
+  if (opts.senderAddress) {
+    const senderLines = opts.senderAddress.split(/\r?\n/).filter(Boolean);
+    senderLines.forEach(line => {
+      doc.text(line, pageW - margin, y, { align: "right" });
+      y += 5;
+    });
+  }
+  y = senderYStart;
+
   // Reference & Date
   if (opts.reference) {
     doc.text(`Ref: ${opts.reference}`, margin, y);
@@ -67,7 +79,7 @@ export const generateBusinessLetter = async (opts: BusinessLetterOptions) => {
   doc.text(dateStr, pageW - margin, y, { align: "right" });
   y += 10;
 
-  // Recipient
+  // Recipient (left side)
   if (opts.recipientName) {
     doc.setFont("helvetica", "bold");
     doc.text(opts.recipientName, margin, y);
