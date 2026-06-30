@@ -11,6 +11,7 @@ import {
 import { generateTargetsFormBatch, TargetsStudent } from "@/lib/generateTargetsForm";
 import { generateAttendanceRegister } from "@/lib/generateAttendanceRegister";
 import { generateEnrolmentRequirements } from "@/lib/generateEnrolmentRequirements";
+import { generateApplicationForm } from "@/lib/generateApplicationForm";
 import { generateBusinessLetter } from "@/lib/generateBusinessLetter";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,6 +60,8 @@ const AdminPrincipalDocs = () => {
   const [meetingDate, setMeetingDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [enrolmentYear, setEnrolmentYear] = useState<string>("2027");
   const [enrolling, setEnrolling] = useState(false);
+  const [applicationYear, setApplicationYear] = useState<string>("2027");
+  const [generatingApplication, setGeneratingApplication] = useState(false);
 
   // Business letter state
   const [letterRecipientName, setLetterRecipientName] = useState("");
@@ -364,6 +367,47 @@ const AdminPrincipalDocs = () => {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ClipboardList size={18} /> Student Application Form</CardTitle>
+            <CardDescription>
+              Download a blank enrolment application form for new students. Parents fill it in by hand and submit it with supporting documents.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Intake Year</Label>
+                <Input value={applicationYear} onChange={(e) => setApplicationYear(e.target.value)} placeholder="2027" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={async () => {
+                  setGeneratingApplication(true);
+                  try {
+                    await generateApplicationForm({ year: applicationYear });
+                    toast.success("Application form downloaded");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to generate application form");
+                  } finally {
+                    setGeneratingApplication(false);
+                  }
+                }}
+                disabled={generatingApplication}
+                className="gap-2"
+              >
+                {generatingApplication ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+                Download Application Form {applicationYear}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Sections: Learner details, Previous school, Parent/Guardian details, Medical information, Documents checklist, Declaration, and Office use.
+            </p>
+          </CardContent>
+        </Card>
+
 
         <Card>
           <CardHeader>
