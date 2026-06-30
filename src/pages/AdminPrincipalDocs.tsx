@@ -416,6 +416,19 @@ const AdminPrincipalDocs = () => {
                 placeholder={"Paste or type the body of your letter here.\n\nLeave a blank line between paragraphs."}
               />
             </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleImproveLetter}
+                disabled={improvingLetter || !letterBody.trim()}
+                className="gap-2"
+              >
+                {improvingLetter ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                Improve with AI (fix grammar &amp; rewrite formally)
+              </Button>
+              <span className="text-xs text-muted-foreground">Rewrites the body (and refines the subject) into polished, formal English.</span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Closing</Label>
