@@ -60,6 +60,19 @@ const AdminPrincipalDocs = () => {
   const [enrolmentYear, setEnrolmentYear] = useState<string>("2027");
   const [enrolling, setEnrolling] = useState(false);
 
+  // Business letter state
+  const [letterRecipientName, setLetterRecipientName] = useState("");
+  const [letterRecipientAddress, setLetterRecipientAddress] = useState("");
+  const [letterDate, setLetterDate] = useState("");
+  const [letterRef, setLetterRef] = useState("");
+  const [letterSubject, setLetterSubject] = useState("");
+  const [letterSalutation, setLetterSalutation] = useState("Dear Sir/Madam,");
+  const [letterBody, setLetterBody] = useState("");
+  const [letterClosing, setLetterClosing] = useState("Yours faithfully,");
+  const [letterSenderName, setLetterSenderName] = useState("");
+  const [letterSenderTitle, setLetterSenderTitle] = useState("Principal");
+  const [writingLetter, setWritingLetter] = useState(false);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
