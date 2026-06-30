@@ -22,6 +22,7 @@ import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import { Smartphone } from "lucide-react";
 import { useTimetable } from "@/context/TimetableContext";
+import StudentProfileDrawer from "@/components/StudentProfileDrawer";
 
 interface Student {
   id: string;
@@ -56,6 +57,7 @@ interface ExtractedStudent {
 const AdminStudents = () => {
   const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
+  const [profileDrawerId, setProfileDrawerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const [open, setOpen] = useState(false);
@@ -952,11 +954,18 @@ const AdminStudents = () => {
                       <TableCell className="font-medium">{s.registration_number}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <span>{`${s.first_name} ${s.last_name}`.toUpperCase()}</span>
+                          <button
+                            type="button"
+                            className="text-left font-medium text-primary hover:underline"
+                            onClick={() => setProfileDrawerId(s.id)}
+                            title="View full profile"
+                          >
+                            {`${s.first_name} ${s.last_name}`.toUpperCase()}
+                          </button>
                           {duplicateIds.has(s.id) && (
                             <Badge variant="destructive" className="text-[10px]" title="Possible duplicate (matching name or registration number)">Duplicate</Badge>
                           )}
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEditStudent(s)} title="Edit student">
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEditStudent(s)} title="Quick edit basics">
                             <Pencil size={12} />
                           </Button>
                         </div>
