@@ -50,6 +50,7 @@ import ScanMarks from "./pages/ScanMarks";
 import AdminPrincipalDocs from "./pages/AdminPrincipalDocs";
 import AdminPerformance from "./pages/AdminPerformance";
 import StudentCompleteProfile from "./pages/StudentCompleteProfile";
+import StudentProfile from "./pages/StudentProfile";
 import StudentProfileGate from "./components/StudentProfileGate";
 
 // Sub-roles
@@ -72,6 +73,7 @@ const App = () => (
             
             <Route path="/student/complete-profile" element={<StudentCompleteProfile />} />
             <Route path="/student" element={<StudentProfileGate><StudentDashboard /></StudentProfileGate>} />
+            <Route path="/student/profile" element={<StudentProfileGate><StudentProfile /></StudentProfileGate>} />
             <Route path="/student/payments" element={<StudentProfileGate><StudentPayments /></StudentProfileGate>} />
             <Route path="/student/timetable" element={<StudentProfileGate><StudentTimetable /></StudentProfileGate>} />
             <Route path="/student/courses" element={<StudentProfileGate><StudentCourses /></StudentProfileGate>} />
