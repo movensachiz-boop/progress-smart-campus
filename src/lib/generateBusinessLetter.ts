@@ -60,21 +60,30 @@ export const generateBusinessLetter = async (opts: BusinessLetterOptions) => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
 
+  // Sanitize unicode chars that helvetica can't render (bullets, smart quotes, dashes)
+  const sanitize = (s: string) => s
+    .replace(/[•·●∙]/g, "- ")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[–—]/g, "-")
+    .replace(/…/g, "...");
+
   // Sender address (right side)
-  const senderYStart = y;
+  let senderEndY = y;
   if (opts.senderAddress) {
-    const senderLines = opts.senderAddress.split(/\r?\n/).filter(Boolean);
+    const senderLines = sanitize(opts.senderAddress).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     senderLines.forEach(line => {
-      doc.text(line, pageW - margin, y, { align: "right" });
-      y += 5;
+      doc.text(line, pageW - margin, senderEndY, { align: "right" });
+      senderEndY += 5;
     });
   }
-  y = senderYStart;
 
-  // Reference & Date
+  // Reference (left)
   if (opts.reference) {
-    doc.text(`Ref: ${opts.reference}`, margin, y);
+    doc.text(`Ref: ${sanitize(opts.reference)}`, margin, y);
   }
+  // Date sits below the sender address block
+  y = Math.max(senderEndY, y + 5);
   const dateStr = opts.date || new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
   doc.text(dateStr, pageW - margin, y, { align: "right" });
   y += 10;
@@ -82,12 +91,12 @@ export const generateBusinessLetter = async (opts: BusinessLetterOptions) => {
   // Recipient (left side)
   if (opts.recipientName) {
     doc.setFont("helvetica", "bold");
-    doc.text(opts.recipientName, margin, y);
+    doc.text(sanitize(opts.recipientName), margin, y);
     y += 5;
     doc.setFont("helvetica", "normal");
   }
   if (opts.recipientAddress) {
-    const addrLines = opts.recipientAddress.split(/\r?\n/).filter(Boolean);
+    const addrLines = sanitize(opts.recipientAddress).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     addrLines.forEach(line => {
       doc.text(line, margin, y);
       y += 5;
@@ -96,15 +105,15 @@ export const generateBusinessLetter = async (opts: BusinessLetterOptions) => {
   y += 4;
 
   // Salutation
-  doc.text(opts.salutation || "Dear Sir/Madam,", margin, y);
+  doc.text(sanitize(opts.salutation || "Dear Sir/Madam,"), margin, y);
   y += 8;
 
-  // Subject
+  // Subject - strip any existing RE: prefix to avoid "RE: RE:"
   if (opts.subject) {
     doc.setFont("helvetica", "bold");
-    const subjLines = doc.splitTextToSize(`RE: ${opts.subject.toUpperCase()}`, contentW);
+    const cleanSubject = sanitize(opts.subject).replace(/^\s*RE\s*:\s*/i, "").trim();
+    const subjLines = doc.splitTextToSize(`RE: ${cleanSubject.toUpperCase()}`, contentW);
     doc.text(subjLines, margin, y);
-    // underline first line
     const w = doc.getTextWidth(subjLines[0]);
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.3);
@@ -113,19 +122,22 @@ export const generateBusinessLetter = async (opts: BusinessLetterOptions) => {
     doc.setFont("helvetica", "normal");
   }
 
-  // Body - preserve paragraphs
-  const paragraphs = (opts.body || "").split(/\n\s*\n/);
+  // Body - split into paragraphs. Treat blank lines as paragraph breaks AND
+  // split inline numbered/bulleted items (e.g. " 1. ", " 2. ") onto new paragraphs.
+  const rawBody = sanitize(opts.body || "")
+    // promote inline " 1. ", " 2) " etc to their own paragraphs
+    .replace(/\s+(?=\d{1,2}[.)]\s)/g, "\n\n");
+  const paragraphs = rawBody.split(/\n\s*\n/);
   paragraphs.forEach(p => {
     const clean = p.replace(/\s*\n\s*/g, " ").trim();
     if (!clean) return;
     const lines = doc.splitTextToSize(clean, contentW);
-    // page break
     lines.forEach((line: string) => {
       if (y > pageH - 50) {
         doc.addPage();
         y = margin;
       }
-      doc.text(line, margin, y, { align: "justify", maxWidth: contentW });
+      doc.text(line, margin, y);
       y += 5.5;
     });
     y += 3;
