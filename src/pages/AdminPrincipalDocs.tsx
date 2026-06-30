@@ -60,6 +60,8 @@ const AdminPrincipalDocs = () => {
   const [meetingDate, setMeetingDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [enrolmentYear, setEnrolmentYear] = useState<string>("2027");
   const [enrolling, setEnrolling] = useState(false);
+  const [applicationYear, setApplicationYear] = useState<string>("2027");
+  const [generatingApplication, setGeneratingApplication] = useState(false);
 
   // Business letter state
   const [letterRecipientName, setLetterRecipientName] = useState("");
