@@ -49,6 +49,8 @@ import VerifyReport from "./pages/VerifyReport";
 import ScanMarks from "./pages/ScanMarks";
 import AdminPrincipalDocs from "./pages/AdminPrincipalDocs";
 import AdminPerformance from "./pages/AdminPerformance";
+import StudentCompleteProfile from "./pages/StudentCompleteProfile";
+import StudentProfileGate from "./components/StudentProfileGate";
 
 // Sub-roles
 const DENY_TM_AND_CASHIER: ("cashier" | "timetable_manager")[] = ["cashier", "timetable_manager"];
@@ -68,13 +70,14 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/setup-account" element={<SetupAccount />} />
             
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/student/payments" element={<StudentPayments />} />
-            <Route path="/student/timetable" element={<StudentTimetable />} />
-            <Route path="/student/courses" element={<StudentCourses />} />
-            <Route path="/student/announcements" element={<AnnouncementsPage role="student" />} />
-            <Route path="/student/requirements" element={<StudentRequirements />} />
-            <Route path="/student/shop" element={<StudentInventory />} />
+            <Route path="/student/complete-profile" element={<StudentCompleteProfile />} />
+            <Route path="/student" element={<StudentProfileGate><StudentDashboard /></StudentProfileGate>} />
+            <Route path="/student/payments" element={<StudentProfileGate><StudentPayments /></StudentProfileGate>} />
+            <Route path="/student/timetable" element={<StudentProfileGate><StudentTimetable /></StudentProfileGate>} />
+            <Route path="/student/courses" element={<StudentProfileGate><StudentCourses /></StudentProfileGate>} />
+            <Route path="/student/announcements" element={<StudentProfileGate><AnnouncementsPage role="student" /></StudentProfileGate>} />
+            <Route path="/student/requirements" element={<StudentProfileGate><StudentRequirements /></StudentProfileGate>} />
+            <Route path="/student/shop" element={<StudentProfileGate><StudentInventory /></StudentProfileGate>} />
             <Route path="/admin" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminDashboard /></StaffGuard>} />
             <Route path="/admin/students" element={<StaffGuard deny={DENY_TM}><AdminStudents /></StaffGuard>} />
             <Route path="/admin/payments" element={<StaffGuard deny={DENY_TM}><AdminPayments /></StaffGuard>} />
