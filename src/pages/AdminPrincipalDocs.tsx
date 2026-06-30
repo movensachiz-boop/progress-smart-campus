@@ -11,6 +11,7 @@ import {
 import { generateTargetsFormBatch, TargetsStudent } from "@/lib/generateTargetsForm";
 import { generateAttendanceRegister } from "@/lib/generateAttendanceRegister";
 import { generateEnrolmentRequirements } from "@/lib/generateEnrolmentRequirements";
+import { generateApplicationForm } from "@/lib/generateApplicationForm";
 import { generateBusinessLetter } from "@/lib/generateBusinessLetter";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
