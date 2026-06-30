@@ -1733,6 +1733,11 @@ const AdminStudents = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <StudentProfileDrawer
+        open={!!profileDrawerId}
+        onOpenChange={(o) => { if (!o) setProfileDrawerId(null); }}
+        studentId={profileDrawerId}
+      />
     </DashboardLayout>
   );
 };
