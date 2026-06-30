@@ -63,6 +63,7 @@ const AdminPrincipalDocs = () => {
   // Business letter state
   const [letterRecipientName, setLetterRecipientName] = useState("");
   const [letterRecipientAddress, setLetterRecipientAddress] = useState("");
+  const [letterSenderAddress, setLetterSenderAddress] = useState("");
   const [letterDate, setLetterDate] = useState("");
   const [letterRef, setLetterRef] = useState("");
   const [letterSubject, setLetterSubject] = useState("");
@@ -357,9 +358,15 @@ const AdminPrincipalDocs = () => {
                 <Input value={letterRef} onChange={(e) => setLetterRef(e.target.value)} placeholder="e.g. PCC/ADM/2026/014" />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Recipient Address (one line per row)</Label>
-              <Textarea rows={3} value={letterRecipientAddress} onChange={(e) => setLetterRecipientAddress(e.target.value)} placeholder={"123 Main Street\nGweru\nZimbabwe"} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Recipient Address (one line per row)</Label>
+                <Textarea rows={3} value={letterRecipientAddress} onChange={(e) => setLetterRecipientAddress(e.target.value)} placeholder={"123 Main Street\nGweru\nZimbabwe"} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sender Address (one line per row)</Label>
+                <Textarea rows={3} value={letterSenderAddress} onChange={(e) => setLetterSenderAddress(e.target.value)} placeholder={"Progress Christian College\nBonnyvale Campus\nGweru, Zimbabwe"} />
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1.5">
