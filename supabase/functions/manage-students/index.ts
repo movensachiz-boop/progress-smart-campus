@@ -37,16 +37,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check admin role
+    // Check admin or cashier role (both can manage students/reset passwords)
     const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id)
-      .eq("role", "admin")
-      .maybeSingle();
+      .in("role", ["admin", "cashier"]);
 
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: "Forbidden: admin only" }), {
+    if (!roleData || roleData.length === 0) {
+      return new Response(JSON.stringify({ error: "Forbidden: admin or cashier only" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
