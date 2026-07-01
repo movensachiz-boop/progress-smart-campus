@@ -67,6 +67,37 @@ export default function AdminTeachers() {
     setDeleteTarget(null);
   };
 
+  const openLoginDialog = (t: Teacher) => {
+    setLoginTarget(t);
+    setLoginPassword('');
+    setCreatedCreds(null);
+  };
+
+  const createLogin = async () => {
+    if (!loginTarget) return;
+    setCreatingLogin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-teachers', {
+        body: {
+          action: 'create_teacher_account',
+          name: loginTarget.name,
+          title: loginTarget.title,
+          password: loginPassword.trim() || undefined,
+        },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error || error?.message || 'Failed to create account');
+        return;
+      }
+      setCreatedCreds({ name: data.loginName, password: data.password });
+      toast.success(data.message || 'Login ready');
+    } finally {
+      setCreatingLogin(false);
+    }
+  };
+
+
+
   const toggleSubject = (sId: string) => {
     setForm(f => {
       const has = f.subjectIds.includes(sId);
