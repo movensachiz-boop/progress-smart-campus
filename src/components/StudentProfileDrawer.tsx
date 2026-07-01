@@ -4,16 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  Loader2, Save, Pencil, X, MapPin, Phone, Mail, Cake, Flag, IdCard, Users,
-  Stethoscope, GraduationCap, ShieldAlert, BookOpen, School,
-} from "lucide-react";
+import { Loader2, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activityLog";
+import { ProfileView } from "@/pages/StudentProfile";
+
+const PURPLE = "#7c3aed";
+const PURPLE_DARK = "#4c1d95";
+
 
 interface Props {
   open: boolean;
