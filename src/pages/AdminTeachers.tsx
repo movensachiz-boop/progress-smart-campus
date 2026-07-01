@@ -205,9 +205,11 @@ export default function AdminTeachers() {
                   </div>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button onClick={() => openEdit(t)} className="p-1.5 rounded-md hover:bg-muted"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                  <button onClick={() => setDeleteTarget(t)} className="p-1.5 rounded-md hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                  <button title="Create/Reset Login" onClick={() => openLoginDialog(t)} className="p-1.5 rounded-md hover:bg-primary/10"><KeyRound className="w-3.5 h-3.5 text-primary" /></button>
+                  <button title="Edit" onClick={() => openEdit(t)} className="p-1.5 rounded-md hover:bg-muted"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                  <button title="Delete" onClick={() => setDeleteTarget(t)} className="p-1.5 rounded-md hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                 </div>
+
               </div>
             ))}
           </div>
