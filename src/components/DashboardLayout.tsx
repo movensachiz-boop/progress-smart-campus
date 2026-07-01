@@ -59,12 +59,10 @@ const studentLinks = [
 
 const teacherLinks = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/teacher" },
-  { label: "Attendance", icon: Users, path: "/teacher/attendance" },
-  { label: "Class Roster", icon: BookOpen, path: "/teacher/roster" },
   { label: "Timetable", icon: CalendarDays, path: "/teacher/timetable" },
-  { label: "Announcements", icon: Bell, path: "/teacher/announcements" },
   { label: "Enter Marks", icon: Award, path: "/teacher/marks" },
 ];
+
 
 const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
