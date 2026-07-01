@@ -100,10 +100,11 @@ export default StudentProfile;
 
 // -------- Shared attractive view --------
 export const ProfileView = ({
-  p, fullName, initials, onEdit, onPhoto, uploading, compact = false,
+  p, fullName, initials, onEdit, onPhoto, uploading, compact = false, logoUrl, nameColor,
 }: {
   p: any; fullName: string; initials: string;
   onEdit: () => void; onPhoto?: () => void; uploading?: boolean; compact?: boolean;
+  logoUrl?: string; nameColor?: string;
 }) => {
   const InfoRow = ({ icon: Icon, label, value }: any) => (
     <div className="flex items-start gap-3 py-3 group">
