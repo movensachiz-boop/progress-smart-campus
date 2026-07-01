@@ -1,14 +1,13 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, CalendarDays, CheckCircle } from "lucide-react";
+import { CalendarDays, Award } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
 
   const cards = [
-    { label: "Mark Attendance", icon: CheckCircle, path: "/teacher/attendance", color: "bg-green-500/10 text-green-600" },
-    { label: "Class Roster", icon: Users, path: "/teacher/roster", color: "bg-primary/10 text-primary" },
+    { label: "Enter Marks", icon: Award, path: "/teacher/marks", color: "bg-primary/10 text-primary" },
     { label: "View Timetable", icon: CalendarDays, path: "/teacher/timetable", color: "bg-primary/10 text-primary" },
   ];
 
@@ -16,7 +15,7 @@ export default function TeacherDashboard() {
     <DashboardLayout role="teacher">
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-foreground">Teacher Dashboard</h2>
-        <p className="text-sm text-muted-foreground">Welcome! Select an action below.</p>
+        <p className="text-sm text-muted-foreground">Welcome! Record student results or view your timetable.</p>
         <div className="grid gap-4 md:grid-cols-2">
           {cards.map(c => (
             <Card key={c.path} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(c.path)}>
@@ -33,3 +32,4 @@ export default function TeacherDashboard() {
     </DashboardLayout>
   );
 }
+
