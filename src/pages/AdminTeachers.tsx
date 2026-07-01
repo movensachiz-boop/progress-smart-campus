@@ -304,6 +304,57 @@ export default function AdminTeachers() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Create/Reset Login Dialog */}
+        <Dialog open={!!loginTarget} onOpenChange={(open) => { if (!open) { setLoginTarget(null); setCreatedCreds(null); setLoginPassword(''); } }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><KeyRound className="w-5 h-5 text-primary" /> Teacher Login</DialogTitle>
+            </DialogHeader>
+            {!createdCreds ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Create or reset the login for <span className="font-semibold text-foreground">{loginTarget?.title} {loginTarget?.name}</span>. They will sign in via <span className="font-mono">Admin / Staff Login</span> using their name.
+                </p>
+                <div>
+                  <label className="text-xs text-muted-foreground">Password (leave blank to auto-generate)</label>
+                  <Input className="mt-1" type="text" placeholder="Auto-generated if blank" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
+                  <p className="text-[10px] text-muted-foreground mt-1">Min 8 chars, must include uppercase, lowercase, number, and symbol.</p>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setLoginTarget(null)}>Cancel</Button>
+                  <Button onClick={createLogin} disabled={creatingLogin}>
+                    {creatingLogin ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <KeyRound className="w-4 h-4 mr-1" />}
+                    {creatingLogin ? 'Working...' : 'Create / Reset'}
+                  </Button>
+                </DialogFooter>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3 rounded-lg border bg-muted/40 space-y-2">
+                  <div>
+                    <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Login Name</p>
+                    <p className="font-mono text-sm font-semibold">{createdCreds.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Password</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 px-2 py-1 rounded bg-background border text-sm break-all">{createdCreds.password}</code>
+                      <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(createdCreds.password); toast.success('Password copied'); }}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Share these credentials with the teacher securely. This password will not be shown again — copy it now.</p>
+                <DialogFooter>
+                  <Button onClick={() => { setLoginTarget(null); setCreatedCreds(null); setLoginPassword(''); }}>Done</Button>
+                </DialogFooter>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
       </div>
     </DashboardLayout>
   );
