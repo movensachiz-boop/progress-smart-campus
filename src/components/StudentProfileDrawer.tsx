@@ -312,15 +312,18 @@ const StudentProfileDrawer = ({ open, onOpenChange, studentId }: Props) => {
             ))}
           </div>
         ) : (
-          <ProfileView
-            p={data}
-            fullName={fullName}
-            initials={initials}
-            onEdit={() => setEditing(true)}
-            compact
-            logoUrl={pccLogo}
-            nameColor="text-white"
-          />
+          <>
+            <ProfileView
+              p={data}
+              fullName={fullName}
+              initials={initials}
+              onEdit={() => setEditing(true)}
+              compact
+              logoUrl={pccLogo}
+              nameColor="text-white"
+            />
+            <PaymentsPanel studentId={studentId!} studentName={fullName} />
+          </>
         )}
       </SheetContent>
     </Sheet>
