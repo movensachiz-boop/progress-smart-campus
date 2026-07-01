@@ -197,7 +197,7 @@ export const ProfileView = ({
           </div>
 
           <div className="flex-1 text-center md:text-left md:pb-3 min-w-0">
-            <h1 className="text-[28px] md:text-[36px] font-black tracking-tight leading-tight text-foreground">
+            <h1 className={`text-[28px] md:text-[36px] font-black tracking-tight leading-tight ${nameColor || "text-foreground"}`}>
               {fullName}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm md:text-base font-medium">
