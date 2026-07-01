@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import pccLogo from "@/assets/pcc-logo.png";
 import { logActivity } from "@/lib/activityLog";
 import { ProfileView } from "@/pages/StudentProfile";
 
@@ -182,6 +183,8 @@ const StudentProfileDrawer = ({ open, onOpenChange, studentId }: Props) => {
             initials={initials}
             onEdit={() => setEditing(true)}
             compact
+            logoUrl={pccLogo}
+            nameColor="text-white"
           />
         )}
       </SheetContent>

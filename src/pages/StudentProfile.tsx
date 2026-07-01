@@ -100,10 +100,11 @@ export default StudentProfile;
 
 // -------- Shared attractive view --------
 export const ProfileView = ({
-  p, fullName, initials, onEdit, onPhoto, uploading, compact = false,
+  p, fullName, initials, onEdit, onPhoto, uploading, compact = false, logoUrl, nameColor,
 }: {
   p: any; fullName: string; initials: string;
   onEdit: () => void; onPhoto?: () => void; uploading?: boolean; compact?: boolean;
+  logoUrl?: string; nameColor?: string;
 }) => {
   const InfoRow = ({ icon: Icon, label, value }: any) => (
     <div className="flex items-start gap-3 py-3 group">
@@ -150,6 +151,12 @@ export const ProfileView = ({
           backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
           backgroundSize: "22px 22px",
         }} />
+        {/* School logo */}
+        {logoUrl && (
+          <div className="absolute top-4 left-4 flex items-center gap-2">
+            <img src={logoUrl} alt="School logo" className="h-10 w-auto object-contain drop-shadow-lg" />
+          </div>
+        )}
         {/* Sparkle label */}
         <div className="absolute top-4 right-4 flex items-center gap-1.5 text-white/80 text-xs font-medium bg-white/10 backdrop-blur px-3 py-1.5 rounded-full border border-white/20">
           <Sparkles size={12} /> Progress Christian College
@@ -190,7 +197,7 @@ export const ProfileView = ({
           </div>
 
           <div className="flex-1 text-center md:text-left md:pb-3 min-w-0">
-            <h1 className="text-[28px] md:text-[36px] font-black tracking-tight leading-tight text-foreground">
+            <h1 className={`text-[28px] md:text-[36px] font-black tracking-tight leading-tight ${nameColor || "text-foreground"}`}>
               {fullName}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm md:text-base font-medium">
