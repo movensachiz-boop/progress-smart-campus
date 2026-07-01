@@ -18,6 +18,11 @@ export default function AdminTeachers() {
   const [editing, setEditing] = useState<Teacher | null>(null);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Teacher | null>(null);
+  const [loginTarget, setLoginTarget] = useState<Teacher | null>(null);
+  const [loginPassword, setLoginPassword] = useState('');
+  const [creatingLogin, setCreatingLogin] = useState(false);
+  const [createdCreds, setCreatedCreds] = useState<{ name: string; password: string } | null>(null);
+
   const [form, setForm] = useState({
     name: '', title: 'Mr.', subjectIds: [] as string[],
     assignments: [] as TeacherClassAssignment[],
