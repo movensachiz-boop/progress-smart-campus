@@ -183,6 +183,8 @@ const StudentProfileDrawer = ({ open, onOpenChange, studentId }: Props) => {
             initials={initials}
             onEdit={() => setEditing(true)}
             compact
+            logoUrl={pccLogo}
+            nameColor="text-white"
           />
         )}
       </SheetContent>
