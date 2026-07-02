@@ -171,6 +171,14 @@ const TeacherMarks = () => {
       for (const code of Object.keys(row)) {
         const mark = row[code];
         if (mark == null || isNaN(mark as number)) continue;
+        if (teacherScope) {
+          if (!teacherScope.allowedCodes.has(code)) continue;
+          const allowedClasses = teacherScope.codeToClasses.get(code);
+          if (allowedClasses && allowedClasses.size > 0) {
+            const cid = studentClassId(s);
+            if (!cid || !allowedClasses.has(cid)) continue;
+          }
+        }
         payload.push({
           exam_id: examId, student_profile_id: s.id, subject_code: code,
           subject_name: SUBJECT_CODES[code] || code, mark,
