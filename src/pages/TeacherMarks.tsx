@@ -313,10 +313,19 @@ const TeacherMarks = () => {
     const map = new Map<string, string>();
     list.forEach((sb: any) => {
       const code = normalizeSubjectCode(sb.code || sb.name);
-      if (code) map.set(code, sb.name || code);
+      if (!code) return;
+      if (teacherScope && !teacherScope.allowedCodes.has(code)) return;
+      // Enforce per-subject class assignment: teacher must be assigned to this student's class.
+      if (teacherScope) {
+        const cid = studentClassId(s);
+        const allowedClasses = teacherScope.codeToClasses.get(code);
+        if (allowedClasses && allowedClasses.size > 0 && (!cid || !allowedClasses.has(cid))) return;
+      }
+      map.set(code, sb.name || code);
     });
     // Include any extra codes already saved for this student
     Object.keys(marks[s.id] || {}).forEach(c => {
+      if (teacherScope && !teacherScope.allowedCodes.has(c)) return;
       if (!map.has(c)) map.set(c, SUBJECT_CODES[c] || c);
     });
     const entries = [...map.entries()].map(([code, name]) => ({ code, name }));
