@@ -16,6 +16,8 @@ import {
 } from "@/lib/grading";
 import { useTimetable } from "@/context/TimetableContext";
 import { bestFuzzyMatch, nameKey } from "@/lib/normalize";
+import type { Teacher } from "@/types/school";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type Exam = { id: string; name: string; form_levels: number[]; published: boolean };
 type Profile = { id: string; first_name: string; last_name: string; form: string | null; stream: string | null };
@@ -32,9 +34,63 @@ const parseMarkValue = (value: unknown): number | null => {
   return Math.max(0, Math.min(100, mark));
 };
 
+const slugifyName = (n: string) =>
+  n.toLowerCase().trim().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
+
+// Class ID for a student, matching generateDefaultClasses().
+// Forms 1-4: `${form}${stream}` (e.g. "3Blue"). Forms 5-6: `${form}${area[0]}` (e.g. "5S").
+const studentClassId = (s: { form: string | null; stream: string | null }): string | null => {
+  const fn = Number(s.form);
+  if (!fn) return null;
+  const stream = (s.stream || "").trim();
+  if (!stream) return null;
+  if (fn >= 5) return `${fn}${stream.charAt(0).toUpperCase()}`;
+  return `${fn}${stream}`;
+};
+
 const TeacherMarks = () => {
   const { toast } = useToast();
-  const { subjects: ttSubjects } = useTimetable();
+  const { subjects: ttSubjects, teachers: ttTeachers } = useTimetable();
+  const { role } = useUserRole();
+  const [teacherAccount, setTeacherAccount] = useState<Teacher | null>(null);
+
+  // Identify the signed-in teacher via their `firstname.lastname@pcc.local` email.
+  useEffect(() => {
+    (async () => {
+      if (role !== "teacher") { setTeacherAccount(null); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      const email = user?.email || "";
+      const local = email.split("@")[0]?.toLowerCase();
+      if (!local) return;
+      const match = ttTeachers.find(t => slugifyName(t.name) === local);
+      setTeacherAccount(match || null);
+    })();
+  }, [role, ttTeachers]);
+
+  // Codes the teacher is authorised to enter, and (per code) which class IDs.
+  const teacherScope = useMemo(() => {
+    if (!teacherAccount) return null;
+    const codeToClasses = new Map<string, Set<string>>();
+    for (const a of teacherAccount.assignments || []) {
+      const subj = ttSubjects.find(s => s.id === a.subjectId);
+      if (!subj) continue;
+      const code = normalizeSubjectCode(subj.code || subj.name);
+      if (!code) continue;
+      const set = codeToClasses.get(code) || new Set<string>();
+      (a.classIds || []).forEach(c => set.add(c));
+      codeToClasses.set(code, set);
+    }
+    // Fallback: subjects listed on the teacher's profile with no explicit class list.
+    for (const sid of teacherAccount.subjectIds || []) {
+      const subj = ttSubjects.find(s => s.id === sid);
+      if (!subj) continue;
+      const code = normalizeSubjectCode(subj.code || subj.name);
+      if (code && !codeToClasses.has(code)) codeToClasses.set(code, new Set());
+    }
+    const allClasses = new Set<string>();
+    codeToClasses.forEach(set => set.forEach(c => allClasses.add(c)));
+    return { codeToClasses, allowedCodes: new Set(codeToClasses.keys()), allClasses };
+  }, [teacherAccount, ttSubjects]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [examId, setExamId] = useState("");
   const [students, setStudents] = useState<Profile[]>([]);
