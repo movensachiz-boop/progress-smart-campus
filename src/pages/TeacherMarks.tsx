@@ -125,17 +125,29 @@ const TeacherMarks = () => {
           .in("form", activeExam.form_levels.map(String)).order("last_name"),
         supabase.from("exam_results").select("student_profile_id, subject_code, mark").eq("exam_id", examId),
       ]);
-      setStudents((profs || []) as Profile[]);
+      let profList = (profs || []) as Profile[];
+      // If a teacher is signed in, restrict to students in classes they teach.
+      if (teacherScope && teacherScope.allClasses.size > 0) {
+        profList = profList.filter(p => {
+          const cid = studentClassId(p);
+          return cid ? teacherScope.allClasses.has(cid) : false;
+        });
+      }
+      setStudents(profList);
       const m: MarksMap = {};
       const subjSet = new Set<string>();
       // Pre-populate columns from the Subjects module for this exam's form levels
       for (const sb of ttSubjects) {
         const inForm = (sb.forms || []).some((f: any) => activeExam.form_levels.includes(Number(f)));
-        if (inForm && sb.code) subjSet.add(normalizeSubjectCode(sb.code));
+        if (!inForm || !sb.code) continue;
+        const code = normalizeSubjectCode(sb.code);
+        if (teacherScope && !teacherScope.allowedCodes.has(code)) continue;
+        subjSet.add(code);
       }
       for (const r of (rows || []) as any[]) {
         const sid = r.student_profile_id;
         const code = normalizeSubjectCode(r.subject_code);
+        if (teacherScope && !teacherScope.allowedCodes.has(code)) continue;
         if (!m[sid]) m[sid] = {};
         m[sid][code] = r.mark != null ? Number(r.mark) : null;
         subjSet.add(code);
