@@ -159,7 +159,7 @@ const TeacherMarks = () => {
       setScanStudentOrder([]);
       setLoading(false);
     })();
-  }, [examId, activeExam]);
+  }, [examId, activeExam, teacherScope]);
 
   const saveAll = async () => {
     if (!activeExam) return;
