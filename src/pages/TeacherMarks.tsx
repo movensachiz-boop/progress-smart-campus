@@ -16,6 +16,8 @@ import {
 } from "@/lib/grading";
 import { useTimetable } from "@/context/TimetableContext";
 import { bestFuzzyMatch, nameKey } from "@/lib/normalize";
+import type { Teacher } from "@/types/school";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type Exam = { id: string; name: string; form_levels: number[]; published: boolean };
 type Profile = { id: string; first_name: string; last_name: string; form: string | null; stream: string | null };
@@ -32,9 +34,63 @@ const parseMarkValue = (value: unknown): number | null => {
   return Math.max(0, Math.min(100, mark));
 };
 
+const slugifyName = (n: string) =>
+  n.toLowerCase().trim().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
+
+// Class ID for a student, matching generateDefaultClasses().
+// Forms 1-4: `${form}${stream}` (e.g. "3Blue"). Forms 5-6: `${form}${area[0]}` (e.g. "5S").
+const studentClassId = (s: { form: string | null; stream: string | null }): string | null => {
+  const fn = Number(s.form);
+  if (!fn) return null;
+  const stream = (s.stream || "").trim();
+  if (!stream) return null;
+  if (fn >= 5) return `${fn}${stream.charAt(0).toUpperCase()}`;
+  return `${fn}${stream}`;
+};
+
 const TeacherMarks = () => {
   const { toast } = useToast();
-  const { subjects: ttSubjects } = useTimetable();
+  const { subjects: ttSubjects, teachers: ttTeachers } = useTimetable();
+  const { role } = useUserRole();
+  const [teacherAccount, setTeacherAccount] = useState<Teacher | null>(null);
+
+  // Identify the signed-in teacher via their `firstname.lastname@pcc.local` email.
+  useEffect(() => {
+    (async () => {
+      if (role !== "teacher") { setTeacherAccount(null); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      const email = user?.email || "";
+      const local = email.split("@")[0]?.toLowerCase();
+      if (!local) return;
+      const match = ttTeachers.find(t => slugifyName(t.name) === local);
+      setTeacherAccount(match || null);
+    })();
+  }, [role, ttTeachers]);
+
+  // Codes the teacher is authorised to enter, and (per code) which class IDs.
+  const teacherScope = useMemo(() => {
+    if (!teacherAccount) return null;
+    const codeToClasses = new Map<string, Set<string>>();
+    for (const a of teacherAccount.assignments || []) {
+      const subj = ttSubjects.find(s => s.id === a.subjectId);
+      if (!subj) continue;
+      const code = normalizeSubjectCode(subj.code || subj.name);
+      if (!code) continue;
+      const set = codeToClasses.get(code) || new Set<string>();
+      (a.classIds || []).forEach(c => set.add(c));
+      codeToClasses.set(code, set);
+    }
+    // Fallback: subjects listed on the teacher's profile with no explicit class list.
+    for (const sid of teacherAccount.subjectIds || []) {
+      const subj = ttSubjects.find(s => s.id === sid);
+      if (!subj) continue;
+      const code = normalizeSubjectCode(subj.code || subj.name);
+      if (code && !codeToClasses.has(code)) codeToClasses.set(code, new Set());
+    }
+    const allClasses = new Set<string>();
+    codeToClasses.forEach(set => set.forEach(c => allClasses.add(c)));
+    return { codeToClasses, allowedCodes: new Set(codeToClasses.keys()), allClasses };
+  }, [teacherAccount, ttSubjects]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [examId, setExamId] = useState("");
   const [students, setStudents] = useState<Profile[]>([]);
@@ -69,17 +125,29 @@ const TeacherMarks = () => {
           .in("form", activeExam.form_levels.map(String)).order("last_name"),
         supabase.from("exam_results").select("student_profile_id, subject_code, mark").eq("exam_id", examId),
       ]);
-      setStudents((profs || []) as Profile[]);
+      let profList = (profs || []) as Profile[];
+      // If a teacher is signed in, restrict to students in classes they teach.
+      if (teacherScope && teacherScope.allClasses.size > 0) {
+        profList = profList.filter(p => {
+          const cid = studentClassId(p);
+          return cid ? teacherScope.allClasses.has(cid) : false;
+        });
+      }
+      setStudents(profList);
       const m: MarksMap = {};
       const subjSet = new Set<string>();
       // Pre-populate columns from the Subjects module for this exam's form levels
       for (const sb of ttSubjects) {
         const inForm = (sb.forms || []).some((f: any) => activeExam.form_levels.includes(Number(f)));
-        if (inForm && sb.code) subjSet.add(normalizeSubjectCode(sb.code));
+        if (!inForm || !sb.code) continue;
+        const code = normalizeSubjectCode(sb.code);
+        if (teacherScope && !teacherScope.allowedCodes.has(code)) continue;
+        subjSet.add(code);
       }
       for (const r of (rows || []) as any[]) {
         const sid = r.student_profile_id;
         const code = normalizeSubjectCode(r.subject_code);
+        if (teacherScope && !teacherScope.allowedCodes.has(code)) continue;
         if (!m[sid]) m[sid] = {};
         m[sid][code] = r.mark != null ? Number(r.mark) : null;
         subjSet.add(code);
@@ -91,7 +159,7 @@ const TeacherMarks = () => {
       setScanStudentOrder([]);
       setLoading(false);
     })();
-  }, [examId, activeExam]);
+  }, [examId, activeExam, teacherScope]);
 
   const saveAll = async () => {
     if (!activeExam) return;
@@ -103,6 +171,14 @@ const TeacherMarks = () => {
       for (const code of Object.keys(row)) {
         const mark = row[code];
         if (mark == null || isNaN(mark as number)) continue;
+        if (teacherScope) {
+          if (!teacherScope.allowedCodes.has(code)) continue;
+          const allowedClasses = teacherScope.codeToClasses.get(code);
+          if (allowedClasses && allowedClasses.size > 0) {
+            const cid = studentClassId(s);
+            if (!cid || !allowedClasses.has(cid)) continue;
+          }
+        }
         payload.push({
           exam_id: examId, student_profile_id: s.id, subject_code: code,
           subject_name: SUBJECT_CODES[code] || code, mark,
@@ -245,10 +321,19 @@ const TeacherMarks = () => {
     const map = new Map<string, string>();
     list.forEach((sb: any) => {
       const code = normalizeSubjectCode(sb.code || sb.name);
-      if (code) map.set(code, sb.name || code);
+      if (!code) return;
+      if (teacherScope && !teacherScope.allowedCodes.has(code)) return;
+      // Enforce per-subject class assignment: teacher must be assigned to this student's class.
+      if (teacherScope) {
+        const cid = studentClassId(s);
+        const allowedClasses = teacherScope.codeToClasses.get(code);
+        if (allowedClasses && allowedClasses.size > 0 && (!cid || !allowedClasses.has(cid))) return;
+      }
+      map.set(code, sb.name || code);
     });
     // Include any extra codes already saved for this student
     Object.keys(marks[s.id] || {}).forEach(c => {
+      if (teacherScope && !teacherScope.allowedCodes.has(c)) return;
       if (!map.has(c)) map.set(c, SUBJECT_CODES[c] || c);
     });
     const entries = [...map.entries()].map(([code, name]) => ({ code, name }));
@@ -290,6 +375,17 @@ const TeacherMarks = () => {
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Enter Marks</h2>
 
+        {role === "teacher" && !teacherScope && (
+          <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
+            No subjects have been assigned to your account yet. Ask an administrator to link your teacher profile and class assignments.
+          </CardContent></Card>
+        )}
+        {teacherScope && teacherScope.allowedCodes.size === 0 && (
+          <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
+            Your teacher profile has no subject assignments. Please contact the administrator.
+          </CardContent></Card>
+        )}
+
         <Card>
           <CardContent className="p-4 flex flex-wrap gap-3 items-end">
             <div className="min-w-[260px]">
@@ -324,10 +420,11 @@ const TeacherMarks = () => {
           // Sources: saved marks + scan-detected codes + manually added subject columns.
           // (Per-student allocations are NOT added as columns — they only control which cells are editable.)
           const colMap = new Map<string, string>();
-          subjects.forEach(c => { if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
-          scanOrder.forEach(c => { if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
+          const allowCode = (c: string) => !teacherScope || teacherScope.allowedCodes.has(c);
+          subjects.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
+          scanOrder.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
           Object.values(marks).forEach(r => Object.keys(r || {}).forEach(c => {
-            if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c);
+            if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c);
           }));
           let columns = Array.from(colMap, ([code, name]) => ({ code, name }));
           // Preferred mark-sheet column order (matches the printed form) — identical to ScanMarks.
@@ -362,8 +459,11 @@ const TeacherMarks = () => {
             <Card>
               <CardContent className="p-0">
                 <div className="flex items-center justify-between p-3 border-b">
-                  <div className="text-sm text-muted-foreground">{orderedStudents.length} students · {columns.length} subjects</div>
-                  <Button size="sm" variant="outline" onClick={addColumn}>+ Subject Column</Button>
+                  <div className="text-sm text-muted-foreground">
+                    {orderedStudents.length} students · {columns.length} subjects
+                    {teacherScope && <span className="ml-2 text-blue-600">· Restricted to your subject{teacherScope.allowedCodes.size === 1 ? "" : "s"}</span>}
+                  </div>
+                  {!teacherScope && <Button size="sm" variant="outline" onClick={addColumn}>+ Subject Column</Button>}
                 </div>
                 <div className="relative overflow-auto max-h-[75vh]">
                   <table className="caption-bottom text-sm border-separate border-spacing-0">
