@@ -440,8 +440,11 @@ const TeacherMarks = () => {
             <Card>
               <CardContent className="p-0">
                 <div className="flex items-center justify-between p-3 border-b">
-                  <div className="text-sm text-muted-foreground">{orderedStudents.length} students · {columns.length} subjects</div>
-                  <Button size="sm" variant="outline" onClick={addColumn}>+ Subject Column</Button>
+                  <div className="text-sm text-muted-foreground">
+                    {orderedStudents.length} students · {columns.length} subjects
+                    {teacherScope && <span className="ml-2 text-blue-600">· Restricted to your subject{teacherScope.allowedCodes.size === 1 ? "" : "s"}</span>}
+                  </div>
+                  {!teacherScope && <Button size="sm" variant="outline" onClick={addColumn}>+ Subject Column</Button>}
                 </div>
                 <div className="relative overflow-auto max-h-[75vh]">
                   <table className="caption-bottom text-sm border-separate border-spacing-0">
