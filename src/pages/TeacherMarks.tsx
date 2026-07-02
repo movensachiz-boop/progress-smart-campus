@@ -401,10 +401,11 @@ const TeacherMarks = () => {
           // Sources: saved marks + scan-detected codes + manually added subject columns.
           // (Per-student allocations are NOT added as columns — they only control which cells are editable.)
           const colMap = new Map<string, string>();
-          subjects.forEach(c => { if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
-          scanOrder.forEach(c => { if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
+          const allowCode = (c: string) => !teacherScope || teacherScope.allowedCodes.has(c);
+          subjects.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
+          scanOrder.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
           Object.values(marks).forEach(r => Object.keys(r || {}).forEach(c => {
-            if (!colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c);
+            if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c);
           }));
           let columns = Array.from(colMap, ([code, name]) => ({ code, name }));
           // Preferred mark-sheet column order (matches the printed form) — identical to ScanMarks.
