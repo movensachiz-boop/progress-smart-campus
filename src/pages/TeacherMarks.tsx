@@ -375,6 +375,17 @@ const TeacherMarks = () => {
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Enter Marks</h2>
 
+        {role === "teacher" && !teacherScope && (
+          <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
+            No subjects have been assigned to your account yet. Ask an administrator to link your teacher profile and class assignments.
+          </CardContent></Card>
+        )}
+        {teacherScope && teacherScope.allowedCodes.size === 0 && (
+          <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
+            Your teacher profile has no subject assignments. Please contact the administrator.
+          </CardContent></Card>
+        )}
+
         <Card>
           <CardContent className="p-4 flex flex-wrap gap-3 items-end">
             <div className="min-w-[260px]">
