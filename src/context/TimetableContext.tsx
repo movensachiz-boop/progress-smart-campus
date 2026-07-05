@@ -691,7 +691,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   teacherSchedule[teacher.id][`${day}-${ns}`] = cls.id;
                   placed++;
                   // For doubleEligible non-quad subjects, only chain a single extra (double).
-                  if (targetBlock <= 1 && doubleEligible.has(subject.id)) break;
+                  if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
                 }
                 if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
               }
