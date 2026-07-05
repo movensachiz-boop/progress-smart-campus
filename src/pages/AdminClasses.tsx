@@ -205,8 +205,8 @@ export default function AdminClasses() {
     classes: classes.filter(c => c.form === f).sort((a, b) => a.stream.localeCompare(b.stream)),
   }));
 
-  const openAdd = () => { setEditing({ id: '', form: 1, stream: '', subjectIds: [] }); setDialogOpen(true); };
-  const openEdit = (cls: SchoolClass) => { setEditing({ id: cls.id, form: cls.form, stream: cls.stream, learningArea: cls.learningArea, subjectIds: [...cls.subjectIds] }); setDialogOpen(true); };
+  const openAdd = () => { setEditing({ id: '', form: 1, stream: '', subjectIds: [], subjectPeriods: {}, subjectDoubles: [] }); setDialogOpen(true); };
+  const openEdit = (cls: SchoolClass) => { setEditing({ id: cls.id, form: cls.form, stream: cls.stream, learningArea: cls.learningArea, subjectIds: [...cls.subjectIds], subjectPeriods: { ...(cls.subjectPeriods || {}) }, subjectDoubles: [...(cls.subjectDoubles || [])] }); setDialogOpen(true); };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
 
   const toggleSubject = (sId: string) => {
