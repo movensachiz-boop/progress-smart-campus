@@ -586,6 +586,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           if (currentSection === 'after-lunch') {
             const noCore = availableSubjects.filter(s => !s.isCompulsory);
             if (noCore.length > 0) candidateSubjects = noCore;
+            // Fairness: prefer subjects that have already appeared in a morning/midday
+            // section this week so nothing ends up scheduled only in the afternoon.
+            // A subject with no morning placement yet AND more than 1 period still to
+            // place is deferred so it can still land in a morning slot on another day.
+            const hasMorning = (sId: string) =>
+              (classSubjectSectionWeekCount[`${cls.id}-${sId}-before-break`] || 0) +
+              (classSubjectSectionWeekCount[`${cls.id}-${sId}-after-break`] || 0) > 0;
+            const balanced = candidateSubjects.filter(s => {
+              if (hasMorning(s.id)) return true;
+              const remaining = ppwFor(s, cls) - (classSubjectCount[cls.id][s.id] || 0);
+              return remaining <= 1;
+            });
+            if (balanced.length > 0) candidateSubjects = balanced;
           }
 
           let assigned = false;
