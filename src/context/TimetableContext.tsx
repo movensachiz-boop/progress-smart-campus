@@ -108,11 +108,17 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // A-level (forms 5/6) classes get 8 periods/week per subject regardless of the subject's
     // configured periodsPerWeek. O-level uses the subject's configured value; strict sciences
     // are rounded up to an even count so they can never be forced into a single session.
+    // Per-class `subjectPeriods` overrides take highest precedence.
     const ppwFor = (subject: Subject, classOrForm?: { id: string; form?: number } | number) => {
       const classForm = typeof classOrForm === 'number' ? classOrForm : classOrForm?.form;
       const classId = typeof classOrForm === 'object' && classOrForm ? classOrForm.id : undefined;
       const code = (subject.code || '').toUpperCase();
       if (classId) {
+        const cls = classes.find(c => c.id === classId);
+        const perClass = cls?.subjectPeriods?.[subject.id];
+        if (typeof perClass === 'number' && perClass > 0) {
+          return isStrictDouble(subject) && perClass % 2 === 1 ? perClass + 1 : perClass;
+        }
         const ov = PPW_OVERRIDES.find(o => o.code === code && o.match({ id: classId, form: classForm }));
         if (ov) return isStrictDouble(subject) && ov.periods % 2 === 1 ? ov.periods + 1 : ov.periods;
       }
@@ -120,8 +126,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
     };
     // Subjects eligible for an automatic double period somewhere in the week:
-    // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects).
-    const doubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
+    // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects),
+    // plus any subject flagged as `subjectDoubles` on the specific class.
+    const globalDoubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
+    const isDoubleEligible = (subjectId: string, classId: string) => {
+      if (globalDoubleEligible.has(subjectId)) return true;
+      const cls = classes.find(c => c.id === classId);
+      return !!cls?.subjectDoubles?.includes(subjectId);
+    };
     // "Always double" subjects: every placement must be part of a double period.
     // Covers core sciences + Agriculture by code. A-level (forms 5/6) use QUADS instead.
     const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP']);
