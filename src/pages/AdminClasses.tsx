@@ -219,7 +219,18 @@ export default function AdminClasses() {
     const newStream = editing.stream.trim();
     const classId = `${editing.form}${newStream}`;
     if (classes.some(c => c.id === classId && c.id !== editing.id)) { toast.error(`Class ${classId} already exists`); return; }
-    const updated: SchoolClass = { id: classId, form: editing.form, stream: newStream, learningArea: editing.form >= 5 ? editing.learningArea : undefined, subjectIds: editing.subjectIds };
+    const cleanedPeriods: Record<string, number> = {};
+    Object.entries(editing.subjectPeriods || {}).forEach(([sid, n]) => {
+      if (editing.subjectIds.includes(sid) && typeof n === 'number' && n > 0) cleanedPeriods[sid] = n;
+    });
+    const cleanedDoubles = (editing.subjectDoubles || []).filter(sid => editing.subjectIds.includes(sid));
+    const updated: SchoolClass = {
+      id: classId, form: editing.form, stream: newStream,
+      learningArea: editing.form >= 5 ? editing.learningArea : undefined,
+      subjectIds: editing.subjectIds,
+      subjectPeriods: Object.keys(cleanedPeriods).length ? cleanedPeriods : undefined,
+      subjectDoubles: cleanedDoubles.length ? cleanedDoubles : undefined,
+    };
     if (editing.id) {
       const original = classes.find(c => c.id === editing.id);
       setClasses(classes.map(c => c.id === editing.id ? updated : c));
