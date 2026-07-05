@@ -49,6 +49,10 @@ export interface SchoolClass {
   stream: string;
   learningArea?: LearningArea;
   subjectIds: string[];
+  /** Optional per-class override of periods/week for specific subject IDs. */
+  subjectPeriods?: Record<string, number>;
+  /** Subject IDs that must include at least one double period this week for this class. */
+  subjectDoubles?: string[];
 }
 
 export interface TimetableSlot {

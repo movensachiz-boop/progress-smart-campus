@@ -108,11 +108,17 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // A-level (forms 5/6) classes get 8 periods/week per subject regardless of the subject's
     // configured periodsPerWeek. O-level uses the subject's configured value; strict sciences
     // are rounded up to an even count so they can never be forced into a single session.
+    // Per-class `subjectPeriods` overrides take highest precedence.
     const ppwFor = (subject: Subject, classOrForm?: { id: string; form?: number } | number) => {
       const classForm = typeof classOrForm === 'number' ? classOrForm : classOrForm?.form;
       const classId = typeof classOrForm === 'object' && classOrForm ? classOrForm.id : undefined;
       const code = (subject.code || '').toUpperCase();
       if (classId) {
+        const cls = classes.find(c => c.id === classId);
+        const perClass = cls?.subjectPeriods?.[subject.id];
+        if (typeof perClass === 'number' && perClass > 0) {
+          return isStrictDouble(subject) && perClass % 2 === 1 ? perClass + 1 : perClass;
+        }
         const ov = PPW_OVERRIDES.find(o => o.code === code && o.match({ id: classId, form: classForm }));
         if (ov) return isStrictDouble(subject) && ov.periods % 2 === 1 ? ov.periods + 1 : ov.periods;
       }
@@ -120,8 +126,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
     };
     // Subjects eligible for an automatic double period somewhere in the week:
-    // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects).
-    const doubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
+    // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects),
+    // plus any subject flagged as `subjectDoubles` on the specific class.
+    const globalDoubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
+    const isDoubleEligible = (subjectId: string, classId: string) => {
+      if (globalDoubleEligible.has(subjectId)) return true;
+      const cls = classes.find(c => c.id === classId);
+      return !!cls?.subjectDoubles?.includes(subjectId);
+    };
     // "Always double" subjects: every placement must be part of a double period.
     // Covers core sciences + Agriculture by code. A-level (forms 5/6) use QUADS instead.
     const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP']);
@@ -574,6 +586,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           if (currentSection === 'after-lunch') {
             const noCore = availableSubjects.filter(s => !s.isCompulsory);
             if (noCore.length > 0) candidateSubjects = noCore;
+            // Fairness: prefer subjects that have already appeared in a morning/midday
+            // section this week so nothing ends up scheduled only in the afternoon.
+            // A subject with no morning placement yet AND more than 1 period still to
+            // place is deferred so it can still land in a morning slot on another day.
+            const hasMorning = (sId: string) =>
+              (classSubjectSectionWeekCount[`${cls.id}-${sId}-before-break`] || 0) +
+              (classSubjectSectionWeekCount[`${cls.id}-${sId}-after-break`] || 0) > 0;
+            const balanced = candidateSubjects.filter(s => {
+              if (hasMorning(s.id)) return true;
+              const remaining = ppwFor(s, cls) - (classSubjectCount[cls.id][s.id] || 0);
+              return remaining <= 1;
+            });
+            if (balanced.length > 0) candidateSubjects = balanced;
           }
 
           let assigned = false;
@@ -650,7 +675,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
               const targetBlock = blockSize(subject, cls.form);
               // For double/quad-eligible subjects, pre-assign the remaining block-1 consecutive slots.
-              const wantsBlock = targetBlock > 1 || doubleEligible.has(subject.id);
+              const wantsBlock = targetBlock > 1 || isDoubleEligible(subject.id, cls.id);
               if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
                 const extra = Math.max(1, targetBlock - 1);
                 let placed = 0;
@@ -679,7 +704,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   teacherSchedule[teacher.id][`${day}-${ns}`] = cls.id;
                   placed++;
                   // For doubleEligible non-quad subjects, only chain a single extra (double).
-                  if (targetBlock <= 1 && doubleEligible.has(subject.id)) break;
+                  if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
                 }
                 if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
               }
