@@ -662,7 +662,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
               const targetBlock = blockSize(subject, cls.form);
               // For double/quad-eligible subjects, pre-assign the remaining block-1 consecutive slots.
-              const wantsBlock = targetBlock > 1 || doubleEligible.has(subject.id);
+              const wantsBlock = targetBlock > 1 || isDoubleEligible(subject.id, cls.id);
               if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
                 const extra = Math.max(1, targetBlock - 1);
                 let placed = 0;
