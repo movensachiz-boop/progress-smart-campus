@@ -17,6 +17,8 @@ const LEARNING_AREAS: LearningArea[] = ['Sciences', 'Commercials', 'Arts'];
 
 interface ClassFormState {
   id: string; form: FormLevel; stream: string; learningArea?: LearningArea; subjectIds: string[];
+  subjectPeriods?: Record<string, number>;
+  subjectDoubles?: string[];
 }
 
 export default function AdminClasses() {
