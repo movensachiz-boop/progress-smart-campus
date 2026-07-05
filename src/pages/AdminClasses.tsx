@@ -356,20 +356,60 @@ export default function AdminClasses() {
                       <button className="text-[10px] text-muted-foreground hover:underline" onClick={() => setEditing(prev => prev ? { ...prev, subjectIds: [] } : prev)}>Clear</button>
                     </div>
                   </div>
-                  <div className="border rounded-md p-3 space-y-2 max-h-52 overflow-y-auto bg-muted/20">
+                  <div className="border rounded-md p-2 space-y-1 max-h-64 overflow-y-auto bg-muted/20">
                     {subjectsForForm(editing.form).length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic">No subjects for Form {editing.form}.</p>
+                      <p className="text-xs text-muted-foreground italic p-2">No subjects for Form {editing.form}.</p>
                     ) : (
-                      subjectsForForm(editing.form).map(subj => (
-                        <label key={subj.id} className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox checked={editing.subjectIds.includes(subj.id)} onCheckedChange={() => toggleSubject(subj.id)} />
-                          <span className="text-sm">{subj.name}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono ml-auto">{subj.code}</span>
-                        </label>
-                      ))
+                      <>
+                        <div className="grid grid-cols-[1fr_60px_60px] gap-2 px-1 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground border-b">
+                          <span>Subject</span>
+                          <span className="text-center">Periods</span>
+                          <span className="text-center">Double</span>
+                        </div>
+                        {subjectsForForm(editing.form).map(subj => {
+                          const checked = editing.subjectIds.includes(subj.id);
+                          const isALevel = editing.form >= 5;
+                          const defaultPpw = isALevel ? 8 : subj.periodsPerWeek;
+                          const currentPpw = editing.subjectPeriods?.[subj.id] ?? defaultPpw;
+                          const isDouble = (editing.subjectDoubles || []).includes(subj.id);
+                          return (
+                            <div key={subj.id} className="grid grid-cols-[1fr_60px_60px] gap-2 items-center py-1 px-1 hover:bg-muted/40 rounded">
+                              <label className="flex items-center gap-2 cursor-pointer min-w-0">
+                                <Checkbox checked={checked} onCheckedChange={() => toggleSubject(subj.id)} />
+                                <span className="text-sm truncate">{subj.name}</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">{subj.code}</span>
+                              </label>
+                              <Input
+                                type="number" min={1} max={20}
+                                disabled={!checked}
+                                value={checked ? currentPpw : ''}
+                                onChange={e => {
+                                  const n = Number(e.target.value);
+                                  setEditing(prev => prev ? { ...prev, subjectPeriods: { ...(prev.subjectPeriods || {}), [subj.id]: n } } : prev);
+                                }}
+                                className="h-7 text-center px-1 text-xs"
+                              />
+                              <div className="flex justify-center">
+                                <Checkbox
+                                  checked={isDouble}
+                                  disabled={!checked}
+                                  onCheckedChange={() => setEditing(prev => {
+                                    if (!prev) return prev;
+                                    const cur = new Set(prev.subjectDoubles || []);
+                                    if (cur.has(subj.id)) cur.delete(subj.id); else cur.add(subj.id);
+                                    return { ...prev, subjectDoubles: [...cur] };
+                                  })}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">{editing.subjectIds.length} subject(s) selected</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {editing.subjectIds.length} subject(s) selected · Periods override the default; Double schedules at least one double period/week
+                  </p>
                 </div>
               </div>
             )}
