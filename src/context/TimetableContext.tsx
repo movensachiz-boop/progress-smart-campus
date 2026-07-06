@@ -722,6 +722,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     const memberClass = classes.find(c => c.id === cid);
                     for (let k = 1; k < block; k++) {
                       const ns = slot + k;
+                      if (blockedByOtherForm(cls.form, subject.id, day, ns)) { canGroupBlock = false; break; }
                       if (cid !== cls.id && (
                         hasPlacedSlot(cid, day, ns)
                         || preAssigned[`${cid}-${day}-${ns}`]
