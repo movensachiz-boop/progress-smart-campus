@@ -29,6 +29,18 @@ export default function AdminClasses() {
   const [syncing, setSyncing] = useState(false);
   const [studentCounts, setStudentCounts] = useState<Record<string, { total: number; male: number; female: number }>>({});
 
+  const getDeletedIds = (): Set<string> => {
+    try { return new Set(JSON.parse(localStorage.getItem('tt_deleted_classes') || '[]')); } catch { return new Set(); }
+  };
+  const addDeletedId = (id: string) => {
+    const s = getDeletedIds(); s.add(id);
+    try { localStorage.setItem('tt_deleted_classes', JSON.stringify([...s])); } catch {}
+  };
+  const removeDeletedId = (id: string) => {
+    const s = getDeletedIds(); s.delete(id);
+    try { localStorage.setItem('tt_deleted_classes', JSON.stringify([...s])); } catch {}
+  };
+
   const loadCounts = async () => {
     try {
       const { data, error } = await supabase
