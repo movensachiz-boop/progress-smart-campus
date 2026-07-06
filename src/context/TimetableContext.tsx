@@ -309,11 +309,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const explicit: FormLevel[] = subj.commonForms && subj.commonForms.length > 0
         ? subj.commonForms
         : (subj.isCommon ? [3, 4] : []);
-      // Combining is STRICTLY user-controlled via subject `commonForms` (or legacy `isCommon`).
-      // No auto-detect from shared class subjectIds — a subject appearing in multiple streams
-      // does NOT imply they should be combined.
-      const formsForCommon: FormLevel[] = Array.from(new Set(explicit)) as FormLevel[];
+      // Auto-combine: if 2+ streams in Form 3 or Form 4 both list this subject,
+      // treat them as a combined session. Form 1 is user-controlled only (via
+      // `commonForms` in Admin → Subjects). Forms 5-6 already split by learning area.
+      const autoForms: FormLevel[] = [];
+      [3 as FormLevel, 4 as FormLevel].forEach(fl => {
+        const formClasses = classes.filter(c => c.form === fl);
+        if (formClasses.length < 2) return;
+        const streamsWithSubject = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subj.id)).length;
+        if (streamsWithSubject >= 2) autoForms.push(fl);
+      });
+      const formsForCommon: FormLevel[] = Array.from(new Set([...explicit, ...autoForms])) as FormLevel[];
       if (formsForCommon.length === 0) return;
+
 
 
       formsForCommon.forEach(formLevel => {
