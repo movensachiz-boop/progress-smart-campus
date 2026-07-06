@@ -183,11 +183,33 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     // Respect the class subject allocation exactly. Teacher assignments decide who can teach
     // a selected subject, but they must not silently re-add subjects removed from a class.
+    // Build subject list per class from BOTH sources:
+    //   (a) the class's own subjectIds (Admin → Classes)
+    //   (b) any subject a teacher is explicitly assigned to teach for that class
+    // This means if you set up teacher allocations for A-level (or any class) but
+    // forgot to also tick the subject on the class row, the timetable still fills.
+    const teacherAssignedByClass: Record<string, Set<string>> = {};
+    classes.forEach(c => { teacherAssignedByClass[c.id] = new Set(); });
+    teachers.forEach(t => {
+      t.assignments.forEach(a => {
+        if (!subjects.some(s => s.id === a.subjectId)) return;
+        a.classIds.forEach(rawCid => {
+          const cls = classes.find(c => matchesClass(rawCid, c.id));
+          if (!cls) return;
+          // Respect the subject's declared forms — don't force a subject onto a form it doesn't apply to.
+          const subj = subjects.find(s => s.id === a.subjectId);
+          if (subj && subj.forms.length && !subj.forms.includes(cls.form)) return;
+          teacherAssignedByClass[cls.id].add(a.subjectId);
+        });
+      });
+    });
     const classSubjectIds: Record<string, string[]> = {};
     classes.forEach(c => {
-      classSubjectIds[c.id] = [...c.subjectIds].filter(sId => subjects.some(s => s.id === sId));
+      const fromClass = c.subjectIds.filter(sId => subjects.some(s => s.id === sId));
+      const merged = Array.from(new Set([...fromClass, ...teacherAssignedByClass[c.id]]));
+      classSubjectIds[c.id] = merged;
       classSubjectCount[c.id] = {};
-      classSubjectIds[c.id].forEach(sId => { classSubjectCount[c.id][sId] = 0; });
+      merged.forEach(sId => { classSubjectCount[c.id][sId] = 0; });
     });
 
     // Pre-mark "free periods" evenly across days so empty slots aren't clustered.
