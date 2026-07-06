@@ -259,6 +259,8 @@ export default function AdminMasterTimetable() {
         onSave={updateSlot}
         allSlots={timetable?.slots || []}
       />
+
+      <BalanceTimetableDialog open={balanceOpen} onOpenChange={setBalanceOpen} />
     </DashboardLayout>
   );
 }
