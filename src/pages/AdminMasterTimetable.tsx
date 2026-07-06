@@ -18,10 +18,7 @@ export default function AdminMasterTimetable() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
 
-export default function AdminMasterTimetable() {
-  const { timetable, classes, subjects, teachers, config, updateSlot } = useTimetable();
-  const [editSlot, setEditSlot] = useState<TimetableSlot | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+
 
   const totalSlots = config.periodsPerDay + 2;
   const periods = Array.from({ length: totalSlots }, (_, i) => i + 1);
