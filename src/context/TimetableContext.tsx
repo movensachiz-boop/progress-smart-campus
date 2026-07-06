@@ -281,11 +281,17 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const combineGroups: Record<string, Record<string, { teacherId: string; groupClassIds: string[]; allowedDays?: Set<DayOfWeek>; strict?: boolean }>> = {};
     teachers.forEach(t => {
       t.assignments.forEach(a => {
-        // Group this teacher's assigned classes by form (only Forms 5 & 6 combine here)
+        // Group this teacher's assigned classes by form (only Forms 5 & 6 combine here).
+        // A-level subjects are stream-specific (Sciences/Commercials/Arts each offer
+        // different subjects), so only combine streams that ACTUALLY list this subject
+        // in their class offerings. This prevents e.g. GEO A appearing in Sciences
+        // just because the same teacher also teaches it in Arts.
         const byForm: Record<number, string[]> = {};
         a.classIds.forEach(rawCid => {
           const cls = classes.find(c => matchesClass(rawCid, c.id));
           if (!cls || (cls.form !== 5 && cls.form !== 6)) return;
+          const offered = (classSubjectIds[cls.id] || []).includes(a.subjectId);
+          if (!offered) return;
           (byForm[cls.form] ||= []).push(cls.id);
         });
         Object.values(byForm).forEach(group => {
