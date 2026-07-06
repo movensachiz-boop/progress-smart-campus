@@ -165,7 +165,9 @@ export default function AdminClasses() {
         else if ((row as any).gender === 'male') newCounts[classId].male++;
       }
 
+      const deletedIds = getDeletedIds();
       for (const [key, info] of Object.entries(counts)) {
+        if (deletedIds.has(key)) continue;
         if (!newClasses.some(c => c.id === key)) {
           const isUpper = info.form >= 5;
           const area = isUpper ? VALID_UPPER_AREAS.find(a => a === info.stream) : undefined;
