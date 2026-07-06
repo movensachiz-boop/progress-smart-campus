@@ -80,6 +80,23 @@ export default function AdminTimetableView() {
     };
   };
 
+  // Combined form: return an array of per-class entries for a given cell
+  const getCombinedFormEntries = (day: DayOfWeek, period: number) => {
+    if (!isCombinedForm || combinedFormNum == null) return [];
+    const formClasses = classes.filter(c => c.form === combinedFormNum).sort((a, b) => a.stream.localeCompare(b.stream));
+    return formClasses.map(cls => {
+      const slot = filteredSlots.find(s => s.classId === cls.id && s.day === day && s.period === period);
+      if (!slot) return { classId: cls.id, streamLabel: cls.stream, label: '—', kind: 'empty' as const };
+      if (slot.type === 'break') return { classId: cls.id, streamLabel: cls.stream, label: 'BREAK', kind: 'break' as const };
+      if (slot.type === 'lunch') return { classId: cls.id, streamLabel: cls.stream, label: 'LUNCH', kind: 'break' as const };
+      if (slot.type === 'sports') return { classId: cls.id, streamLabel: cls.stream, label: 'SPORTS', kind: 'sports' as const };
+      const subject = subjects.find(s => s.id === slot.subjectId);
+      const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
+      const label = paired && subject ? `${subject.code}/${paired.code}` : (subject?.code || '—');
+      return { classId: cls.id, streamLabel: cls.stream, label, kind: subject ? 'lesson' as const : 'empty' as const };
+    });
+  };
+
   const handleSlotClick = (day: DayOfWeek, period: number) => {
     const slot = getSlot(day, period);
     if (slot && slot.type === 'lesson') setEditSlot(slot);
