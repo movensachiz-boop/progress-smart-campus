@@ -312,6 +312,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const autoForms: FormLevel[] = [];
       const formsPresent = Array.from(new Set(classes.map(c => c.form))) as FormLevel[];
       formsPresent.forEach(fl => {
+        // Form 1 combining is user-controlled via subject `commonForms` only — no auto-detect.
+        if (fl === 1) return;
         const formClasses = classes.filter(c => c.form === fl);
         if (formClasses.length < 2) return;
         const streamsWithSubject = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subj.id)).length;
@@ -319,6 +321,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
       const formsForCommon: FormLevel[] = Array.from(new Set([...explicit, ...autoForms])) as FormLevel[];
       if (formsForCommon.length === 0) return;
+
       formsForCommon.forEach(formLevel => {
         const formClasses = classes.filter(c => c.form === formLevel);
         if (formClasses.length < 2) return;
@@ -343,35 +346,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
-    // Form 1: Agriculture and Computer Science are combined across ALL Form 1 streams
-    // (G1, G2, G22, Blue) into a single shared session per period. Pick one teacher per subject.
-    (() => {
-      const form1Classes = classes.filter(c => c.form === 1);
-      if (form1Classes.length < 2) return;
-      const targetCodes = ['AGR', 'AGRI', 'CS', 'COMP'];
-      targetCodes.forEach(code => {
-        const subj = subjects.find(s => (s.code || '').toUpperCase() === code);
-        if (!subj) return;
-        const eligibleClasses = form1Classes.filter(c => (classSubjectIds[c.id] || []).includes(subj.id));
-        if (eligibleClasses.length < 2) return;
-        const teacherCoverage = teachers
-          .map(t => ({
-            t,
-            covered: eligibleClasses.filter(c =>
-              t.assignments.some(a => a.subjectId === subj.id && a.classIds.some(cid => matchesClass(cid, c.id)))
-            ).length,
-          }))
-          .filter(x => x.covered > 0)
-          .sort((a, b) => b.covered - a.covered);
-        const chosen = teacherCoverage[0]?.t;
-        if (!chosen) return;
-        const groupIds = eligibleClasses.map(c => c.id);
-        groupIds.forEach(cid => {
-          if (!combineGroups[cid]) combineGroups[cid] = {};
-          combineGroups[cid][subj.id] = { teacherId: chosen.id, groupClassIds: groupIds };
-        });
-      });
-    })();
+    // Form 1 combining is fully user-controlled via each subject's `commonForms` setting.
+    // No hardcoded Form 1 overrides — if the user unchecks Form 1 for a subject, it will
+    // be scheduled per-stream separately.
+
 
     // Specific Business Studies combined groups (custom school rules):
     //   - Form 3 Leo + Virgo + Aries: combined ONLY on Monday & Tuesday.
