@@ -739,6 +739,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               slots.push(newSlot);
               recordSubjectSlot(cls.id, day, subject.id, slot, teacher.id, teacher);
               tryPairSlot(newSlot, cls, day, slot, subject);
+              markALevel(cls.form, subject.id, day, slot);
 
               others.forEach(cid => {
                 const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
