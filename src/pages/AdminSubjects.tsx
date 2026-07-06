@@ -48,7 +48,8 @@ export default function AdminSubjects() {
       id: editing?.id || v4(), name: form.name, code: form.code, forms: form.forms,
       learningAreas: form.learningAreas.length > 0 ? form.learningAreas : undefined,
       periodsPerWeek: form.periodsPerWeek, isCompulsory: form.isCompulsory,
-      isCommon: form.isCommon,
+      commonForms: form.commonForms.length > 0 ? [...form.commonForms].sort() : undefined,
+      isCommon: undefined,
     };
     if (editing) {
       setSubjects(subjects.map(s => s.id === editing.id ? subjectData : s));
