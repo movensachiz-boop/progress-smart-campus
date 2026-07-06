@@ -312,7 +312,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // Auto-combine ONLY these subjects across streams within Form 3 and Form 4
       // (each form combined separately). Form 1 stays user-controlled via `commonForms`.
       // Forms 5-6 split by learning area.
-      const AUTO_COMBINE_CODES = ['ENG', 'SHO', 'SHON', 'GEO', 'HER', 'HIS'];
+      const AUTO_COMBINE_CODES = ['ENG', 'SHO', 'SHON', 'GEO', 'HER', 'HIS', 'RS', 'RE', 'COMB', 'CS', 'MATH', 'MATHS', 'AGR', 'AGRI', 'BS', 'BUS'];
       const code = (subj.code || '').toUpperCase();
       const autoForms: FormLevel[] = [];
       if (AUTO_COMBINE_CODES.includes(code)) {
