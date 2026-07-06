@@ -692,6 +692,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     || isPreMarkedFree(cls.id, day, ns)
                     || teacherSchedule[teacher.id]?.[`${day}-${ns}`]
                     || (teacherLoad[teacher.id] || 0) + k >= teacher.maxPeriodsPerWeek
+                    || blockedByOtherForm(cls.form, subject.id, day, ns)
                   ) { canBlock = false; break; }
                 }
                 if (!canBlock) continue;
