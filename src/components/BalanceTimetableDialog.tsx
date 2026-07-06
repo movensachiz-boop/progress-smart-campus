@@ -34,7 +34,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
   const runAnalysis = () => {
     if (!timetable) return;
     const result = rebalance(timetable, classes, subjects, teachers);
-    setPreview(result);
+    setPreview({ next: result.nextTimetable, report: result.report });
     toast({ title: 'Analysis complete', description: `${result.report.changes.length} change(s) proposed.` });
   };
 
