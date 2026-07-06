@@ -266,12 +266,13 @@ export default function AdminClasses() {
         toast.success('Class updated');
       }
     }
-    else { setClasses([...classes, updated]); toast.success('Class added'); }
+    else { removeDeletedId(updated.id); setClasses([...classes, updated]); toast.success('Class added'); }
     closeDialog();
   };
 
   const handleDelete = () => {
     if (!deleteTarget) return;
+    addDeletedId(deleteTarget.id);
     setClasses(classes.filter(c => c.id !== deleteTarget.id));
     toast.success(`Class ${deleteTarget.id} removed`);
     setDeleteTarget(null);
