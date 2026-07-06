@@ -79,8 +79,9 @@ export default function AdminClasses() {
       }
       setStudentCounts(counts);
 
-      // Auto-create label entries for any registered classes not yet in the list
-      const toAdd = Object.entries(missing).filter(([id]) => !classes.some(c => c.id === id));
+      // Auto-create label entries for any registered classes not yet in the list (skip user-deleted)
+      const deletedIds = getDeletedIds();
+      const toAdd = Object.entries(missing).filter(([id]) => !classes.some(c => c.id === id) && !deletedIds.has(id));
       if (toAdd.length > 0) {
         const newClasses = [...classes];
         for (const [id, info] of toAdd) {
