@@ -206,7 +206,18 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const classSubjectIds: Record<string, string[]> = {};
     classes.forEach(c => {
       const fromClass = c.subjectIds.filter(sId => subjects.some(s => s.id === sId));
-      const merged = Array.from(new Set([...fromClass, ...teacherAssignedByClass[c.id]]));
+      let merged = Array.from(new Set([...fromClass, ...teacherAssignedByClass[c.id]]));
+      // A-level (Forms 5 & 6) is strictly split by learning area. A Sciences stream
+      // must never receive Arts/Commercials subjects (e.g. GEO A) even if a teacher
+      // was mistakenly assigned or the class definition drifted.
+      if ((c.form === 5 || c.form === 6) && c.learningArea) {
+        merged = merged.filter(sId => {
+          const subj = subjects.find(s => s.id === sId);
+          if (!subj) return false;
+          if (!subj.learningAreas || subj.learningAreas.length === 0) return true;
+          return subj.learningAreas.includes(c.learningArea!);
+        });
+      }
       classSubjectIds[c.id] = merged;
       classSubjectCount[c.id] = {};
       merged.forEach(sId => { classSubjectCount[c.id][sId] = 0; });
