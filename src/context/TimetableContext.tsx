@@ -261,13 +261,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // A-level (Forms 5 & 6) is strictly split by learning area. A Sciences stream
       // must never receive Arts/Commercials subjects (e.g. GEO A) even if a teacher
       // was mistakenly assigned or the class definition drifted.
-      if ((c.form === 5 || c.form === 6) && c.learningArea) {
+      if (c.form === 5 || c.form === 6) {
         merged = merged.filter(sId => {
           const subj = subjects.find(s => s.id === sId);
           if (!subj) return false;
+          if (isExcludedFromALevel(subj)) return false;
+          if (!c.learningArea) return true;
           const allowedAreas = aLevelAllowedAreas(subj);
           if (!allowedAreas) return true;
-          return allowedAreas.includes(c.learningArea!);
+          return allowedAreas.includes(c.learningArea);
         });
       }
       classSubjectIds[c.id] = merged;
