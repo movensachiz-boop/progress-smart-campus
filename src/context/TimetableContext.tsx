@@ -309,18 +309,23 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const explicit: FormLevel[] = subj.commonForms && subj.commonForms.length > 0
         ? subj.commonForms
         : (subj.isCommon ? [3, 4] : []);
-      // Auto-combine: if 2+ streams in Form 3 or Form 4 both list this subject,
-      // treat them as a combined session. Form 1 is user-controlled only (via
-      // `commonForms` in Admin → Subjects). Forms 5-6 already split by learning area.
+      // Auto-combine ONLY these subjects across streams within Form 3 and Form 4
+      // (each form combined separately). Form 1 stays user-controlled via `commonForms`.
+      // Forms 5-6 split by learning area.
+      const AUTO_COMBINE_CODES = ['ENG', 'SHO', 'SHON', 'GEO', 'HER', 'HIS'];
+      const code = (subj.code || '').toUpperCase();
       const autoForms: FormLevel[] = [];
-      [3 as FormLevel, 4 as FormLevel].forEach(fl => {
-        const formClasses = classes.filter(c => c.form === fl);
-        if (formClasses.length < 2) return;
-        const streamsWithSubject = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subj.id)).length;
-        if (streamsWithSubject >= 2) autoForms.push(fl);
-      });
+      if (AUTO_COMBINE_CODES.includes(code)) {
+        [3 as FormLevel, 4 as FormLevel].forEach(fl => {
+          const formClasses = classes.filter(c => c.form === fl);
+          if (formClasses.length < 2) return;
+          const streamsWithSubject = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subj.id)).length;
+          if (streamsWithSubject >= 2) autoForms.push(fl);
+        });
+      }
       const formsForCommon: FormLevel[] = Array.from(new Set([...explicit, ...autoForms])) as FormLevel[];
       if (formsForCommon.length === 0) return;
+
 
 
 
