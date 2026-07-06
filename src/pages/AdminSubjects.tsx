@@ -179,16 +179,33 @@ export default function AdminSubjects() {
                 </div>
               </div>
               <div className="rounded-md border border-dashed border-accent/40 bg-accent/5 p-3">
-                <label className="flex items-start gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={form.isCommon} onChange={e => setForm(f => ({ ...f, isCommon: e.target.checked }))} className="rounded mt-0.5" />
-                  <span>
-                    <span className="font-medium">Common subject (Form 3 & 4)</span>
-                    <span className="block text-[11px] text-muted-foreground mt-0.5">
-                      All streams of Form 3 (and Form 4) attend this subject together as one combined class — the timetable will place it in the same period across every stream.
-                    </span>
-                  </span>
-                </label>
+                <div className="text-sm font-medium">Combined streams (per form)</div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+                  Click a form to combine all its streams for this subject — the timetable will place it in the same period across every stream of that form.
+                </p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {form.forms.length === 0 && (
+                    <span className="text-[11px] text-muted-foreground italic">Select the subject's forms first.</span>
+                  )}
+                  {[...form.forms].sort().map(fl => {
+                    const active = form.commonForms.includes(fl);
+                    return (
+                      <button
+                        key={fl}
+                        type="button"
+                        onClick={() => setForm(f => ({
+                          ...f,
+                          commonForms: active ? f.commonForms.filter(x => x !== fl) : [...f.commonForms, fl],
+                        }))}
+                        className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${active ? 'bg-accent text-accent-foreground border-accent ring-2 ring-accent/40' : 'bg-muted text-muted-foreground border-border'}`}
+                      >
+                        Form {fl} — Combined
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
 
               <div>
                 <label className="text-xs text-muted-foreground mb-2 block">Forms</label>
