@@ -908,6 +908,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
               slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, type: 'lesson' });
               recordSubjectSlot(cls.id, day, subject.id, slot);
+              markALevel(cls.form, subject.id, day, slot);
               assigned = true;
 
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
