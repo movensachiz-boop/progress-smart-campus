@@ -4,12 +4,19 @@ import { useTimetable } from '@/context/TimetableContext';
 import { DAYS } from '@/data/defaults';
 import { DayOfWeek } from '@/types/school';
 import { Button } from '@/components/ui/button';
-import { Calendar, FileDown } from 'lucide-react';
+import { Calendar, FileDown, Scale } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import pccLogo from '@/assets/pcc-logo.png';
 import SlotEditDialog from '@/components/SlotEditDialog';
+import BalanceTimetableDialog from '@/components/BalanceTimetableDialog';
 import { TimetableSlot } from '@/types/school';
+
+export default function AdminMasterTimetable() {
+  const { timetable, classes, subjects, teachers, config, updateSlot } = useTimetable();
+  const [editSlot, setEditSlot] = useState<TimetableSlot | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [balanceOpen, setBalanceOpen] = useState(false);
 
 export default function AdminMasterTimetable() {
   const { timetable, classes, subjects, teachers, config, updateSlot } = useTimetable();
