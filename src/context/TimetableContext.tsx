@@ -312,6 +312,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const autoForms: FormLevel[] = [];
       const formsPresent = Array.from(new Set(classes.map(c => c.form))) as FormLevel[];
       formsPresent.forEach(fl => {
+        // Form 1 combining is user-controlled via subject `commonForms` only — no auto-detect.
+        if (fl === 1) return;
         const formClasses = classes.filter(c => c.form === fl);
         if (formClasses.length < 2) return;
         const streamsWithSubject = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subj.id)).length;
@@ -319,6 +321,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
       const formsForCommon: FormLevel[] = Array.from(new Set([...explicit, ...autoForms])) as FormLevel[];
       if (formsForCommon.length === 0) return;
+
       formsForCommon.forEach(formLevel => {
         const formClasses = classes.filter(c => c.form === formLevel);
         if (formClasses.length < 2) return;
