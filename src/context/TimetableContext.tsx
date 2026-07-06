@@ -543,6 +543,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           if (preAssigned[preKey]) {
             const pa = preAssigned[preKey];
             slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: pa.subjectId, teacherId: pa.teacherId, type: 'lesson', combinedClassIds: pa.combinedClassIds });
+            markALevel(cls.form, pa.subjectId, day, slot);
             if (pa.skipTeacherLoad) {
               // Combined sibling — count subject toward this class but don't double-count teacher load
               classSubjectCount[cls.id][pa.subjectId] = (classSubjectCount[cls.id][pa.subjectId] || 0) + 1;
