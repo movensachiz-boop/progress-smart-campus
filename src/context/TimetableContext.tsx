@@ -595,6 +595,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               if (s.isCompulsory || dailySubjectIds.has(s.id)) return true;
               return !violatesGapRule(cls.id, day, s.id, slot);
             })
+            // A-level cross-form lock: never schedule same subject at same period across Form 5 & 6
+            .filter(s => !blockedByOtherForm(cls.form, s.id, day, slot))
             .sort((a, b) => {
               // Highest priority: core/daily subjects must be placed BEFORE LUNCH
               // (i.e., before-break or after-break sections) for every class.
