@@ -603,7 +603,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           for (const subject of candidateSubjects) {
             const strictGroup = combineGroups[cls.id]?.[subject.id]?.strict ? combineGroups[cls.id][subject.id] : undefined;
             const availableTeachers = teachers.filter(t => {
-              if (strictGroup && t.id !== strictGroup.teacherId) return false;
+              if (strictGroup) {
+                return t.id === strictGroup.teacherId
+                  && (teacherLoad[t.id] || 0) < t.maxPeriodsPerWeek
+                  && !teacherSchedule[t.id]?.[`${day}-${slot}`];
+              }
               const hasAssignment = t.assignments.some(a => a.subjectId === subject.id && a.classIds.some(cid => matchesClass(cid, cls.id)));
               return hasAssignment && (teacherLoad[t.id] || 0) < t.maxPeriodsPerWeek && !teacherSchedule[t.id]?.[`${day}-${slot}`];
             });
