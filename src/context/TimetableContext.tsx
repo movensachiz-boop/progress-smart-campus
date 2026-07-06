@@ -838,6 +838,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const others = groupMembers.filter(id => id !== cls.id);
               slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, type: 'lesson', combinedClassIds: others });
               recordSubjectSlot(cls.id, day, subject.id, slot);
+              markALevel(cls.form, subject.id, day, slot);
               others.forEach(cid => {
                 const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
                 preAssigned[`${cid}-${day}-${slot}`] = {
