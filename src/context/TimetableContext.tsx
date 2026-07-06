@@ -730,6 +730,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           // so the slot isn't left blank. Honour block-size constraints where possible.
           if (!assigned && candidateSubjects.length > 0) {
             for (const subject of candidateSubjects) {
+              if (combineGroups[cls.id]?.[subject.id]?.strict) continue;
               const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
               const block = blockSize(subject, cls.form);
               const requireBlock = block > 1 && remainingThisSubject >= block;
