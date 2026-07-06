@@ -36,15 +36,25 @@ export default function AdminTimetableView() {
     return `${fmt(minutes)} – ${fmt(minutes + durMin)}`;
   };
 
-  const classOptions = [...classes].sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream)).map(c => ({ value: c.id, label: `${c.form}${c.stream}` }));
+  const formsPresent = Array.from(new Set(classes.map(c => c.form))).sort((a, b) => a - b);
+  const combinedFormOptions = formsPresent.map(f => ({ value: `form:${f}`, label: `Form ${f} — All Streams (Combined)` }));
+  const perClassOptions = [...classes].sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream)).map(c => ({ value: c.id, label: `${c.form}${c.stream}` }));
+  const classOptions = [...combinedFormOptions, ...perClassOptions];
   const teacherOptions = teachers.map(t => ({ value: t.id, label: `${t.title} ${t.name}` }));
+
+  const isCombinedForm = viewMode === 'class' && selectedId.startsWith('form:');
+  const combinedFormNum = isCombinedForm ? Number(selectedId.slice(5)) : null;
 
   const filteredSlots = useMemo(() => {
     if (!timetable || !selectedId) return [];
+    if (isCombinedForm && combinedFormNum != null) {
+      const formClassIds = new Set(classes.filter(c => c.form === combinedFormNum).map(c => c.id));
+      return timetable.slots.filter(s => formClassIds.has(s.classId));
+    }
     return viewMode === 'class'
       ? timetable.slots.filter(s => s.classId === selectedId)
       : timetable.slots.filter(s => s.teacherId === selectedId || s.pairedTeacherId === selectedId);
-  }, [timetable, selectedId, viewMode]);
+  }, [timetable, selectedId, viewMode, isCombinedForm, combinedFormNum, classes]);
 
   const getSlot = (day: DayOfWeek, period: number) => filteredSlots.find(s => s.day === day && s.period === period);
 
@@ -68,6 +78,23 @@ export default function AdminTimetableView() {
       isConflict, editable: true,
       combinedCount: slot.combinedClassIds?.length || 0,
     };
+  };
+
+  // Combined form: return an array of per-class entries for a given cell
+  const getCombinedFormEntries = (day: DayOfWeek, period: number) => {
+    if (!isCombinedForm || combinedFormNum == null) return [];
+    const formClasses = classes.filter(c => c.form === combinedFormNum).sort((a, b) => a.stream.localeCompare(b.stream));
+    return formClasses.map(cls => {
+      const slot = filteredSlots.find(s => s.classId === cls.id && s.day === day && s.period === period);
+      if (!slot) return { classId: cls.id, streamLabel: cls.stream, label: '—', kind: 'empty' as const };
+      if (slot.type === 'break') return { classId: cls.id, streamLabel: cls.stream, label: 'BREAK', kind: 'break' as const };
+      if (slot.type === 'lunch') return { classId: cls.id, streamLabel: cls.stream, label: 'LUNCH', kind: 'break' as const };
+      if (slot.type === 'sports') return { classId: cls.id, streamLabel: cls.stream, label: 'SPORTS', kind: 'sports' as const };
+      const subject = subjects.find(s => s.id === slot.subjectId);
+      const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
+      const label = paired && subject ? `${subject.code}/${paired.code}` : (subject?.code || '—');
+      return { classId: cls.id, streamLabel: cls.stream, label, kind: subject ? 'lesson' as const : 'empty' as const };
+    });
   };
 
   const handleSlotClick = (day: DayOfWeek, period: number) => {
@@ -171,6 +198,29 @@ export default function AdminTimetableView() {
                   <tr key={period}>
                     <td className="p-2 text-[10px] text-muted-foreground font-medium border-b leading-tight whitespace-nowrap">{getPeriodTime(period)}</td>
                     {DAYS.map(day => {
+                      if (isCombinedForm) {
+                        const entries = getCombinedFormEntries(day, period);
+                        return (
+                          <td key={day} className="p-1.5 border-b align-top">
+                            <div className="space-y-1">
+                              {entries.map(e => (
+                                <div
+                                  key={e.classId}
+                                  className={`flex items-center justify-between gap-2 rounded px-1.5 py-1 text-[11px] ${
+                                    e.kind === 'lesson' ? 'bg-primary/10 text-primary' :
+                                    e.kind === 'break' ? 'bg-warning/20 text-warning-foreground' :
+                                    e.kind === 'sports' ? 'bg-success/20 text-success' :
+                                    'bg-muted/40 text-muted-foreground'
+                                  }`}
+                                >
+                                  <span className="font-mono text-[10px] opacity-70">{combinedFormNum}{e.streamLabel}</span>
+                                  <span className="font-semibold">{e.label}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        );
+                      }
                       const display = getSlotDisplay(day, period);
                       const isEditable = display?.editable;
                       return (

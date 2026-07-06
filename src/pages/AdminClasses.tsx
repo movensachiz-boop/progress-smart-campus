@@ -29,6 +29,18 @@ export default function AdminClasses() {
   const [syncing, setSyncing] = useState(false);
   const [studentCounts, setStudentCounts] = useState<Record<string, { total: number; male: number; female: number }>>({});
 
+  const getDeletedIds = (): Set<string> => {
+    try { return new Set(JSON.parse(localStorage.getItem('tt_deleted_classes') || '[]')); } catch { return new Set(); }
+  };
+  const addDeletedId = (id: string) => {
+    const s = getDeletedIds(); s.add(id);
+    try { localStorage.setItem('tt_deleted_classes', JSON.stringify([...s])); } catch {}
+  };
+  const removeDeletedId = (id: string) => {
+    const s = getDeletedIds(); s.delete(id);
+    try { localStorage.setItem('tt_deleted_classes', JSON.stringify([...s])); } catch {}
+  };
+
   const loadCounts = async () => {
     try {
       const { data, error } = await supabase
@@ -67,8 +79,9 @@ export default function AdminClasses() {
       }
       setStudentCounts(counts);
 
-      // Auto-create label entries for any registered classes not yet in the list
-      const toAdd = Object.entries(missing).filter(([id]) => !classes.some(c => c.id === id));
+      // Auto-create label entries for any registered classes not yet in the list (skip user-deleted)
+      const deletedIds = getDeletedIds();
+      const toAdd = Object.entries(missing).filter(([id]) => !classes.some(c => c.id === id) && !deletedIds.has(id));
       if (toAdd.length > 0) {
         const newClasses = [...classes];
         for (const [id, info] of toAdd) {
@@ -152,7 +165,9 @@ export default function AdminClasses() {
         else if ((row as any).gender === 'male') newCounts[classId].male++;
       }
 
+      const deletedIds = getDeletedIds();
       for (const [key, info] of Object.entries(counts)) {
+        if (deletedIds.has(key)) continue;
         if (!newClasses.some(c => c.id === key)) {
           const isUpper = info.form >= 5;
           const area = isUpper ? VALID_UPPER_AREAS.find(a => a === info.stream) : undefined;
@@ -251,12 +266,13 @@ export default function AdminClasses() {
         toast.success('Class updated');
       }
     }
-    else { setClasses([...classes, updated]); toast.success('Class added'); }
+    else { removeDeletedId(updated.id); setClasses([...classes, updated]); toast.success('Class added'); }
     closeDialog();
   };
 
   const handleDelete = () => {
     if (!deleteTarget) return;
+    addDeletedId(deleteTarget.id);
     setClasses(classes.filter(c => c.id !== deleteTarget.id));
     toast.success(`Class ${deleteTarget.id} removed`);
     setDeleteTarget(null);
