@@ -928,7 +928,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   if (isNonAcademic(day, ns)) break;
                   if (preAssigned[`${cls.id}-${day}-${ns}`]) break;
                   if ((classSubjectCount[cls.id][subject.id] || 0) + placed + 1 > ppwFor(subject, cls)) break;
+                  if (blockedByOtherForm(cls.form, subject.id, day, ns)) break;
                   preAssigned[`${cls.id}-${day}-${ns}`] = { subjectId: subject.id, teacherId: '', combinedClassIds: [] };
+                  markALevel(cls.form, subject.id, day, ns);
                   placed++;
                   if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
                 }
