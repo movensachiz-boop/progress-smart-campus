@@ -91,6 +91,21 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const classSubjectCount: Record<string, Record<string, number>> = {};
     const preAssigned: Record<string, { subjectId: string; teacherId: string; combinedClassIds?: string[]; skipTeacherLoad?: boolean }> = {};
 
+    // A-level cross-form period lock: a subject taught at Form 5 in (day, slot) must
+    // NOT be taught in Form 6 at the same (day, slot), and vice versa. This ensures
+    // Form 5 and Form 6 always take common subjects at DIFFERENT times, while streams
+    // within the same form still share the period (via combineGroups / preAssigned).
+    const aLevelSubjectSlot: Record<string, 5 | 6> = {};
+    const aKey = (subjectId: string, day: string, slot: number) => `${subjectId}-${day}-${slot}`;
+    const markALevel = (form: number | undefined, subjectId: string, day: string, slot: number) => {
+      if (form === 5 || form === 6) aLevelSubjectSlot[aKey(subjectId, day, slot)] = form as 5 | 6;
+    };
+    const blockedByOtherForm = (form: number | undefined, subjectId: string, day: string, slot: number) => {
+      if (form !== 5 && form !== 6) return false;
+      const other = form === 5 ? 6 : 5;
+      return aLevelSubjectSlot[aKey(subjectId, day, slot)] === other;
+    };
+
     const totalSlots = config.periodsPerDay + 2;
     const breakSlot = config.morningBreakAfterPeriod + 1;
     const lunchSlot = config.lunchAfterPeriod + 2;
@@ -528,6 +543,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           if (preAssigned[preKey]) {
             const pa = preAssigned[preKey];
             slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: pa.subjectId, teacherId: pa.teacherId, type: 'lesson', combinedClassIds: pa.combinedClassIds });
+            markALevel(cls.form, pa.subjectId, day, slot);
             if (pa.skipTeacherLoad) {
               // Combined sibling — count subject toward this class but don't double-count teacher load
               classSubjectCount[cls.id][pa.subjectId] = (classSubjectCount[cls.id][pa.subjectId] || 0) + 1;
@@ -580,6 +596,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               if (s.isCompulsory || dailySubjectIds.has(s.id)) return true;
               return !violatesGapRule(cls.id, day, s.id, slot);
             })
+            // A-level cross-form lock: never schedule same subject at same period across Form 5 & 6
+            .filter(s => !blockedByOtherForm(cls.form, s.id, day, slot))
             .sort((a, b) => {
               // Highest priority: core/daily subjects must be placed BEFORE LUNCH
               // (i.e., before-break or after-break sections) for every class.
@@ -674,6 +692,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     || isPreMarkedFree(cls.id, day, ns)
                     || teacherSchedule[teacher.id]?.[`${day}-${ns}`]
                     || (teacherLoad[teacher.id] || 0) + k >= teacher.maxPeriodsPerWeek
+                    || blockedByOtherForm(cls.form, subject.id, day, ns)
                   ) { canBlock = false; break; }
                 }
                 if (!canBlock) continue;
@@ -703,6 +722,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     const memberClass = classes.find(c => c.id === cid);
                     for (let k = 1; k < block; k++) {
                       const ns = slot + k;
+                      if (blockedByOtherForm(cls.form, subject.id, day, ns)) { canGroupBlock = false; break; }
                       if (cid !== cls.id && (
                         hasPlacedSlot(cid, day, ns)
                         || preAssigned[`${cid}-${day}-${ns}`]
@@ -721,6 +741,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               slots.push(newSlot);
               recordSubjectSlot(cls.id, day, subject.id, slot, teacher.id, teacher);
               tryPairSlot(newSlot, cls, day, slot, subject);
+              markALevel(cls.form, subject.id, day, slot);
 
               others.forEach(cid => {
                 const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
@@ -748,7 +769,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   if ((classSubjectCount[cls.id][subject.id] || 0) + placed + 1 > ppwFor(subject, cls)) break;
                   if (teacherSchedule[teacher.id]?.[`${day}-${ns}`]) break;
                   if ((teacherLoad[teacher.id] || 0) + placed + 1 > teacher.maxPeriodsPerWeek) break;
+                  if (blockedByOtherForm(cls.form, subject.id, day, ns)) break;
                   preAssigned[`${cls.id}-${day}-${ns}`] = { subjectId: subject.id, teacherId: teacher.id, combinedClassIds: others };
+                  markALevel(cls.form, subject.id, day, ns);
                   others.forEach(cid => {
                     if (!preAssigned[`${cid}-${day}-${ns}`] &&
                         (classSubjectCount[cid]?.[subject.id] || 0) < ppwFor(subject, classes.find(c => c.id === cid))) {
@@ -804,6 +827,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   for (let k = 1; k < block; k++) {
                     const ns = slot + k;
                     if (ns > totalSlots || isNonAcademic(day, ns)) { canGroupBlock = false; break; }
+                    if (blockedByOtherForm(cls.form, subject.id, day, ns)) { canGroupBlock = false; break; }
                     if (cid !== cls.id && (
                       hasPlacedSlot(cid, day, ns)
                       || preAssigned[`${cid}-${day}-${ns}`]
@@ -819,6 +843,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const others = groupMembers.filter(id => id !== cls.id);
               slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, type: 'lesson', combinedClassIds: others });
               recordSubjectSlot(cls.id, day, subject.id, slot);
+              markALevel(cls.form, subject.id, day, slot);
               others.forEach(cid => {
                 const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
                 preAssigned[`${cid}-${day}-${slot}`] = {
@@ -842,7 +867,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   if (isNonAcademic(day, ns)) break;
                   if (preAssigned[`${cls.id}-${day}-${ns}`]) break;
                   if ((classSubjectCount[cls.id][subject.id] || 0) + placed + 1 > ppwFor(subject, cls)) break;
+                  if (blockedByOtherForm(cls.form, subject.id, day, ns)) break;
                   preAssigned[`${cls.id}-${day}-${ns}`] = { subjectId: subject.id, teacherId: '', combinedClassIds: others };
+                  markALevel(cls.form, subject.id, day, ns);
                   others.forEach(cid => {
                     if (!preAssigned[`${cid}-${day}-${ns}`] &&
                         (classSubjectCount[cid]?.[subject.id] || 0) < ppwFor(subject, classes.find(c => c.id === cid))) {
@@ -881,6 +908,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     || isNonAcademic(day, ns)
                     || preAssigned[`${cls.id}-${day}-${ns}`]
                     || isPreMarkedFree(cls.id, day, ns)
+                    || blockedByOtherForm(cls.form, subject.id, day, ns)
                   ) { canBlock = false; break; }
                 }
                 if (!canBlock) continue;
@@ -888,6 +916,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
               slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, type: 'lesson' });
               recordSubjectSlot(cls.id, day, subject.id, slot);
+              markALevel(cls.form, subject.id, day, slot);
               assigned = true;
 
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
@@ -902,7 +931,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   if (isNonAcademic(day, ns)) break;
                   if (preAssigned[`${cls.id}-${day}-${ns}`]) break;
                   if ((classSubjectCount[cls.id][subject.id] || 0) + placed + 1 > ppwFor(subject, cls)) break;
+                  if (blockedByOtherForm(cls.form, subject.id, day, ns)) break;
                   preAssigned[`${cls.id}-${day}-${ns}`] = { subjectId: subject.id, teacherId: '', combinedClassIds: [] };
+                  markALevel(cls.form, subject.id, day, ns);
                   placed++;
                   if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
                 }
