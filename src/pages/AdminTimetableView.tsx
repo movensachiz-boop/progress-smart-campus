@@ -36,15 +36,25 @@ export default function AdminTimetableView() {
     return `${fmt(minutes)} – ${fmt(minutes + durMin)}`;
   };
 
-  const classOptions = [...classes].sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream)).map(c => ({ value: c.id, label: `${c.form}${c.stream}` }));
+  const formsPresent = Array.from(new Set(classes.map(c => c.form))).sort((a, b) => a - b);
+  const combinedFormOptions = formsPresent.map(f => ({ value: `form:${f}`, label: `Form ${f} — All Streams (Combined)` }));
+  const perClassOptions = [...classes].sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream)).map(c => ({ value: c.id, label: `${c.form}${c.stream}` }));
+  const classOptions = [...combinedFormOptions, ...perClassOptions];
   const teacherOptions = teachers.map(t => ({ value: t.id, label: `${t.title} ${t.name}` }));
+
+  const isCombinedForm = viewMode === 'class' && selectedId.startsWith('form:');
+  const combinedFormNum = isCombinedForm ? Number(selectedId.slice(5)) : null;
 
   const filteredSlots = useMemo(() => {
     if (!timetable || !selectedId) return [];
+    if (isCombinedForm && combinedFormNum != null) {
+      const formClassIds = new Set(classes.filter(c => c.form === combinedFormNum).map(c => c.id));
+      return timetable.slots.filter(s => formClassIds.has(s.classId));
+    }
     return viewMode === 'class'
       ? timetable.slots.filter(s => s.classId === selectedId)
       : timetable.slots.filter(s => s.teacherId === selectedId || s.pairedTeacherId === selectedId);
-  }, [timetable, selectedId, viewMode]);
+  }, [timetable, selectedId, viewMode, isCombinedForm, combinedFormNum, classes]);
 
   const getSlot = (day: DayOfWeek, period: number) => filteredSlots.find(s => s.day === day && s.period === period);
 
