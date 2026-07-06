@@ -91,6 +91,21 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const classSubjectCount: Record<string, Record<string, number>> = {};
     const preAssigned: Record<string, { subjectId: string; teacherId: string; combinedClassIds?: string[]; skipTeacherLoad?: boolean }> = {};
 
+    // A-level cross-form period lock: a subject taught at Form 5 in (day, slot) must
+    // NOT be taught in Form 6 at the same (day, slot), and vice versa. This ensures
+    // Form 5 and Form 6 always take common subjects at DIFFERENT times, while streams
+    // within the same form still share the period (via combineGroups / preAssigned).
+    const aLevelSubjectSlot: Record<string, 5 | 6> = {};
+    const aKey = (subjectId: string, day: string, slot: number) => `${subjectId}-${day}-${slot}`;
+    const markALevel = (form: number | undefined, subjectId: string, day: string, slot: number) => {
+      if (form === 5 || form === 6) aLevelSubjectSlot[aKey(subjectId, day, slot)] = form as 5 | 6;
+    };
+    const blockedByOtherForm = (form: number | undefined, subjectId: string, day: string, slot: number) => {
+      if (form !== 5 && form !== 6) return false;
+      const other = form === 5 ? 6 : 5;
+      return aLevelSubjectSlot[aKey(subjectId, day, slot)] === other;
+    };
+
     const totalSlots = config.periodsPerDay + 2;
     const breakSlot = config.morningBreakAfterPeriod + 1;
     const lunchSlot = config.lunchAfterPeriod + 2;
