@@ -733,6 +733,95 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           // so the slot isn't left blank. Honour block-size constraints where possible.
           if (!assigned && candidateSubjects.length > 0) {
             for (const subject of candidateSubjects) {
+              const grp = combineGroups[cls.id]?.[subject.id];
+              if (!grp?.strict || grp.teacherId) continue;
+              const groupMembers = grp.groupClassIds.filter(cid => {
+                if (cid === cls.id) return true;
+                if (hasPlacedSlot(cid, day, slot)) return false;
+                if (preAssigned[`${cid}-${day}-${slot}`]) return false;
+                if (isPreMarkedFree(cid, day, slot)) return false;
+                if ((classSubjectCount[cid]?.[subject.id] || 0) >= ppwFor(subject, classes.find(c => c.id === cid))) return false;
+                const dayCount = classSubjectDayCount[`${cid}-${day}-${subject.id}`] || 0;
+                if (dayCount >= blockSize(subject, classes.find(c => c.id === cid)?.form)) return false;
+                return (classSubjectIds[cid] || []).includes(subject.id);
+              });
+              if (groupMembers.length !== grp.groupClassIds.length) continue;
+
+              const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
+              const block = blockSize(subject, cls.form);
+              const requireBlock = block > 1 && remainingThisSubject >= block;
+              if (requireBlock) {
+                const alreadyTodayChk = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
+                const dayDoubledChk = classSubjectDayDoubled[`${cls.id}-${subject.id}-${day}`];
+                if (alreadyTodayChk !== 0 || dayDoubledChk) continue;
+                let canGroupBlock = true;
+                for (const cid of groupMembers) {
+                  const memberClass = classes.find(c => c.id === cid);
+                  for (let k = 1; k < block; k++) {
+                    const ns = slot + k;
+                    if (ns > totalSlots || isNonAcademic(day, ns)) { canGroupBlock = false; break; }
+                    if (cid !== cls.id && (
+                      hasPlacedSlot(cid, day, ns)
+                      || preAssigned[`${cid}-${day}-${ns}`]
+                      || isPreMarkedFree(cid, day, ns)
+                      || (classSubjectCount[cid]?.[subject.id] || 0) + k >= ppwFor(subject, memberClass)
+                    )) { canGroupBlock = false; break; }
+                  }
+                  if (!canGroupBlock) break;
+                }
+                if (!canGroupBlock) continue;
+              }
+
+              const others = groupMembers.filter(id => id !== cls.id);
+              slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, type: 'lesson', combinedClassIds: others });
+              recordSubjectSlot(cls.id, day, subject.id, slot);
+              others.forEach(cid => {
+                const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
+                preAssigned[`${cid}-${day}-${slot}`] = {
+                  subjectId: subject.id,
+                  teacherId: '',
+                  combinedClassIds: otherCombined,
+                  skipTeacherLoad: true,
+                };
+              });
+              assigned = true;
+
+              const doubleKey = `${cls.id}-${subject.id}-${day}`;
+              const targetBlock = blockSize(subject, cls.form);
+              const wantsBlock = targetBlock > 1 || isDoubleEligible(subject.id, cls.id);
+              if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
+                const extra = Math.max(1, targetBlock - 1);
+                let placed = 0;
+                for (let k = 1; k <= extra; k++) {
+                  const ns = slot + k;
+                  if (ns > totalSlots) break;
+                  if (isNonAcademic(day, ns)) break;
+                  if (preAssigned[`${cls.id}-${day}-${ns}`]) break;
+                  if ((classSubjectCount[cls.id][subject.id] || 0) + placed + 1 > ppwFor(subject, cls)) break;
+                  preAssigned[`${cls.id}-${day}-${ns}`] = { subjectId: subject.id, teacherId: '', combinedClassIds: others };
+                  others.forEach(cid => {
+                    if (!preAssigned[`${cid}-${day}-${ns}`] &&
+                        (classSubjectCount[cid]?.[subject.id] || 0) < ppwFor(subject, classes.find(c => c.id === cid))) {
+                      const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
+                      preAssigned[`${cid}-${day}-${ns}`] = {
+                        subjectId: subject.id,
+                        teacherId: '',
+                        combinedClassIds: otherCombined,
+                        skipTeacherLoad: true,
+                      };
+                    }
+                  });
+                  placed++;
+                  if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
+                }
+                if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
+              }
+              break;
+            }
+          }
+
+          if (!assigned && candidateSubjects.length > 0) {
+            for (const subject of candidateSubjects) {
               if (combineGroups[cls.id]?.[subject.id]?.strict) continue;
               const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
               const block = blockSize(subject, cls.form);
