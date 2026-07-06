@@ -134,6 +134,29 @@ export default function SlotEditDialog({
             </Select>
           </div>
 
+          <div className="space-y-2 border-t pt-3">
+            <Label>Parallel / Alternative Subject <span className="text-[11px] text-muted-foreground font-normal">(optional — displays as "SUB1/SUB2")</span></Label>
+            <Select value={pairedSubjectId || '__none'} onValueChange={(v) => { setPairedSubjectId(v === '__none' ? '' : v); setPairedTeacherId(''); }} disabled={!subjectId || subjectId === '__none'}>
+              <SelectTrigger><SelectValue placeholder="Select a second subject" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— None —</SelectItem>
+                {availablePairedSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {pairedSubjectId && (
+            <div className="space-y-2">
+              <Label>Parallel Subject Teacher</Label>
+              <Select value={pairedTeacherId || '__none'} onValueChange={(v) => setPairedTeacherId(v === '__none' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder={availablePairedTeachers.length ? 'Select teacher' : 'No teachers assigned'} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— None —</SelectItem>
+                  {availablePairedTeachers.map(t => <SelectItem key={t.id} value={t.id}>{t.title} {t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {combinableClasses.length > 0 && (
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Combine with other classes</Label>
