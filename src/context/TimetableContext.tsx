@@ -357,11 +357,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           .filter(x => x.covered > 0)
           .sort((a, b) => b.covered - a.covered);
         const chosen = teacherCoverage[0]?.t;
-        if (!chosen) return;
         const groupIds = eligibleClasses.map(c => c.id);
         groupIds.forEach(cid => {
           if (!combineGroups[cid]) combineGroups[cid] = {};
-          combineGroups[cid][subj.id] = { teacherId: chosen.id, groupClassIds: groupIds, strict: true };
+          combineGroups[cid][subj.id] = { teacherId: chosen?.id || '', groupClassIds: groupIds, strict: true };
         });
       });
     });
