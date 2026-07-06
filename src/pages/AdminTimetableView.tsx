@@ -198,6 +198,29 @@ export default function AdminTimetableView() {
                   <tr key={period}>
                     <td className="p-2 text-[10px] text-muted-foreground font-medium border-b leading-tight whitespace-nowrap">{getPeriodTime(period)}</td>
                     {DAYS.map(day => {
+                      if (isCombinedForm) {
+                        const entries = getCombinedFormEntries(day, period);
+                        return (
+                          <td key={day} className="p-1.5 border-b align-top">
+                            <div className="space-y-1">
+                              {entries.map(e => (
+                                <div
+                                  key={e.classId}
+                                  className={`flex items-center justify-between gap-2 rounded px-1.5 py-1 text-[11px] ${
+                                    e.kind === 'lesson' ? 'bg-primary/10 text-primary' :
+                                    e.kind === 'break' ? 'bg-warning/20 text-warning-foreground' :
+                                    e.kind === 'sports' ? 'bg-success/20 text-success' :
+                                    'bg-muted/40 text-muted-foreground'
+                                  }`}
+                                >
+                                  <span className="font-mono text-[10px] opacity-70">{combinedFormNum}{e.streamLabel}</span>
+                                  <span className="font-semibold">{e.label}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        );
+                      }
                       const display = getSlotDisplay(day, period);
                       const isEditable = display?.editable;
                       return (
