@@ -583,7 +583,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           const currentSection = getDaySection(slot);
           const isEarlyDay = EARLY_DAYS.has(day);
 
-          const availableSubjects = shuffle(
+          const preFilteredSubjects = shuffle(
             (classSubjectIds[cls.id] || cls.subjectIds)
               .map(sId => subjects.find(s => s.id === sId)!)
               .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
@@ -598,9 +598,12 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             .filter(s => {
               if (s.isCompulsory || dailySubjectIds.has(s.id)) return true;
               return !violatesGapRule(cls.id, day, s.id, slot);
-            })
-            // A-level cross-form lock: never schedule same subject at same period across Form 5 & 6
-            .filter(s => !blockedByOtherForm(cls.form, s.id, day, slot))
+            });
+          // Soft cross-form preference: prefer subjects NOT already scheduled at
+          // this (day, slot) in another form. Fall back to the full list if the
+          // preferred set is empty so we never starve subjects of placements.
+          const preferredSubjects = preFilteredSubjects.filter(s => !blockedByOtherForm(cls.form, s.id, day, slot));
+          const availableSubjects = (preferredSubjects.length > 0 ? preferredSubjects : preFilteredSubjects)
             .sort((a, b) => {
               // Highest priority: core/daily subjects must be placed BEFORE LUNCH
               // (i.e., before-break or after-break sections) for every class.
