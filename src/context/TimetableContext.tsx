@@ -279,10 +279,21 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // Per-subject `commonForms`: for each listed form, all streams of that form attend
     // this subject together as a single combined session (same period across streams).
     // Legacy `isCommon` is treated as commonForms = [3, 4].
+    // AUTO-DETECT: additionally, any form where the subject is taken by EVERY stream
+    // (2+ classes) is treated as combined by default — no admin toggle needed.
     subjects.forEach(subj => {
-      const formsForCommon: FormLevel[] = subj.commonForms && subj.commonForms.length > 0
+      const explicit: FormLevel[] = subj.commonForms && subj.commonForms.length > 0
         ? subj.commonForms
         : (subj.isCommon ? [3, 4] : []);
+      const autoForms: FormLevel[] = [];
+      const formsPresent = Array.from(new Set(classes.map(c => c.form))) as FormLevel[];
+      formsPresent.forEach(fl => {
+        const formClasses = classes.filter(c => c.form === fl);
+        if (formClasses.length < 2) return;
+        const allHave = formClasses.every(c => (classSubjectIds[c.id] || []).includes(subj.id));
+        if (allHave) autoForms.push(fl);
+      });
+      const formsForCommon: FormLevel[] = Array.from(new Set([...explicit, ...autoForms])) as FormLevel[];
       if (formsForCommon.length === 0) return;
       formsForCommon.forEach(formLevel => {
         const formClasses = classes.filter(c => c.form === formLevel);
