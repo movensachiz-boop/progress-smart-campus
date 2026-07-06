@@ -278,7 +278,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // share the SAME teacher for the SAME subject. They will be scheduled together
     // in the same period as a combined lesson.
     // Returns a map: classId -> { subjectId -> { teacherId, groupClassIds[] } }
-    const combineGroups: Record<string, Record<string, { teacherId: string; groupClassIds: string[]; allowedDays?: Set<DayOfWeek> }>> = {};
+    const combineGroups: Record<string, Record<string, { teacherId: string; groupClassIds: string[]; allowedDays?: Set<DayOfWeek>; strict?: boolean }>> = {};
     teachers.forEach(t => {
       t.assignments.forEach(a => {
         // Group this teacher's assigned classes by form (only Forms 5 & 6 combine here)
@@ -312,10 +312,23 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // Auto-combine ONLY these subjects across streams within Form 3 and Form 4
       // (each form combined separately). Form 1 stays user-controlled via `commonForms`.
       // Forms 5-6 split by learning area.
-      const AUTO_COMBINE_CODES = ['ENG', 'SHO', 'SHON', 'GEO', 'HER', 'HIS', 'RS', 'RE', 'COMB', 'CS', 'MATH', 'MATHS', 'AGR', 'AGRI', 'BS', 'BUS'];
-      const code = (subj.code || '').toUpperCase();
+      const normaliseSubjectKey = (value: string) => value.toUpperCase().replace(/&/g, 'AND').replace(/[^A-Z0-9]+/g, '');
+      const AUTO_COMBINE_KEYS = new Set([
+        'ENG', 'ENGLISH',
+        'SHO', 'SHON', 'SHONA',
+        'GEO', 'GEOGRAPHY',
+        'HER', 'HEL', 'HERITAGE', 'HERITAGESTUDIES',
+        'HIS', 'HISTORY',
+        'RS', 'RE', 'REL', 'RELIGIOUSSTUDIES',
+        'COMB', 'CLS', 'CS', 'COMBINEDSCIENCE',
+        'MATH', 'MATHS', 'MATHEMATICS',
+        'AGR', 'AGRI', 'AGRIC', 'AGRICULTURE',
+        'BS', 'BUS', 'BUSINESS', 'BUSINESSSTUDIES',
+      ]);
+      const code = normaliseSubjectKey(subj.code || '');
+      const name = normaliseSubjectKey(subj.name || '');
       const autoForms: FormLevel[] = [];
-      if (AUTO_COMBINE_CODES.includes(code)) {
+      if (AUTO_COMBINE_KEYS.has(code) || AUTO_COMBINE_KEYS.has(name)) {
         [3 as FormLevel, 4 as FormLevel].forEach(fl => {
           const formClasses = classes.filter(c => c.form === fl);
           if (formClasses.length < 2) return;
@@ -348,7 +361,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         const groupIds = eligibleClasses.map(c => c.id);
         groupIds.forEach(cid => {
           if (!combineGroups[cid]) combineGroups[cid] = {};
-          combineGroups[cid][subj.id] = { teacherId: chosen.id, groupClassIds: groupIds };
+          combineGroups[cid][subj.id] = { teacherId: chosen.id, groupClassIds: groupIds, strict: true };
         });
       });
     });
@@ -357,51 +370,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // No hardcoded Form 1 overrides — if the user unchecks Form 1 for a subject, it will
     // be scheduled per-stream separately.
 
-
-    // Specific Business Studies combined groups (custom school rules):
-    //   - Form 3 Leo + Virgo + Aries: combined ONLY on Monday & Tuesday.
-    //   - Form 4 Shark + Whale: combined every day.
-    (() => {
-      const bus = subjects.find(s => (s.code || '').toUpperCase() === 'BUS');
-      if (!bus) return;
-      const pickGroup = (form: number, streamNames: string[]) =>
-        streamNames
-          .map(n => classes.find(c => c.form === form && c.stream.toLowerCase() === n.toLowerCase()))
-          .filter(Boolean) as SchoolClass[];
-      const chooseTeacher = (group: SchoolClass[]) => {
-        const ids = group.map(c => c.id);
-        const ranked = teachers
-          .map(t => ({
-            t,
-            covered: ids.filter(cid =>
-              t.assignments.some(a => a.subjectId === bus.id && a.classIds.some(rc => matchesClass(rc, cid)))
-            ).length,
-          }))
-          .filter(x => x.covered > 0)
-          .sort((a, b) => b.covered - a.covered);
-        return ranked[0]?.t;
-      };
-      const applyGroup = (group: SchoolClass[], allowedDays?: Set<DayOfWeek>) => {
-        if (group.length < 2) return;
-        const eligible = group.filter(c => (classSubjectIds[c.id] || []).includes(bus.id));
-        if (eligible.length < 2) return;
-        const teacher = chooseTeacher(eligible);
-        if (!teacher) return;
-        const ids = eligible.map(c => c.id);
-        ids.forEach(cid => {
-          if (!combineGroups[cid]) combineGroups[cid] = {};
-          combineGroups[cid][bus.id] = { teacherId: teacher.id, groupClassIds: ids, allowedDays };
-        });
-      };
-      applyGroup(pickGroup(3, ['Leo', 'Virgo', 'Aries']), new Set<DayOfWeek>(['Monday', 'Tuesday']));
-      applyGroup(pickGroup(4, ['Shark', 'Whale']));
-    })();
-
-
-
-
     const isPreMarkedFree = (classId: string, day: DayOfWeek, slot: number) =>
       freeSlots[classId]?.has(`${day}-${slot}`);
+
+    const hasPlacedSlot = (classId: string, day: DayOfWeek, slot: number) =>
+      slots.some(s => s.classId === classId && s.day === day && s.period === slot);
 
     const EARLY_DAYS = new Set(['Monday', 'Tuesday', 'Wednesday']);
 
