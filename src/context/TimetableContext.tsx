@@ -908,6 +908,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     || isNonAcademic(day, ns)
                     || preAssigned[`${cls.id}-${day}-${ns}`]
                     || isPreMarkedFree(cls.id, day, ns)
+                    || blockedByOtherForm(cls.form, subject.id, day, ns)
                   ) { canBlock = false; break; }
                 }
                 if (!canBlock) continue;
