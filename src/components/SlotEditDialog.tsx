@@ -23,12 +23,16 @@ export default function SlotEditDialog({
   const [subjectId, setSubjectId] = useState<string>('');
   const [teacherId, setTeacherId] = useState<string>('');
   const [combined, setCombined] = useState<string[]>([]);
+  const [pairedSubjectId, setPairedSubjectId] = useState<string>('');
+  const [pairedTeacherId, setPairedTeacherId] = useState<string>('');
 
   useEffect(() => {
     if (slot) {
       setSubjectId(slot.subjectId || '');
       setTeacherId(slot.teacherId || '');
       setCombined(slot.combinedClassIds || []);
+      setPairedSubjectId(slot.pairedSubjectId || '');
+      setPairedTeacherId(slot.pairedTeacherId || '');
     }
   }, [slot]);
 
@@ -43,6 +47,15 @@ export default function SlotEditDialog({
     if (!subjectId) return [];
     return teachers.filter(t => t.assignments.some(a => a.subjectId === subjectId && (!cls || a.classIds.includes(cls.id))));
   }, [subjectId, teachers, cls]);
+
+  const availablePairedSubjects = useMemo(() => {
+    return availableSubjects.filter(s => s.id !== subjectId);
+  }, [availableSubjects, subjectId]);
+
+  const availablePairedTeachers = useMemo(() => {
+    if (!pairedSubjectId) return [];
+    return teachers.filter(t => t.assignments.some(a => a.subjectId === pairedSubjectId && (!cls || a.classIds.includes(cls.id))));
+  }, [pairedSubjectId, teachers, cls]);
 
   // Other classes the chosen teacher also teaches this subject to (eligible for combining)
   const combinableClasses = useMemo(() => {
@@ -76,9 +89,17 @@ export default function SlotEditDialog({
     if (!slot) return;
     const cleanSubject = subjectId && subjectId !== '__none' ? subjectId : undefined;
     const cleanTeacher = teacherId && teacherId !== '__none' ? teacherId : undefined;
+    const cleanPairedSubject = pairedSubjectId && pairedSubjectId !== '__none' ? pairedSubjectId : undefined;
+    const cleanPairedTeacher = pairedTeacherId && pairedTeacherId !== '__none' ? pairedTeacherId : undefined;
     onSave(
       slot.id,
-      { subjectId: cleanSubject, teacherId: cleanTeacher, combinedClassIds: combined },
+      {
+        subjectId: cleanSubject,
+        teacherId: cleanTeacher,
+        combinedClassIds: combined,
+        pairedSubjectId: cleanPairedSubject,
+        pairedTeacherId: cleanPairedSubject ? cleanPairedTeacher : undefined,
+      },
       combined,
     );
     onOpenChange(false);
@@ -112,6 +133,29 @@ export default function SlotEditDialog({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-2 border-t pt-3">
+            <Label>Parallel / Alternative Subject <span className="text-[11px] text-muted-foreground font-normal">(optional — displays as "SUB1/SUB2")</span></Label>
+            <Select value={pairedSubjectId || '__none'} onValueChange={(v) => { setPairedSubjectId(v === '__none' ? '' : v); setPairedTeacherId(''); }} disabled={!subjectId || subjectId === '__none'}>
+              <SelectTrigger><SelectValue placeholder="Select a second subject" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— None —</SelectItem>
+                {availablePairedSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {pairedSubjectId && (
+            <div className="space-y-2">
+              <Label>Parallel Subject Teacher</Label>
+              <Select value={pairedTeacherId || '__none'} onValueChange={(v) => setPairedTeacherId(v === '__none' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder={availablePairedTeachers.length ? 'Select teacher' : 'No teachers assigned'} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— None —</SelectItem>
+                  {availablePairedTeachers.map(t => <SelectItem key={t.id} value={t.id}>{t.title} {t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {combinableClasses.length > 0 && (
             <div className="space-y-2">
