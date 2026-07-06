@@ -601,7 +601,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
           let assigned = false;
           for (const subject of candidateSubjects) {
+            const strictGroup = combineGroups[cls.id]?.[subject.id]?.strict ? combineGroups[cls.id][subject.id] : undefined;
             const availableTeachers = teachers.filter(t => {
+              if (strictGroup && t.id !== strictGroup.teacherId) return false;
               const hasAssignment = t.assignments.some(a => a.subjectId === subject.id && a.classIds.some(cid => matchesClass(cid, cls.id)));
               return hasAssignment && (teacherLoad[t.id] || 0) < t.maxPeriodsPerWeek && !teacherSchedule[t.id]?.[`${day}-${slot}`];
             });
@@ -635,14 +637,37 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const groupMembers = grpActive
                 ? grp!.groupClassIds.filter(cid => {
                     if (cid === cls.id) return true;
+                    if (hasPlacedSlot(cid, day, slot)) return false;
                     if (preAssigned[`${cid}-${day}-${slot}`]) return false;
                     if (isPreMarkedFree(cid, day, slot)) return false;
                     if ((classSubjectCount[cid]?.[subject.id] || 0) >= ppwFor(subject, classes.find(c => c.id === cid))) return false;
                     const dayCount = classSubjectDayCount[`${cid}-${day}-${subject.id}`] || 0;
-                    if (dayCount >= 2) return false;
+                    if (dayCount >= blockSize(subject, classes.find(c => c.id === cid)?.form)) return false;
                     return (classSubjectIds[cid] || []).includes(subject.id);
                   })
                 : [cls.id];
+
+              if (grp?.strict) {
+                if (!grpActive) continue;
+                if (groupMembers.length !== grp.groupClassIds.length) continue;
+                if (requireBlock) {
+                  let canGroupBlock = true;
+                  for (const cid of groupMembers) {
+                    const memberClass = classes.find(c => c.id === cid);
+                    for (let k = 1; k < block; k++) {
+                      const ns = slot + k;
+                      if (cid !== cls.id && (
+                        hasPlacedSlot(cid, day, ns)
+                        || preAssigned[`${cid}-${day}-${ns}`]
+                        || isPreMarkedFree(cid, day, ns)
+                        || (classSubjectCount[cid]?.[subject.id] || 0) + k >= ppwFor(subject, memberClass)
+                      )) { canGroupBlock = false; break; }
+                    }
+                    if (!canGroupBlock) break;
+                  }
+                  if (!canGroupBlock) continue;
+                }
+              }
 
               const others = groupMembers.filter(id => id !== cls.id);
               const newSlot: TimetableSlot = { id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, teacherId: teacher.id, type: 'lesson', combinedClassIds: others };
