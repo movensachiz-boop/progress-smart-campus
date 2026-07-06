@@ -218,6 +218,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       'HER', 'HEL', 'HERITAGE', 'HERITAGESTUDIES',
       'FRS', 'FRE', 'FRENCH',
     ]);
+    // Subjects that must NEVER appear in A-level (Forms 5 & 6) regardless of
+    // class configuration or teacher assignments.
+    const A_LEVEL_EXCLUDED_KEYS = new Set([
+      'ENG', 'ENGLISH', 'ENGLISHLANGUAGE',
+    ]);
 
     const aLevelAllowedAreas = (subject: Subject): SchoolClass['learningArea'][] | null => {
       if (subjectMatchesAnyKey(subject, A_LEVEL_ALL_STREAM_KEYS)) return ['Sciences', 'Commercials', 'Arts'];
@@ -225,6 +230,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (subjectMatchesAnyKey(subject, A_LEVEL_ARTS_ONLY_KEYS)) return ['Arts'];
       return null;
     };
+    const isExcludedFromALevel = (subject: Subject) => subjectMatchesAnyKey(subject, A_LEVEL_EXCLUDED_KEYS);
 
     // Respect the class subject allocation exactly. Teacher assignments decide who can teach
     // a selected subject, but they must not silently re-add subjects removed from a class.
@@ -255,13 +261,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // A-level (Forms 5 & 6) is strictly split by learning area. A Sciences stream
       // must never receive Arts/Commercials subjects (e.g. GEO A) even if a teacher
       // was mistakenly assigned or the class definition drifted.
-      if ((c.form === 5 || c.form === 6) && c.learningArea) {
+      if (c.form === 5 || c.form === 6) {
         merged = merged.filter(sId => {
           const subj = subjects.find(s => s.id === sId);
           if (!subj) return false;
+          if (isExcludedFromALevel(subj)) return false;
+          if (!c.learningArea) return true;
           const allowedAreas = aLevelAllowedAreas(subj);
           if (!allowedAreas) return true;
-          return allowedAreas.includes(c.learningArea!);
+          return allowedAreas.includes(c.learningArea);
         });
       }
       classSubjectIds[c.id] = merged;
