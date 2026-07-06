@@ -651,8 +651,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             if (availableTeachers.length > 0) {
               const teacher = availableTeachers.sort((a, b) => (teacherLoad[a.id] || 0) - (teacherLoad[b.id] || 0))[0];
 
-              // Enforce required block size (double for sciences, quad for A-level).
-              // If fewer periods remain than the block, allow a shorter placement.
               const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
               const block = blockSize(subject, cls.form);
               const requireBlock = block > 1 && remainingThisSubject >= block;
@@ -674,8 +672,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 if (!canBlock) continue;
               }
 
-              // Auto-combine: if this class is in a combine-group for this subject with this
-              // teacher, schedule all sibling classes in the same period as a combined lesson.
               const grp = combineGroups[cls.id]?.[subject.id];
               const grpActive = !!grp && grp.teacherId === teacher.id && (!grp.allowedDays || grp.allowedDays.has(day));
               const groupMembers = grpActive
@@ -690,16 +686,12 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   })
                 : [cls.id];
 
-
               const others = groupMembers.filter(id => id !== cls.id);
               const newSlot: TimetableSlot = { id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, teacherId: teacher.id, type: 'lesson', combinedClassIds: others };
               slots.push(newSlot);
               recordSubjectSlot(cls.id, day, subject.id, slot, teacher.id, teacher);
               tryPairSlot(newSlot, cls, day, slot, subject);
 
-              // Pre-assign sibling classes for this same period (so the outer per-class loop
-              // for this slot will emit them as combined). Their teacherLoad is NOT incremented
-              // again since the teacher physically teaches one combined session.
               others.forEach(cid => {
                 const otherCombined = [cls.id, ...others.filter(o => o !== cid)];
                 preAssigned[`${cid}-${day}-${slot}`] = {
@@ -714,7 +706,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
               const targetBlock = blockSize(subject, cls.form);
-              // For double/quad-eligible subjects, pre-assign the remaining block-1 consecutive slots.
               const wantsBlock = targetBlock > 1 || isDoubleEligible(subject.id, cls.id);
               if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
                 const extra = Math.max(1, targetBlock - 1);
@@ -743,7 +734,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   if (!teacherSchedule[teacher.id]) teacherSchedule[teacher.id] = {};
                   teacherSchedule[teacher.id][`${day}-${ns}`] = cls.id;
                   placed++;
-                  // For doubleEligible non-quad subjects, only chain a single extra (double).
                   if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
                 }
                 if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
@@ -752,21 +742,56 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
+          // Teacher-less placement: if no teacher is assigned to any candidate subject
+          // for this class, still place the subject on the timetable (without a teacher)
+          // so the slot isn't left blank. Honour block-size constraints where possible.
           if (!assigned && candidateSubjects.length > 0) {
-            // Never place a must-double subject (CHE/PHY/BIO/CLS/AGR + all A-level) as an
-            // unpaired single via fallback unless only 1 period remains (handles odd ppw like AGR=5).
-            const fallbackPool = candidateSubjects.filter(s => {
-              if (!mustDouble(s, cls.form)) return true;
-              const remaining = ppwFor(s, cls) - (classSubjectCount[cls.id][s.id] || 0);
-              return remaining <= 1;
-            });
-            if (fallbackPool.length > 0) {
-              const subject = fallbackPool[0];
+            for (const subject of candidateSubjects) {
+              const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
+              const block = blockSize(subject, cls.form);
+              const requireBlock = block > 1 && remainingThisSubject >= block;
+              if (requireBlock) {
+                const alreadyTodayChk = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
+                const dayDoubledChk = classSubjectDayDoubled[`${cls.id}-${subject.id}-${day}`];
+                if (alreadyTodayChk !== 0 || dayDoubledChk) continue;
+                let canBlock = true;
+                for (let k = 1; k < block; k++) {
+                  const ns = slot + k;
+                  if (ns > totalSlots
+                    || isNonAcademic(day, ns)
+                    || preAssigned[`${cls.id}-${day}-${ns}`]
+                    || isPreMarkedFree(cls.id, day, ns)
+                  ) { canBlock = false; break; }
+                }
+                if (!canBlock) continue;
+              }
+
               slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, type: 'lesson' });
               recordSubjectSlot(cls.id, day, subject.id, slot);
               assigned = true;
+
+              const doubleKey = `${cls.id}-${subject.id}-${day}`;
+              const targetBlock = blockSize(subject, cls.form);
+              const wantsBlock = targetBlock > 1 || isDoubleEligible(subject.id, cls.id);
+              if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
+                const extra = Math.max(1, targetBlock - 1);
+                let placed = 0;
+                for (let k = 1; k <= extra; k++) {
+                  const ns = slot + k;
+                  if (ns > totalSlots) break;
+                  if (isNonAcademic(day, ns)) break;
+                  if (preAssigned[`${cls.id}-${day}-${ns}`]) break;
+                  if ((classSubjectCount[cls.id][subject.id] || 0) + placed + 1 > ppwFor(subject, cls)) break;
+                  preAssigned[`${cls.id}-${day}-${ns}`] = { subjectId: subject.id, teacherId: '', combinedClassIds: [] };
+                  placed++;
+                  if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
+                }
+                if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
+              }
+              break;
             }
           }
+
           if (!assigned) {
             slots.push({ id: v4(), day, period: slot, classId: cls.id, type: 'lesson' });
           }
