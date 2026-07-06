@@ -95,7 +95,11 @@ export default function AdminSubjects() {
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{s.code}</Badge>
             <span className="text-[10px] text-muted-foreground">{s.periodsPerWeek}/wk</span>
             {s.isCompulsory && <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Core</Badge>}
-            {s.isCommon && <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-accent/40 text-accent-foreground">Common</Badge>}
+            {((s.commonForms && s.commonForms.length > 0) || s.isCommon) && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-accent/40 text-accent-foreground">
+                Combined F{(s.commonForms && s.commonForms.length > 0 ? s.commonForms : [3,4]).sort().join('/F')}
+              </Badge>
+            )}
           </div>
 
           <div className="flex gap-0.5 mt-1">
