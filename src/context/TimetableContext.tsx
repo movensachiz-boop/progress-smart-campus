@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, TimetableConflict, DayOfWeek } from '@/types/school';
+import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, TimetableConflict, DayOfWeek, FormLevel } from '@/types/school';
 import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefaultTeachers, DAYS } from '@/data/defaults';
 import { v4 } from '@/lib/utils';
 
