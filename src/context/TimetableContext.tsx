@@ -181,6 +181,33 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const matchesClass = (assignedId: string, classId: string) =>
       assignedId === classId || canonicalClassId(assignedId) === classId;
 
+    const normaliseSubjectKey = (value: string) => value.toUpperCase().replace(/&/g, 'AND').replace(/[^A-Z0-9]+/g, '');
+    const subjectMatchesAnyKey = (subject: Subject, keys: Set<string>) => {
+      const code = normaliseSubjectKey(subject.code || '');
+      const name = normaliseSubjectKey(subject.name || '');
+      return keys.has(code) || keys.has(name);
+    };
+
+    const A_LEVEL_ALL_STREAM_KEYS = new Set([
+      'GEO', 'GEOGRAPHY', 'GEOALEVEL', 'GEOGRAPHYALEVEL',
+    ]);
+    const A_LEVEL_ARTS_ONLY_KEYS = new Set([
+      'HIS', 'HISTORY',
+      'LIT', 'LITERATURE', 'LITERATUREINENGLISH', 'ENGLISHLITERATURE',
+      'SHO', 'SHON', 'SHONA',
+      'BIB', 'BIBLE', 'BIBLEKNOWLEDGE', 'BIBLICALSTUDIES',
+      'RS', 'RE', 'REL', 'RELIGION', 'RELIGIOUSSTUDIES', 'DIVINITY',
+      'HER', 'HEL', 'HERITAGE', 'HERITAGESTUDIES',
+      'FRS', 'FRE', 'FRENCH',
+    ]);
+
+    const aLevelAllowedAreas = (subject: Subject): SchoolClass['learningArea'][] | null => {
+      if (subjectMatchesAnyKey(subject, A_LEVEL_ALL_STREAM_KEYS)) return ['Sciences', 'Commercials', 'Arts'];
+      if (subject.learningAreas && subject.learningAreas.length > 0) return subject.learningAreas;
+      if (subjectMatchesAnyKey(subject, A_LEVEL_ARTS_ONLY_KEYS)) return ['Arts'];
+      return null;
+    };
+
     // Respect the class subject allocation exactly. Teacher assignments decide who can teach
     // a selected subject, but they must not silently re-add subjects removed from a class.
     // Build subject list per class from BOTH sources:
@@ -214,8 +241,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         merged = merged.filter(sId => {
           const subj = subjects.find(s => s.id === sId);
           if (!subj) return false;
-          if (!subj.learningAreas || subj.learningAreas.length === 0) return true;
-          return subj.learningAreas.includes(c.learningArea!);
+          const allowedAreas = aLevelAllowedAreas(subj);
+          if (!allowedAreas) return true;
+          return allowedAreas.includes(c.learningArea!);
         });
       }
       classSubjectIds[c.id] = merged;
@@ -329,7 +357,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // Auto-combine ONLY these subjects across streams within Form 3 and Form 4
       // (each form combined separately). Form 1 stays user-controlled via `commonForms`.
       // Forms 5-6 split by learning area.
-      const normaliseSubjectKey = (value: string) => value.toUpperCase().replace(/&/g, 'AND').replace(/[^A-Z0-9]+/g, '');
       const AUTO_COMBINE_KEYS = new Set([
         'ENG', 'ENGLISH',
         'SHO', 'SHON', 'SHONA',
