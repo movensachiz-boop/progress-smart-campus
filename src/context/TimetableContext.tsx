@@ -1034,10 +1034,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     persistTimetable({ ...timetable, slots: newSlots, conflicts: detectConflicts(newSlots) });
   }, [timetable, teachers]);
 
+  const replaceTimetable = useCallback((next: Timetable) => {
+    persistTimetable({ ...next, conflicts: detectConflicts(next.slots) });
+  }, [teachers]);
+
   return (
     <TimetableContext.Provider value={{
       config, setConfig, subjects, setSubjects, teachers, setTeachers,
-      classes, setClasses, timetable, generateTimetable, updateSlot,
+      classes, setClasses, timetable, generateTimetable, updateSlot, replaceTimetable,
     }}>
       {children}
     </TimetableContext.Provider>
