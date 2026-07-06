@@ -279,8 +279,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // Per-subject `commonForms`: for each listed form, all streams of that form attend
     // this subject together as a single combined session (same period across streams).
     // Legacy `isCommon` is treated as commonForms = [3, 4].
-    // AUTO-DETECT: additionally, any form where the subject is taken by EVERY stream
-    // (2+ classes) is treated as combined by default — no admin toggle needed.
+    // AUTO-DETECT: source of truth is the Classes section (each class's subjectIds).
+    // Any form where 2+ streams list the subject in their class definition is auto-combined
+    // — so a missing entry on one stream (data-entry mistake) doesn't block combining the rest,
+    // and only the classes that actually have the subject are placed together.
     subjects.forEach(subj => {
       const explicit: FormLevel[] = subj.commonForms && subj.commonForms.length > 0
         ? subj.commonForms
@@ -290,8 +292,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       formsPresent.forEach(fl => {
         const formClasses = classes.filter(c => c.form === fl);
         if (formClasses.length < 2) return;
-        const allHave = formClasses.every(c => (classSubjectIds[c.id] || []).includes(subj.id));
-        if (allHave) autoForms.push(fl);
+        const streamsWithSubject = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subj.id)).length;
+        if (streamsWithSubject >= 2) autoForms.push(fl);
       });
       const formsForCommon: FormLevel[] = Array.from(new Set([...explicit, ...autoForms])) as FormLevel[];
       if (formsForCommon.length === 0) return;
