@@ -194,9 +194,14 @@ export default function AdminMasterTimetable() {
             </div>
             <p className="text-sm text-muted-foreground">All classes · All days</p>
           </div>
-          <Button onClick={handlePrintPDF} className="gap-1.5">
-            <FileDown className="w-4 h-4" /> Download PDF
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBalanceOpen(true)} className="gap-1.5">
+              <Scale className="w-4 h-4" /> Balance A-Level
+            </Button>
+            <Button onClick={handlePrintPDF} className="gap-1.5">
+              <FileDown className="w-4 h-4" /> Download PDF
+            </Button>
+          </div>
         </div>
 
         {DAYS.map((day, i) => (
