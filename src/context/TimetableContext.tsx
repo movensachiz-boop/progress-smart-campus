@@ -826,6 +826,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   for (let k = 1; k < block; k++) {
                     const ns = slot + k;
                     if (ns > totalSlots || isNonAcademic(day, ns)) { canGroupBlock = false; break; }
+                    if (blockedByOtherForm(cls.form, subject.id, day, ns)) { canGroupBlock = false; break; }
                     if (cid !== cls.id && (
                       hasPlacedSlot(cid, day, ns)
                       || preAssigned[`${cid}-${day}-${ns}`]
