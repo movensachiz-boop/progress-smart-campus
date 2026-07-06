@@ -309,18 +309,12 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const explicit: FormLevel[] = subj.commonForms && subj.commonForms.length > 0
         ? subj.commonForms
         : (subj.isCommon ? [3, 4] : []);
-      const autoForms: FormLevel[] = [];
-      const formsPresent = Array.from(new Set(classes.map(c => c.form))) as FormLevel[];
-      formsPresent.forEach(fl => {
-        // Form 1 combining is user-controlled via subject `commonForms` only — no auto-detect.
-        if (fl === 1) return;
-        const formClasses = classes.filter(c => c.form === fl);
-        if (formClasses.length < 2) return;
-        const streamsWithSubject = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subj.id)).length;
-        if (streamsWithSubject >= 2) autoForms.push(fl);
-      });
-      const formsForCommon: FormLevel[] = Array.from(new Set([...explicit, ...autoForms])) as FormLevel[];
+      // Combining is STRICTLY user-controlled via subject `commonForms` (or legacy `isCommon`).
+      // No auto-detect from shared class subjectIds — a subject appearing in multiple streams
+      // does NOT imply they should be combined.
+      const formsForCommon: FormLevel[] = Array.from(new Set(explicit)) as FormLevel[];
       if (formsForCommon.length === 0) return;
+
 
       formsForCommon.forEach(formLevel => {
         const formClasses = classes.filter(c => c.form === formLevel);
