@@ -276,21 +276,24 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
-    // Forms 3 & 4: subjects marked `isCommon` are taught as a single combined session
-    // across ALL streams of that form. Pick one designated teacher per (form, subject).
-    const commonSubjectIds = new Set(subjects.filter(s => s.isCommon).map(s => s.id));
-    ([3, 4] as const).forEach(formLevel => {
-      const formClasses = classes.filter(c => c.form === formLevel);
-      if (formClasses.length < 2) return;
-      commonSubjectIds.forEach(subjId => {
-        const eligibleClasses = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subjId));
+    // Per-subject `commonForms`: for each listed form, all streams of that form attend
+    // this subject together as a single combined session (same period across streams).
+    // Legacy `isCommon` is treated as commonForms = [3, 4].
+    subjects.forEach(subj => {
+      const formsForCommon: FormLevel[] = subj.commonForms && subj.commonForms.length > 0
+        ? subj.commonForms
+        : (subj.isCommon ? [3, 4] : []);
+      if (formsForCommon.length === 0) return;
+      formsForCommon.forEach(formLevel => {
+        const formClasses = classes.filter(c => c.form === formLevel);
+        if (formClasses.length < 2) return;
+        const eligibleClasses = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subj.id));
         if (eligibleClasses.length < 2) return;
-        // Pick the teacher who covers the most of these classes for this subject; fallback to first match.
         const teacherCoverage = teachers
           .map(t => ({
             t,
             covered: eligibleClasses.filter(c =>
-              t.assignments.some(a => a.subjectId === subjId && a.classIds.some(cid => matchesClass(cid, c.id)))
+              t.assignments.some(a => a.subjectId === subj.id && a.classIds.some(cid => matchesClass(cid, c.id)))
             ).length,
           }))
           .filter(x => x.covered > 0)
@@ -300,7 +303,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         const groupIds = eligibleClasses.map(c => c.id);
         groupIds.forEach(cid => {
           if (!combineGroups[cid]) combineGroups[cid] = {};
-          combineGroups[cid][subjId] = { teacherId: chosen.id, groupClassIds: groupIds };
+          combineGroups[cid][subj.id] = { teacherId: chosen.id, groupClassIds: groupIds };
         });
       });
     });
