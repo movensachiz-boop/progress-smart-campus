@@ -970,8 +970,23 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const newTimetable: Timetable = { id: v4(), slots, conflicts: [], generatedAt: new Date().toISOString() };
     newTimetable.conflicts = detectConflicts(slots);
-    persistTimetable(newTimetable);
+    // Auto-rebalance A-level: shift any excess periods on over-allocated
+    // subjects into under-allocated subjects in the same class.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { rebalance } = require('@/lib/timetableBalancer');
+      let current = newTimetable;
+      for (let i = 0; i < 3; i++) {
+        const { nextTimetable, report } = rebalance(current, classes, subjects, teachers);
+        if (!report.changes.length) break;
+        current = { ...nextTimetable, conflicts: detectConflicts(nextTimetable.slots) };
+      }
+      persistTimetable(current);
+    } catch {
+      persistTimetable(newTimetable);
+    }
   }, [config, subjects, teachers, classes, isSportsPeriod]);
+
 
   const detectConflicts = (slots: TimetableSlot[]): TimetableConflict[] => {
     const conflicts: TimetableConflict[] = [];
