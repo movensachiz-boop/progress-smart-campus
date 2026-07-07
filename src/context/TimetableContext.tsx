@@ -234,7 +234,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (subjectMatchesAnyKey(subject, A_LEVEL_ARTS_ONLY_KEYS)) return ['Arts'];
       return null;
     };
-    const isExcludedFromALevel = (subject: Subject) => subjectMatchesAnyKey(subject, A_LEVEL_EXCLUDED_KEYS);
+    const isExcludedFromALevel = (subject: Subject) => {
+      if (subjectMatchesAnyKey(subject, A_LEVEL_EXCLUDED_KEYS)) return true;
+      // Rule: A-level subject codes must end with "A" (e.g. MATA, PHYA, GEOA).
+      // Any subject whose code doesn't end in A is not an A-level subject.
+      const code = (subject.code || '').trim().toUpperCase();
+      if (!code.endsWith('A')) return true;
+      return false;
+    };
 
     // Respect the class subject allocation exactly. Teacher assignments decide who can teach
     // a selected subject, but they must not silently re-add subjects removed from a class.
