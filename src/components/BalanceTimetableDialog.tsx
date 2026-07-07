@@ -55,6 +55,74 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
     toast({ title: 'Reverted to previous timetable' });
   };
 
+  // Edit "Current" directly: adjust the number of slots for (class, subject) up or down.
+  // Decreases convert excess lesson slots into free periods (pairs first).
+  // Increases claim free (empty) slots in the same class and assign an eligible teacher when possible.
+  const adjustCurrent = (classId: string, subjectId: string, newCount: number) => {
+    if (!timetable) return;
+    const cls = classes.find(c => c.id === classId);
+    if (!cls) return;
+    const clamped = Math.max(0, Math.min(A_LEVEL_TARGET, Math.floor(newCount)));
+    const mine = timetable.slots.filter(s => s.classId === classId && s.subjectId === subjectId && s.type === 'lesson');
+    const current = mine.length;
+    if (clamped === current) return;
+
+    setUndoStack(prev => [...prev, timetable]);
+    let slots: TimetableSlot[] = timetable.slots.map(s => ({ ...s }));
+
+    if (clamped < current) {
+      // Remove (current - clamped) slots. Prefer full doubles first.
+      let toRemove = current - clamped;
+      const byDay: Record<string, TimetableSlot[]> = {};
+      slots.filter(s => s.classId === classId && s.subjectId === subjectId && s.type === 'lesson')
+        .forEach(s => { (byDay[s.day] ||= []).push(s); });
+      const removeIds = new Set<string>();
+      for (const day of Object.keys(byDay)) {
+        const arr = byDay[day].sort((a, b) => a.period - b.period);
+        for (let i = 0; i < arr.length - 1 && toRemove >= 2; i++) {
+          if (arr[i + 1].period === arr[i].period + 1 && !removeIds.has(arr[i].id)) {
+            removeIds.add(arr[i].id); removeIds.add(arr[i + 1].id); toRemove -= 2; i++;
+          }
+        }
+      }
+      // Any remaining singletons
+      if (toRemove > 0) {
+        const rest = slots.filter(s => s.classId === classId && s.subjectId === subjectId && !removeIds.has(s.id));
+        for (const s of rest) { if (toRemove <= 0) break; removeIds.add(s.id); toRemove--; }
+      }
+      slots = slots.map(s => removeIds.has(s.id)
+        ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
+        : s);
+    } else {
+      // Add (clamped - current) slots. Pick empty lesson slots (no subjectId) in this class.
+      let toAdd = clamped - current;
+      const empties = slots
+        .filter(s => s.classId === classId && s.type === 'lesson' && !s.subjectId)
+        .sort((a, b) => a.day.localeCompare(b.day) || a.period - b.period);
+      const eligibleTeacher = teachers.find(t =>
+        t.subjectIds.includes(subjectId) &&
+        t.assignments.some(a => a.subjectId === subjectId && a.classIds.some(cid => cid === classId))
+      ) || teachers.find(t => t.subjectIds.includes(subjectId));
+      const claimIds = new Set<string>();
+      for (const s of empties) {
+        if (toAdd <= 0) break;
+        // avoid teacher clash at same (day,period)
+        if (eligibleTeacher && slots.some(x => x.day === s.day && x.period === s.period && x.teacherId === eligibleTeacher.id && x.classId !== classId)) continue;
+        claimIds.add(s.id); toAdd--;
+      }
+      slots = slots.map(s => claimIds.has(s.id)
+        ? { ...s, subjectId, teacherId: eligibleTeacher?.id }
+        : s);
+      if (toAdd > 0) {
+        toast({ title: 'Not enough free slots', description: `Only added ${clamped - current - toAdd} of ${clamped - current} requested.`, variant: 'destructive' });
+      }
+    }
+
+    replaceTimetable({ ...timetable, slots });
+    toast({ title: 'Timetable updated', description: `${cls.form}${cls.stream} · ${subjects.find(s => s.id === subjectId)?.code} → ${clamped} period(s)` });
+  };
+
+
   const report = preview?.report;
 
   const subjectChartData = useMemo(() => {
