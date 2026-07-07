@@ -11,7 +11,8 @@ import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle } from 'lucide-re
 import { toast } from 'sonner';
 
 export default function AdminSubjects() {
-  const { subjects, setSubjects } = useTimetable();
+  const { subjects, setSubjects, classes, timetable } = useTimetable();
+  const [pendingRename, setPendingRename] = useState<{ data: Subject; count: number; classNames: string[] } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
   const [search, setSearch] = useState('');
@@ -52,12 +53,32 @@ export default function AdminSubjects() {
       isCommon: undefined,
     };
     if (editing) {
+      const nameChanged = editing.name !== subjectData.name || editing.code !== subjectData.code;
+      // Auto-detect A-level (Form 5/6) placements that will reflect the new name.
+      const aLevelClassIds = new Set(classes.filter(c => c.form === 5 || c.form === 6).map(c => c.id));
+      const affected = timetable?.slots.filter(s => s.subjectId === editing.id && aLevelClassIds.has(s.classId)) || [];
+      if (nameChanged && affected.length > 0) {
+        const classNames = Array.from(new Set(affected.map(s => {
+          const c = classes.find(cc => cc.id === s.classId);
+          return c ? `${c.form}${c.stream}` : s.classId;
+        })));
+        setPendingRename({ data: subjectData, count: affected.length, classNames });
+        return;
+      }
       setSubjects(subjects.map(s => s.id === editing.id ? subjectData : s));
       toast.success(`${form.name} updated`);
     } else {
       setSubjects([...subjects, subjectData]);
       toast.success(`${form.name} added`);
     }
+    setDialogOpen(false);
+  };
+
+  const confirmRename = () => {
+    if (!pendingRename || !editing) return;
+    setSubjects(subjects.map(s => s.id === editing.id ? pendingRename.data : s));
+    toast.success(`${pendingRename.data.name} updated across ${pendingRename.count} A-level slot(s)`);
+    setPendingRename(null);
     setDialogOpen(false);
   };
 
@@ -246,6 +267,30 @@ export default function AdminSubjects() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
               <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+
+
+        {/* Rename Propagation Confirmation (A-Level only) */}
+        <Dialog open={!!pendingRename} onOpenChange={(open) => !open && setPendingRename(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-accent-foreground" /> Apply A-Level Rename?</DialogTitle></DialogHeader>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                This subject appears in <span className="font-semibold text-foreground">{pendingRename?.count}</span> A-level timetable slot(s) across:
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {pendingRename?.classNames.map(cn => (
+                  <Badge key={cn} variant="secondary" className="text-[10px]">{cn}</Badge>
+                ))}
+              </div>
+              <p>Renaming will update every one of those placements to <span className="font-semibold text-foreground">{pendingRename?.data.name} ({pendingRename?.data.code})</span>.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPendingRename(null)}>Cancel</Button>
+              <Button onClick={confirmRename}>Apply to all A-Level slots</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
