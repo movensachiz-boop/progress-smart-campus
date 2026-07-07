@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTimetable } from '@/context/TimetableContext';
@@ -9,7 +10,7 @@ import {
   exportTimetableJSON, exportFairnessCSV, exportFairnessPDF, exportTeacherLoadCSV,
   exportClassTimetablesCSV, exportTeacherTimetablesCSV, exportRoomUsageCSV,
 } from '@/lib/timetableExports';
-import { Timetable } from '@/types/school';
+import { Timetable, TimetableSlot } from '@/types/school';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { AlertTriangle, CheckCircle2, FileDown, RotateCcw, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -53,6 +54,74 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
     setUndoStack(prev => prev.slice(0, -1));
     toast({ title: 'Reverted to previous timetable' });
   };
+
+  // Edit "Current" directly: adjust the number of slots for (class, subject) up or down.
+  // Decreases convert excess lesson slots into free periods (pairs first).
+  // Increases claim free (empty) slots in the same class and assign an eligible teacher when possible.
+  const adjustCurrent = (classId: string, subjectId: string, newCount: number) => {
+    if (!timetable) return;
+    const cls = classes.find(c => c.id === classId);
+    if (!cls) return;
+    const clamped = Math.max(0, Math.min(A_LEVEL_TARGET, Math.floor(newCount)));
+    const mine = timetable.slots.filter(s => s.classId === classId && s.subjectId === subjectId && s.type === 'lesson');
+    const current = mine.length;
+    if (clamped === current) return;
+
+    setUndoStack(prev => [...prev, timetable]);
+    let slots: TimetableSlot[] = timetable.slots.map(s => ({ ...s }));
+
+    if (clamped < current) {
+      // Remove (current - clamped) slots. Prefer full doubles first.
+      let toRemove = current - clamped;
+      const byDay: Record<string, TimetableSlot[]> = {};
+      slots.filter(s => s.classId === classId && s.subjectId === subjectId && s.type === 'lesson')
+        .forEach(s => { (byDay[s.day] ||= []).push(s); });
+      const removeIds = new Set<string>();
+      for (const day of Object.keys(byDay)) {
+        const arr = byDay[day].sort((a, b) => a.period - b.period);
+        for (let i = 0; i < arr.length - 1 && toRemove >= 2; i++) {
+          if (arr[i + 1].period === arr[i].period + 1 && !removeIds.has(arr[i].id)) {
+            removeIds.add(arr[i].id); removeIds.add(arr[i + 1].id); toRemove -= 2; i++;
+          }
+        }
+      }
+      // Any remaining singletons
+      if (toRemove > 0) {
+        const rest = slots.filter(s => s.classId === classId && s.subjectId === subjectId && !removeIds.has(s.id));
+        for (const s of rest) { if (toRemove <= 0) break; removeIds.add(s.id); toRemove--; }
+      }
+      slots = slots.map(s => removeIds.has(s.id)
+        ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
+        : s);
+    } else {
+      // Add (clamped - current) slots. Pick empty lesson slots (no subjectId) in this class.
+      let toAdd = clamped - current;
+      const empties = slots
+        .filter(s => s.classId === classId && s.type === 'lesson' && !s.subjectId)
+        .sort((a, b) => a.day.localeCompare(b.day) || a.period - b.period);
+      const eligibleTeacher = teachers.find(t =>
+        t.subjectIds.includes(subjectId) &&
+        t.assignments.some(a => a.subjectId === subjectId && a.classIds.some(cid => cid === classId))
+      ) || teachers.find(t => t.subjectIds.includes(subjectId));
+      const claimIds = new Set<string>();
+      for (const s of empties) {
+        if (toAdd <= 0) break;
+        // avoid teacher clash at same (day,period)
+        if (eligibleTeacher && slots.some(x => x.day === s.day && x.period === s.period && x.teacherId === eligibleTeacher.id && x.classId !== classId)) continue;
+        claimIds.add(s.id); toAdd--;
+      }
+      slots = slots.map(s => claimIds.has(s.id)
+        ? { ...s, subjectId, teacherId: eligibleTeacher?.id }
+        : s);
+      if (toAdd > 0) {
+        toast({ title: 'Not enough free slots', description: `Only added ${clamped - current - toAdd} of ${clamped - current} requested.`, variant: 'destructive' });
+      }
+    }
+
+    replaceTimetable({ ...timetable, slots });
+    toast({ title: 'Timetable updated', description: `${cls.form}${cls.stream} · ${subjects.find(s => s.id === subjectId)?.code} → ${clamped} period(s)` });
+  };
+
 
   const report = preview?.report;
 
@@ -131,7 +200,23 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                         <tr key={`${r.classId}-${r.subjectId}`} className="border-b">
                           <td className="p-2 font-medium">{r.className}</td>
                           <td className="p-2">{r.subjectCode} <span className="text-muted-foreground">· {r.subjectName}</span></td>
-                          <td className="p-2 text-center">{r.current}</td>
+                          <td className="p-2 text-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={A_LEVEL_TARGET}
+                              defaultValue={r.current}
+                              key={`${r.classId}-${r.subjectId}-${r.current}`}
+                              className="h-7 w-16 mx-auto text-center"
+                              onBlur={(e) => {
+                                const v = Number(e.target.value);
+                                if (!Number.isNaN(v) && v !== r.current) adjustCurrent(r.classId, r.subjectId, v);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                              }}
+                            />
+                          </td>
                           <td className="p-2 text-center">{r.target}</td>
                           {report && <td className="p-2 text-center font-semibold">{f?.current ?? r.current}</td>}
                           <td className="p-2 text-center">
