@@ -137,6 +137,23 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
           : s);
       }
+      // A-LEVEL auto-pair rule: COMPA & BIOA share the same period (no student takes
+      // both), so any A-level slot showing one is displayed as "COMPA/BIOA".
+      const compA = subjects.find(s => /^COMP.*A$/i.test((s.code || '').trim()));
+      const bioA = subjects.find(s => /^BIO.*A$/i.test((s.code || '').trim()));
+      if (compA && bioA) {
+        const pairMap: Record<string, string> = { [compA.id]: bioA.id, [bioA.id]: compA.id };
+        let pairedChanged = false;
+        nextSlots = nextSlots.map(s => {
+          if (!aLevelClassIds.has(s.classId) || !s.subjectId) return s;
+          const partner = pairMap[s.subjectId];
+          if (!partner) return s;
+          if (s.pairedSubjectId === partner) return s;
+          pairedChanged = true;
+          return { ...s, pairedSubjectId: partner };
+        });
+        if (pairedChanged) ttChanged = true;
+      }
       if (ttChanged) {
         const next: Timetable = { ...timetable, slots: nextSlots };
         setTimetable(next);
