@@ -302,7 +302,7 @@ export function rebalance(
           const isSibling = donor.slots.some(d => d.day === s.day && d.period === s.period && d.combinedClassIds?.includes(s.classId));
           if (inBlock || isSibling) {
             affectedIds.push(s.id);
-            return { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined, type: 'free' as const };
+            return { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined, type: 'lesson' as const };
           }
           return s;
         });
