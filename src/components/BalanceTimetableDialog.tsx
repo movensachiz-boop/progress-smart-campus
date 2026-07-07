@@ -240,6 +240,8 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                   <tbody>
                     {currentFairness.map(r => {
                       const f = report?.fairnessAfter.find(a => a.classId === r.classId && a.subjectId === r.subjectId);
+                      const cls = classes.find(c => c.id === r.classId);
+                      const perFormMax = cls ? maxForForm(cls.form) : A_LEVEL_TARGET;
                       const status = f?.status || r.status;
                       return (
                         <tr key={`${r.classId}-${r.subjectId}`} className="border-b">
@@ -249,9 +251,9 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                             <Input
                               type="number"
                               min={0}
-                              max={A_LEVEL_TARGET}
+                              max={perFormMax}
                               defaultValue={r.current}
-                              key={`${r.classId}-${r.subjectId}-${r.current}`}
+                              key={`${r.classId}-${r.subjectId}-${r.current}-${perFormMax}`}
                               className="h-7 w-16 mx-auto text-center"
                               onBlur={(e) => {
                                 const v = Number(e.target.value);
@@ -262,7 +264,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                               }}
                             />
                           </td>
-                          <td className="p-2 text-center">{r.target}</td>
+                          <td className="p-2 text-center">{perFormMax}</td>
                           {report && <td className="p-2 text-center font-semibold">{f?.current ?? r.current}</td>}
                           <td className="p-2 text-center">
                             <Badge variant={status === 'FAIR' ? 'default' : status === 'MISSING' ? 'destructive' : 'secondary'}>
