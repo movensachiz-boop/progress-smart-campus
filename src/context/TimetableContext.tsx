@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, TimetableConflict, DayOfWeek, FormLevel } from '@/types/school';
 import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefaultTeachers, DAYS } from '@/data/defaults';
 import { v4 } from '@/lib/utils';
@@ -72,6 +72,48 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const setSubjects = (v: Subject[]) => { _setSubjects(v); try { localStorage.setItem('tt_subjects', JSON.stringify(v)); } catch {} invalidateTimetable(); };
   const setTeachers = (v: Teacher[]) => { _setTeachers(v); try { localStorage.setItem('tt_teachers', JSON.stringify(v)); } catch {} invalidateTimetable(); };
   const setClasses = (v: SchoolClass[]) => { _setClasses(v); try { localStorage.setItem('tt_classes', JSON.stringify(v)); } catch {} invalidateTimetable(); };
+
+  // Auto-purge: any subject whose code doesn't end with "A" is not an A-level subject.
+  // Strip it from Forms 5 & 6 class allocations and any existing A-level timetable slots.
+  useEffect(() => {
+    const isALevelSubject = (subjectId: string) => {
+      const s = subjects.find(x => x.id === subjectId);
+      if (!s) return false;
+      return (s.code || '').trim().toUpperCase().endsWith('A');
+    };
+    let classesChanged = false;
+    const nextClasses = classes.map(c => {
+      if (c.form !== 5 && c.form !== 6) return c;
+      const cleaned = c.subjectIds.filter(isALevelSubject);
+      if (cleaned.length !== c.subjectIds.length) {
+        classesChanged = true;
+        return { ...c, subjectIds: cleaned };
+      }
+      return c;
+    });
+    if (classesChanged) {
+      _setClasses(nextClasses);
+      try { localStorage.setItem('tt_classes', JSON.stringify(nextClasses)); } catch {}
+    }
+    if (timetable) {
+      const aLevelClassIds = new Set(classes.filter(c => c.form === 5 || c.form === 6).map(c => c.id));
+      let ttChanged = false;
+      const nextSlots = timetable.slots.map(s => {
+        if (!aLevelClassIds.has(s.classId)) return s;
+        if (s.subjectId && !isALevelSubject(s.subjectId)) {
+          ttChanged = true;
+          return { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined };
+        }
+        return s;
+      });
+      if (ttChanged) {
+        const next: Timetable = { ...timetable, slots: nextSlots };
+        setTimetable(next);
+        try { localStorage.setItem('tt_timetable', JSON.stringify(next)); } catch {}
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjects, classes.length]);
 
   const isSportsPeriod = useCallback((day: DayOfWeek, period: number) => {
     return config.sportsDays.includes(day) && period >= config.sportsStartPeriod;
