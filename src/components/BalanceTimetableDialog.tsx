@@ -205,7 +205,26 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
 
             {/* Fairness table */}
             <div>
-              <h3 className="font-semibold mb-2">Subject allocation per A-level class (target = {A_LEVEL_TARGET})</h3>
+              <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
+                <h3 className="font-semibold">Subject allocation per A-level class (Form 5 target = {A_LEVEL_TARGET})</h3>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  Form 6 max periods/week
+                  <Input
+                    type="number"
+                    min={A_LEVEL_TARGET}
+                    max={10}
+                    step={2}
+                    value={form6Max}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (Number.isNaN(v)) return;
+                      const snapped = Math.max(A_LEVEL_TARGET, Math.min(10, v % 2 === 0 ? v : v - 1));
+                      setForm6Max(snapped);
+                    }}
+                    className="h-7 w-16 text-center"
+                  />
+                </label>
+              </div>
               <div className="border rounded-lg overflow-x-auto max-h-72">
                 <table className="w-full text-xs">
                   <thead className="bg-muted sticky top-0">
