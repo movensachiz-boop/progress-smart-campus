@@ -85,23 +85,75 @@ export default function SlotEditDialog({
     setCombined(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
   };
 
+  // Pending propagation confirmation for A-level subject swaps
+  const [pendingPropagation, setPendingPropagation] = useState<{
+    fromId: string; toId: string; affected: TimetableSlot[];
+    updates: Partial<TimetableSlot>; combinedClassIds: string[];
+  } | null>(null);
+
+  const aLevelClassIds = useMemo(
+    () => new Set(classes.filter(c => c.form === 5 || c.form === 6).map(c => c.id)),
+    [classes]
+  );
+
+  const applySave = (updates: Partial<TimetableSlot>, combinedClassIds: string[]) => {
+    if (!slot) return;
+    onSave(slot.id, updates, combinedClassIds);
+  };
+
   const handleSave = () => {
     if (!slot) return;
     const cleanSubject = subjectId && subjectId !== '__none' ? subjectId : undefined;
     const cleanTeacher = teacherId && teacherId !== '__none' ? teacherId : undefined;
     const cleanPairedSubject = pairedSubjectId && pairedSubjectId !== '__none' ? pairedSubjectId : undefined;
     const cleanPairedTeacher = pairedTeacherId && pairedTeacherId !== '__none' ? pairedTeacherId : undefined;
-    onSave(
-      slot.id,
-      {
-        subjectId: cleanSubject,
-        teacherId: cleanTeacher,
-        combinedClassIds: combined,
-        pairedSubjectId: cleanPairedSubject,
-        pairedTeacherId: cleanPairedSubject ? cleanPairedTeacher : undefined,
-      },
-      combined,
-    );
+    const updates: Partial<TimetableSlot> = {
+      subjectId: cleanSubject,
+      teacherId: cleanTeacher,
+      combinedClassIds: combined,
+      pairedSubjectId: cleanPairedSubject,
+      pairedTeacherId: cleanPairedSubject ? cleanPairedTeacher : undefined,
+    };
+
+    // A-level auto-propagation: if the slot is Form 5/6 and the subject changed,
+    // ask permission to update every other A-level slot currently showing the old subject.
+    const originalSubjectId = slot.subjectId;
+    if (
+      aLevelClassIds.has(slot.classId) &&
+      originalSubjectId &&
+      cleanSubject &&
+      originalSubjectId !== cleanSubject
+    ) {
+      const affected = allSlots.filter(s =>
+        s.id !== slot.id &&
+        s.subjectId === originalSubjectId &&
+        aLevelClassIds.has(s.classId)
+      );
+      if (affected.length > 0) {
+        setPendingPropagation({
+          fromId: originalSubjectId,
+          toId: cleanSubject,
+          affected,
+          updates,
+          combinedClassIds: combined,
+        });
+        return;
+      }
+    }
+
+    applySave(updates, combined);
+    onOpenChange(false);
+  };
+
+  const confirmPropagate = (alsoOthers: boolean) => {
+    if (!pendingPropagation) return;
+    applySave(pendingPropagation.updates, pendingPropagation.combinedClassIds);
+    if (alsoOthers) {
+      for (const s of pendingPropagation.affected) {
+        onSave(s.id, { subjectId: pendingPropagation.toId, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }, s.combinedClassIds || []);
+      }
+    }
+    setPendingPropagation(null);
     onOpenChange(false);
   };
 
@@ -187,6 +239,30 @@ export default function SlotEditDialog({
           <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* A-Level propagation confirmation */}
+      <Dialog open={!!pendingPropagation} onOpenChange={(o) => !o && setPendingPropagation(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-accent-foreground" /> Apply change everywhere?</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>
+              You changed this slot from{' '}
+              <span className="font-semibold text-foreground">{subjects.find(s => s.id === pendingPropagation?.fromId)?.code}</span>{' '}
+              to{' '}
+              <span className="font-semibold text-foreground">{subjects.find(s => s.id === pendingPropagation?.toId)?.code}</span>.
+            </p>
+            <p>
+              There are <span className="font-semibold text-foreground">{pendingPropagation?.affected.length}</span> other A-level slot(s) still showing the old subject. Apply the same change to all of them?
+            </p>
+            <p className="text-[11px]">Teachers on the propagated slots will be cleared so you can re-assign them.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => confirmPropagate(false)}>Only this slot</Button>
+            <Button onClick={() => confirmPropagate(true)}>Apply to all A-Level</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
+
