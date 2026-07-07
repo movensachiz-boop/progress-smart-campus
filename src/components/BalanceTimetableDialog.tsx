@@ -25,6 +25,9 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const [preview, setPreview] = useState<{ next: Timetable; report: BalancerReport } | null>(null);
   const [undoStack, setUndoStack] = useState<Timetable[]>([]);
+  // Form 6 may exceed the standard A-level target (up to 10 periods/week). Form 5 stays at 8.
+  const [form6Max, setForm6Max] = useState<number>(A_LEVEL_TARGET);
+  const maxForForm = (form: number) => (form === 6 ? form6Max : A_LEVEL_TARGET);
 
   const currentFairness = useMemo(
     () => timetable ? analyzeFairness(timetable, classes, subjects) : [],
