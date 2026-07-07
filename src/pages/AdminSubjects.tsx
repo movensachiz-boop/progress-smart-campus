@@ -273,4 +273,29 @@ export default function AdminSubjects() {
       </div>
     </DashboardLayout>
   );
+
+        {/* Rename Propagation Confirmation (A-Level only) */}
+        <Dialog open={!!pendingRename} onOpenChange={(open) => !open && setPendingRename(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-accent-foreground" /> Apply A-Level Rename?</DialogTitle></DialogHeader>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                This subject appears in <span className="font-semibold text-foreground">{pendingRename?.count}</span> A-level timetable slot(s) across:
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {pendingRename?.classNames.map(cn => (
+                  <Badge key={cn} variant="secondary" className="text-[10px]">{cn}</Badge>
+                ))}
+              </div>
+              <p>Renaming will update every one of those placements to <span className="font-semibold text-foreground">{pendingRename?.data.name} ({pendingRename?.data.code})</span>.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPendingRename(null)}>Cancel</Button>
+              <Button onClick={confirmRename}>Apply to all A-Level slots</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </DashboardLayout>
+  );
 }
