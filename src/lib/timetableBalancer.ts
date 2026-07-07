@@ -283,7 +283,47 @@ export function rebalance(
       }
       if (!didChange) break;
     }
+
+    // HARD CAP: any subject still over 8 periods → convert excess doubles to free slots.
+    // Guarantees "current ≤ 8" in the fairness report even when no receiver exists.
+    const doublesFinal = collectDoubles(working.slots, cls.id);
+    const finalCount: Record<string, number> = {};
+    for (const d of doublesFinal) finalCount[d.subjectId] = (finalCount[d.subjectId] || 0) + d.slots.length;
+    for (const [sid, count] of Object.entries(finalCount)) {
+      let excess = count - A_LEVEL_TARGET;
+      if (excess <= 0) continue;
+      const donors = doublesFinal
+        .filter(d => d.subjectId === sid && d.slots.length === 2 && !d.slots.some(s => s.pairedSubjectId));
+      for (const donor of donors) {
+        if (excess <= 0) break;
+        const affectedIds: string[] = [];
+        working.slots = working.slots.map(s => {
+          const inBlock = donor.slots.some(d => d.id === s.id);
+          const isSibling = donor.slots.some(d => d.day === s.day && d.period === s.period && d.combinedClassIds?.includes(s.classId));
+          if (inBlock || isSibling) {
+            affectedIds.push(s.id);
+            return { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined, type: 'free' as const };
+          }
+          return s;
+        });
+        changes.push({
+          slotIds: affectedIds,
+          day: donor.day,
+          period: donor.period,
+          classId: cls.id,
+          className: `${cls.form}${cls.stream}`,
+          oldSubjectId: sid,
+          oldSubjectCode: subjects.find(s => s.id === sid)?.code,
+          newSubjectId: undefined,
+          newSubjectCode: 'FREE',
+          oldTeacherId: donor.teacherId,
+          newTeacherId: undefined,
+        });
+        excess -= 2;
+      }
+    }
   }
+
 
   const fairnessBefore = analyzeFairness(before, classes, subjects);
   const fairnessAfter = analyzeFairness(working, classes, subjects);
