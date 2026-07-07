@@ -98,7 +98,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     if (timetable) {
       const aLevelClassIds = new Set(classes.filter(c => c.form === 5 || c.form === 6).map(c => c.id));
       let ttChanged = false;
-      const nextSlots = timetable.slots.map(s => {
+      let nextSlots = timetable.slots.map(s => {
         if (!aLevelClassIds.has(s.classId)) return s;
         if (s.subjectId && !isALevelSubject(s.subjectId)) {
           ttChanged = true;
@@ -106,6 +106,37 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         }
         return s;
       });
+      // A-LEVEL rule: doubles only, and never the same subject twice on the same day.
+      // 1) Any lesson slot without an adjacent same-subject neighbour is an illegal singleton → clear it.
+      // 2) If a subject appears in more than one double on the same day, keep the first, clear the rest.
+      const hasNeighbour = (s: TimetableSlot) =>
+        !!s.subjectId && nextSlots.some(x =>
+          x.classId === s.classId && x.subjectId === s.subjectId && x.day === s.day &&
+          x.id !== s.id && (x.period === s.period - 1 || x.period === s.period + 1)
+        );
+      const cleared = new Set<string>();
+      for (const s of nextSlots) {
+        if (!aLevelClassIds.has(s.classId) || !s.subjectId || s.type !== 'lesson') continue;
+        if (!hasNeighbour(s)) cleared.add(s.id);
+      }
+      // Detect duplicate doubles per (class, day, subject): keep earliest block.
+      const seen: Record<string, number> = {};
+      const perBlock = [...nextSlots]
+        .filter(s => aLevelClassIds.has(s.classId) && s.subjectId && s.type === 'lesson' && !cleared.has(s.id))
+        .sort((a, b) => a.day.localeCompare(b.day) || a.period - b.period);
+      for (const s of perBlock) {
+        const key = `${s.classId}#${s.day}#${s.subjectId}`;
+        const first = seen[key];
+        if (first === undefined) { seen[key] = s.period; continue; }
+        // If this slot is part of a different (non-adjacent to first) block, clear it.
+        if (Math.abs(s.period - first) > 1) cleared.add(s.id);
+      }
+      if (cleared.size) {
+        ttChanged = true;
+        nextSlots = nextSlots.map(s => cleared.has(s.id)
+          ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
+          : s);
+      }
       if (ttChanged) {
         const next: Timetable = { ...timetable, slots: nextSlots };
         setTimetable(next);
