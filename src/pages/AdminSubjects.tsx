@@ -11,7 +11,8 @@ import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle } from 'lucide-re
 import { toast } from 'sonner';
 
 export default function AdminSubjects() {
-  const { subjects, setSubjects } = useTimetable();
+  const { subjects, setSubjects, classes, timetable } = useTimetable();
+  const [pendingRename, setPendingRename] = useState<{ data: Subject; count: number; classNames: string[] } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
   const [search, setSearch] = useState('');
