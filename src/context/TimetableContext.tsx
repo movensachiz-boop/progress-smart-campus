@@ -235,7 +235,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         const ov = PPW_OVERRIDES.find(o => o.code === code && o.match({ id: classId, form: classForm }));
         if (ov) return isStrictDouble(subject) && ov.periods % 2 === 1 ? ov.periods + 1 : ov.periods;
       }
-      const base = (classForm === 5 || classForm === 6) ? 8 : subject.periodsPerWeek;
+      const base = classForm === 6 ? 10 : classForm === 5 ? 8 : subject.periodsPerWeek;
       return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
     };
     // Subjects eligible for an automatic double period somewhere in the week:
@@ -715,11 +715,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               if (s.isCompulsory || dailySubjectIds.has(s.id)) return true;
               return !violatesGapRule(cls.id, day, s.id, slot);
             });
-          // Soft cross-form preference: prefer subjects NOT already scheduled at
-          // this (day, slot) in another form. Fall back to the full list if the
-          // preferred set is empty so we never starve subjects of placements.
-          const preferredSubjects = preFilteredSubjects.filter(s => !blockedByOtherForm(cls.form, s.id, day, slot));
-          const availableSubjects = (preferredSubjects.length > 0 ? preferredSubjects : preFilteredSubjects)
+          // Hard cross-form guard: a subject taught in one form at (day, slot) must
+          // never appear in another form at the same (day, slot) — prevents the
+          // shared teacher being in two rooms at once (e.g. ACC A in 5Comm & 6Comm).
+          const availableSubjects = preFilteredSubjects
+            .filter(s => !blockedByOtherForm(cls.form, s.id, day, slot))
             .sort((a, b) => {
               // Highest priority: core/daily subjects must be placed BEFORE LUNCH
               // (i.e., before-break or after-break sections) for every class.
