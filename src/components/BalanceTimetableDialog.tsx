@@ -200,7 +200,23 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                         <tr key={`${r.classId}-${r.subjectId}`} className="border-b">
                           <td className="p-2 font-medium">{r.className}</td>
                           <td className="p-2">{r.subjectCode} <span className="text-muted-foreground">· {r.subjectName}</span></td>
-                          <td className="p-2 text-center">{r.current}</td>
+                          <td className="p-2 text-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={A_LEVEL_TARGET}
+                              defaultValue={r.current}
+                              key={`${r.classId}-${r.subjectId}-${r.current}`}
+                              className="h-7 w-16 mx-auto text-center"
+                              onBlur={(e) => {
+                                const v = Number(e.target.value);
+                                if (!Number.isNaN(v) && v !== r.current) adjustCurrent(r.classId, r.subjectId, v);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                              }}
+                            />
+                          </td>
                           <td className="p-2 text-center">{r.target}</td>
                           {report && <td className="p-2 text-center font-semibold">{f?.current ?? r.current}</td>}
                           <td className="p-2 text-center">
