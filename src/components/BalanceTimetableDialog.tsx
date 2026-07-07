@@ -66,8 +66,8 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
     if (!timetable) return;
     const cls = classes.find(c => c.id === classId);
     if (!cls) return;
-    // Snap to nearest even number (doubles only). Cap at target.
-    let clamped = Math.max(0, Math.min(A_LEVEL_TARGET, Math.floor(newCount)));
+    // Snap to nearest even number (doubles only). Cap at per-form max.
+    let clamped = Math.max(0, Math.min(maxForForm(cls.form), Math.floor(newCount)));
     if (clamped % 2 !== 0) clamped -= 1;
     const mine = timetable.slots.filter(s => s.classId === classId && s.subjectId === subjectId && s.type === 'lesson');
     const current = mine.length;
