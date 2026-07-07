@@ -270,9 +270,8 @@ export default function AdminSubjects() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </DashboardLayout>
-  );
+
+
 
         {/* Rename Propagation Confirmation (A-Level only) */}
         <Dialog open={!!pendingRename} onOpenChange={(open) => !open && setPendingRename(null)}>
