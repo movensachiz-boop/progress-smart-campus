@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTimetable } from '@/context/TimetableContext';
@@ -9,7 +10,7 @@ import {
   exportTimetableJSON, exportFairnessCSV, exportFairnessPDF, exportTeacherLoadCSV,
   exportClassTimetablesCSV, exportTeacherTimetablesCSV, exportRoomUsageCSV,
 } from '@/lib/timetableExports';
-import { Timetable } from '@/types/school';
+import { Timetable, TimetableSlot } from '@/types/school';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { AlertTriangle, CheckCircle2, FileDown, RotateCcw, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
