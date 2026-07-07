@@ -137,22 +137,24 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
           : s);
       }
-      // A-LEVEL auto-pair rule: COMPA & BIOA share the same period (no student takes
-      // both), so any A-level slot showing one is displayed as "COMPA/BIOA".
+      // COMP A is a standalone A-level subject taken by ALL A-level streams — it is
+      // NEVER paired with another subject. Strip any legacy COMPA↔BIOA pairing.
       const compA = subjects.find(s => /^COMP.*A$/i.test((s.code || '').trim()));
-      const bioA = subjects.find(s => /^BIO.*A$/i.test((s.code || '').trim()));
-      if (compA && bioA) {
-        const pairMap: Record<string, string> = { [compA.id]: bioA.id, [bioA.id]: compA.id };
-        let pairedChanged = false;
+      if (compA) {
+        let unpairedChanged = false;
         nextSlots = nextSlots.map(s => {
-          if (!aLevelClassIds.has(s.classId) || !s.subjectId) return s;
-          const partner = pairMap[s.subjectId];
-          if (!partner) return s;
-          if (s.pairedSubjectId === partner) return s;
-          pairedChanged = true;
-          return { ...s, pairedSubjectId: partner };
+          if (!aLevelClassIds.has(s.classId)) return s;
+          if (s.subjectId === compA.id && s.pairedSubjectId) {
+            unpairedChanged = true;
+            return { ...s, pairedSubjectId: undefined, pairedTeacherId: undefined };
+          }
+          if (s.pairedSubjectId === compA.id) {
+            unpairedChanged = true;
+            return { ...s, pairedSubjectId: undefined, pairedTeacherId: undefined };
+          }
+          return s;
         });
-        if (pairedChanged) ttChanged = true;
+        if (unpairedChanged) ttChanged = true;
       }
       if (ttChanged) {
         const next: Timetable = { ...timetable, slots: nextSlots };
@@ -302,6 +304,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const A_LEVEL_ALL_STREAM_KEYS = new Set([
       'GEO', 'GEOGRAPHY', 'GEOALEVEL', 'GEOGRAPHYALEVEL',
+      'COMP', 'COMPA', 'COMPUTING', 'COMPUTINGA', 'COMPUTERSCIENCE', 'COMPUTERSCIENCEA', 'CS', 'CSA',
     ]);
     const A_LEVEL_ARTS_ONLY_KEYS = new Set([
       'HIS', 'HISTORY',
