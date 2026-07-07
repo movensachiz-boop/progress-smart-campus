@@ -56,13 +56,16 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
   };
 
   // Edit "Current" directly: adjust the number of slots for (class, subject) up or down.
-  // Decreases convert excess lesson slots into free periods (pairs first).
-  // Increases claim free (empty) slots in the same class and assign an eligible teacher when possible.
+  // A-LEVEL RULE: lessons exist ONLY as double blocks (2 consecutive periods) and a
+  // subject cannot appear more than once per day. So we always add/remove in pairs and
+  // guarantee at most one double per day for the subject.
   const adjustCurrent = (classId: string, subjectId: string, newCount: number) => {
     if (!timetable) return;
     const cls = classes.find(c => c.id === classId);
     if (!cls) return;
-    const clamped = Math.max(0, Math.min(A_LEVEL_TARGET, Math.floor(newCount)));
+    // Snap to nearest even number (doubles only). Cap at target.
+    let clamped = Math.max(0, Math.min(A_LEVEL_TARGET, Math.floor(newCount)));
+    if (clamped % 2 !== 0) clamped -= 1;
     const mine = timetable.slots.filter(s => s.classId === classId && s.subjectId === subjectId && s.type === 'lesson');
     const current = mine.length;
     if (clamped === current) return;
@@ -71,56 +74,76 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
     let slots: TimetableSlot[] = timetable.slots.map(s => ({ ...s }));
 
     if (clamped < current) {
-      // Remove (current - clamped) slots. Prefer full doubles first.
-      let toRemove = current - clamped;
+      // Remove (current - clamped)/2 double blocks (never split a double).
+      let pairsToRemove = Math.ceil((current - clamped) / 2);
       const byDay: Record<string, TimetableSlot[]> = {};
       slots.filter(s => s.classId === classId && s.subjectId === subjectId && s.type === 'lesson')
         .forEach(s => { (byDay[s.day] ||= []).push(s); });
       const removeIds = new Set<string>();
       for (const day of Object.keys(byDay)) {
+        if (pairsToRemove <= 0) break;
         const arr = byDay[day].sort((a, b) => a.period - b.period);
-        for (let i = 0; i < arr.length - 1 && toRemove >= 2; i++) {
+        for (let i = 0; i < arr.length - 1 && pairsToRemove > 0; i++) {
           if (arr[i + 1].period === arr[i].period + 1 && !removeIds.has(arr[i].id)) {
-            removeIds.add(arr[i].id); removeIds.add(arr[i + 1].id); toRemove -= 2; i++;
+            removeIds.add(arr[i].id); removeIds.add(arr[i + 1].id); pairsToRemove--; i++;
           }
         }
       }
-      // Any remaining singletons
-      if (toRemove > 0) {
-        const rest = slots.filter(s => s.classId === classId && s.subjectId === subjectId && !removeIds.has(s.id));
-        for (const s of rest) { if (toRemove <= 0) break; removeIds.add(s.id); toRemove--; }
-      }
+      // Any leftover orphan singletons of this subject → also clear (enforces "doubles only").
+      slots.filter(s => s.classId === classId && s.subjectId === subjectId && !removeIds.has(s.id))
+        .forEach(s => {
+          const hasNeighbor = slots.some(x =>
+            x.classId === classId && x.subjectId === subjectId && x.day === s.day &&
+            (x.period === s.period - 1 || x.period === s.period + 1) && !removeIds.has(x.id) && x.id !== s.id
+          );
+          if (!hasNeighbor) removeIds.add(s.id);
+        });
       slots = slots.map(s => removeIds.has(s.id)
         ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
         : s);
     } else {
-      // Add (clamped - current) slots. Pick empty lesson slots (no subjectId) in this class.
-      let toAdd = clamped - current;
-      const empties = slots
-        .filter(s => s.classId === classId && s.type === 'lesson' && !s.subjectId)
-        .sort((a, b) => a.day.localeCompare(b.day) || a.period - b.period);
+      // Add (clamped - current)/2 double blocks. Each day may already contain this subject —
+      // never place a second block on a day it already exists.
+      let pairsToAdd = Math.floor((clamped - current) / 2);
+      const daysWithSubject = new Set(
+        slots.filter(s => s.classId === classId && s.subjectId === subjectId).map(s => s.day)
+      );
       const eligibleTeacher = teachers.find(t =>
         t.subjectIds.includes(subjectId) &&
         t.assignments.some(a => a.subjectId === subjectId && a.classIds.some(cid => cid === classId))
       ) || teachers.find(t => t.subjectIds.includes(subjectId));
+      // Find consecutive empty pairs in the same class on days not already used.
+      const empties = slots
+        .filter(s => s.classId === classId && s.type === 'lesson' && !s.subjectId)
+        .sort((a, b) => a.day.localeCompare(b.day) || a.period - b.period);
       const claimIds = new Set<string>();
-      for (const s of empties) {
-        if (toAdd <= 0) break;
-        // avoid teacher clash at same (day,period)
-        if (eligibleTeacher && slots.some(x => x.day === s.day && x.period === s.period && x.teacherId === eligibleTeacher.id && x.classId !== classId)) continue;
-        claimIds.add(s.id); toAdd--;
+      for (let i = 0; i < empties.length - 1 && pairsToAdd > 0; i++) {
+        const a = empties[i], b = empties[i + 1];
+        if (a.day !== b.day || b.period !== a.period + 1) continue;
+        if (daysWithSubject.has(a.day)) continue;
+        if (claimIds.has(a.id) || claimIds.has(b.id)) continue;
+        // Teacher clash guard
+        if (eligibleTeacher && slots.some(x =>
+          (x.day === a.day && (x.period === a.period || x.period === b.period)) &&
+          x.teacherId === eligibleTeacher.id && x.classId !== classId
+        )) continue;
+        claimIds.add(a.id); claimIds.add(b.id);
+        daysWithSubject.add(a.day);
+        pairsToAdd--; i++;
       }
       slots = slots.map(s => claimIds.has(s.id)
         ? { ...s, subjectId, teacherId: eligibleTeacher?.id }
         : s);
-      if (toAdd > 0) {
-        toast({ title: 'Not enough free slots', description: `Only added ${clamped - current - toAdd} of ${clamped - current} requested.`, variant: 'destructive' });
+      if (pairsToAdd > 0) {
+        toast({ title: 'Not enough free double blocks', description: `Could not place ${pairsToAdd} more double(s) on new days.`, variant: 'destructive' });
       }
     }
 
     replaceTimetable({ ...timetable, slots });
     toast({ title: 'Timetable updated', description: `${cls.form}${cls.stream} · ${subjects.find(s => s.id === subjectId)?.code} → ${clamped} period(s)` });
   };
+
+
 
 
   const report = preview?.report;
