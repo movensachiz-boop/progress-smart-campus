@@ -85,23 +85,75 @@ export default function SlotEditDialog({
     setCombined(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
   };
 
+  // Pending propagation confirmation for A-level subject swaps
+  const [pendingPropagation, setPendingPropagation] = useState<{
+    fromId: string; toId: string; affected: TimetableSlot[];
+    updates: Partial<TimetableSlot>; combinedClassIds: string[];
+  } | null>(null);
+
+  const aLevelClassIds = useMemo(
+    () => new Set(classes.filter(c => c.form === 5 || c.form === 6).map(c => c.id)),
+    [classes]
+  );
+
+  const applySave = (updates: Partial<TimetableSlot>, combinedClassIds: string[]) => {
+    if (!slot) return;
+    onSave(slot.id, updates, combinedClassIds);
+  };
+
   const handleSave = () => {
     if (!slot) return;
     const cleanSubject = subjectId && subjectId !== '__none' ? subjectId : undefined;
     const cleanTeacher = teacherId && teacherId !== '__none' ? teacherId : undefined;
     const cleanPairedSubject = pairedSubjectId && pairedSubjectId !== '__none' ? pairedSubjectId : undefined;
     const cleanPairedTeacher = pairedTeacherId && pairedTeacherId !== '__none' ? pairedTeacherId : undefined;
-    onSave(
-      slot.id,
-      {
-        subjectId: cleanSubject,
-        teacherId: cleanTeacher,
-        combinedClassIds: combined,
-        pairedSubjectId: cleanPairedSubject,
-        pairedTeacherId: cleanPairedSubject ? cleanPairedTeacher : undefined,
-      },
-      combined,
-    );
+    const updates: Partial<TimetableSlot> = {
+      subjectId: cleanSubject,
+      teacherId: cleanTeacher,
+      combinedClassIds: combined,
+      pairedSubjectId: cleanPairedSubject,
+      pairedTeacherId: cleanPairedSubject ? cleanPairedTeacher : undefined,
+    };
+
+    // A-level auto-propagation: if the slot is Form 5/6 and the subject changed,
+    // ask permission to update every other A-level slot currently showing the old subject.
+    const originalSubjectId = slot.subjectId;
+    if (
+      aLevelClassIds.has(slot.classId) &&
+      originalSubjectId &&
+      cleanSubject &&
+      originalSubjectId !== cleanSubject
+    ) {
+      const affected = allSlots.filter(s =>
+        s.id !== slot.id &&
+        s.subjectId === originalSubjectId &&
+        aLevelClassIds.has(s.classId)
+      );
+      if (affected.length > 0) {
+        setPendingPropagation({
+          fromId: originalSubjectId,
+          toId: cleanSubject,
+          affected,
+          updates,
+          combinedClassIds: combined,
+        });
+        return;
+      }
+    }
+
+    applySave(updates, combined);
+    onOpenChange(false);
+  };
+
+  const confirmPropagate = (alsoOthers: boolean) => {
+    if (!pendingPropagation) return;
+    applySave(pendingPropagation.updates, pendingPropagation.combinedClassIds);
+    if (alsoOthers) {
+      for (const s of pendingPropagation.affected) {
+        onSave(s.id, { subjectId: pendingPropagation.toId, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }, s.combinedClassIds || []);
+      }
+    }
+    setPendingPropagation(null);
     onOpenChange(false);
   };
 
