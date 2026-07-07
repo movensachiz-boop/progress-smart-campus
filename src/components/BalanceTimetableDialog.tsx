@@ -25,6 +25,9 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const [preview, setPreview] = useState<{ next: Timetable; report: BalancerReport } | null>(null);
   const [undoStack, setUndoStack] = useState<Timetable[]>([]);
+  // Form 6 may exceed the standard A-level target (up to 10 periods/week). Form 5 stays at 8.
+  const [form6Max, setForm6Max] = useState<number>(A_LEVEL_TARGET);
+  const maxForForm = (form: number) => (form === 6 ? form6Max : A_LEVEL_TARGET);
 
   const currentFairness = useMemo(
     () => timetable ? analyzeFairness(timetable, classes, subjects) : [],
@@ -63,8 +66,8 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
     if (!timetable) return;
     const cls = classes.find(c => c.id === classId);
     if (!cls) return;
-    // Snap to nearest even number (doubles only). Cap at target.
-    let clamped = Math.max(0, Math.min(A_LEVEL_TARGET, Math.floor(newCount)));
+    // Snap to nearest even number (doubles only). Cap at per-form max.
+    let clamped = Math.max(0, Math.min(maxForForm(cls.form), Math.floor(newCount)));
     if (clamped % 2 !== 0) clamped -= 1;
     const mine = timetable.slots.filter(s => s.classId === classId && s.subjectId === subjectId && s.type === 'lesson');
     const current = mine.length;
@@ -202,7 +205,26 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
 
             {/* Fairness table */}
             <div>
-              <h3 className="font-semibold mb-2">Subject allocation per A-level class (target = {A_LEVEL_TARGET})</h3>
+              <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
+                <h3 className="font-semibold">Subject allocation per A-level class (Form 5 target = {A_LEVEL_TARGET})</h3>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  Form 6 max periods/week
+                  <Input
+                    type="number"
+                    min={A_LEVEL_TARGET}
+                    max={10}
+                    step={2}
+                    value={form6Max}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (Number.isNaN(v)) return;
+                      const snapped = Math.max(A_LEVEL_TARGET, Math.min(10, v % 2 === 0 ? v : v - 1));
+                      setForm6Max(snapped);
+                    }}
+                    className="h-7 w-16 text-center"
+                  />
+                </label>
+              </div>
               <div className="border rounded-lg overflow-x-auto max-h-72">
                 <table className="w-full text-xs">
                   <thead className="bg-muted sticky top-0">
@@ -218,6 +240,8 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                   <tbody>
                     {currentFairness.map(r => {
                       const f = report?.fairnessAfter.find(a => a.classId === r.classId && a.subjectId === r.subjectId);
+                      const cls = classes.find(c => c.id === r.classId);
+                      const perFormMax = cls ? maxForForm(cls.form) : A_LEVEL_TARGET;
                       const status = f?.status || r.status;
                       return (
                         <tr key={`${r.classId}-${r.subjectId}`} className="border-b">
@@ -227,9 +251,9 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                             <Input
                               type="number"
                               min={0}
-                              max={A_LEVEL_TARGET}
+                              max={perFormMax}
                               defaultValue={r.current}
-                              key={`${r.classId}-${r.subjectId}-${r.current}`}
+                              key={`${r.classId}-${r.subjectId}-${r.current}-${perFormMax}`}
                               className="h-7 w-16 mx-auto text-center"
                               onBlur={(e) => {
                                 const v = Number(e.target.value);
@@ -240,7 +264,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                               }}
                             />
                           </td>
-                          <td className="p-2 text-center">{r.target}</td>
+                          <td className="p-2 text-center">{perFormMax}</td>
                           {report && <td className="p-2 text-center font-semibold">{f?.current ?? r.current}</td>}
                           <td className="p-2 text-center">
                             <Badge variant={status === 'FAIR' ? 'default' : status === 'MISSING' ? 'destructive' : 'secondary'}>
