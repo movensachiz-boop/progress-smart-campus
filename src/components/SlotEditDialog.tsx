@@ -239,6 +239,30 @@ export default function SlotEditDialog({
           <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* A-Level propagation confirmation */}
+      <Dialog open={!!pendingPropagation} onOpenChange={(o) => !o && setPendingPropagation(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-accent-foreground" /> Apply change everywhere?</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>
+              You changed this slot from{' '}
+              <span className="font-semibold text-foreground">{subjects.find(s => s.id === pendingPropagation?.fromId)?.code}</span>{' '}
+              to{' '}
+              <span className="font-semibold text-foreground">{subjects.find(s => s.id === pendingPropagation?.toId)?.code}</span>.
+            </p>
+            <p>
+              There are <span className="font-semibold text-foreground">{pendingPropagation?.affected.length}</span> other A-level slot(s) still showing the old subject. Apply the same change to all of them?
+            </p>
+            <p className="text-[11px]">Teachers on the propagated slots will be cleared so you can re-assign them.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => confirmPropagate(false)}>Only this slot</Button>
+            <Button onClick={() => confirmPropagate(true)}>Apply to all A-Level</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
+
