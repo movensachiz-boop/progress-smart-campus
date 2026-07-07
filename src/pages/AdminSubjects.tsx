@@ -53,12 +53,32 @@ export default function AdminSubjects() {
       isCommon: undefined,
     };
     if (editing) {
+      const nameChanged = editing.name !== subjectData.name || editing.code !== subjectData.code;
+      // Auto-detect A-level (Form 5/6) placements that will reflect the new name.
+      const aLevelClassIds = new Set(classes.filter(c => c.form === 5 || c.form === 6).map(c => c.id));
+      const affected = timetable?.slots.filter(s => s.subjectId === editing.id && aLevelClassIds.has(s.classId)) || [];
+      if (nameChanged && affected.length > 0) {
+        const classNames = Array.from(new Set(affected.map(s => {
+          const c = classes.find(cc => cc.id === s.classId);
+          return c ? `${c.form}${c.stream}` : s.classId;
+        })));
+        setPendingRename({ data: subjectData, count: affected.length, classNames });
+        return;
+      }
       setSubjects(subjects.map(s => s.id === editing.id ? subjectData : s));
       toast.success(`${form.name} updated`);
     } else {
       setSubjects([...subjects, subjectData]);
       toast.success(`${form.name} added`);
     }
+    setDialogOpen(false);
+  };
+
+  const confirmRename = () => {
+    if (!pendingRename || !editing) return;
+    setSubjects(subjects.map(s => s.id === editing.id ? pendingRename.data : s));
+    toast.success(`${pendingRename.data.name} updated across ${pendingRename.count} A-level slot(s)`);
+    setPendingRename(null);
     setDialogOpen(false);
   };
 
