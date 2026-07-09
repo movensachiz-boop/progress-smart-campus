@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
 import { DayOfWeek } from "@/types/school";
 import { CalendarDays, Clock } from "lucide-react";
+import { formatPairedSubjectNames } from "@/lib/timetableUtils";
 
 const days: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const dayLabels = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6"];
