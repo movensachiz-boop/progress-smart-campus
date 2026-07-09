@@ -348,6 +348,44 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
               </div>
             </div>
 
+            {/* Bulk target editor: set periods/week for ONE subject across ALL streams at once */}
+            <div className="rounded-lg border p-3">
+              <p className="text-sm font-semibold mb-1">Bulk-set target periods per week</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Pick a subject and a target — it is written as an override on every class (stream) that teaches it. Then hit Auto-correct.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={bulkSubject} onValueChange={setBulkSubject}>
+                  <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Subject" /></SelectTrigger>
+                  <SelectContent>
+                    {pairSubjectOptions.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={bulkScope} onValueChange={(v: 'all' | 'olevel' | 'alevel') => setBulkScope(v)}>
+                  <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All forms</SelectItem>
+                    <SelectItem value="olevel">O-level only (F1-4)</SelectItem>
+                    <SelectItem value="alevel">A-level only (F5-6)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                  Periods/week
+                  <Input
+                    type="number" min={0} max={20}
+                    value={bulkTarget}
+                    onChange={(e) => setBulkTarget(Number(e.target.value) || 0)}
+                    className="h-8 w-20 text-center"
+                  />
+                </label>
+                <Button size="sm" variant="outline" onClick={applyBulkTarget} disabled={!bulkSubject}>
+                  Apply to all streams
+                </Button>
+              </div>
+            </div>
+
             {/* Fairness table */}
             <div>
               <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
