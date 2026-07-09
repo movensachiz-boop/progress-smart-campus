@@ -435,7 +435,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                       return (
                         <tr key={`${r.classId}-${r.subjectId}`} className="border-b">
                           <td className="p-2 font-medium">{r.className}</td>
-                          <td className="p-2">{r.subjectCode} <span className="text-muted-foreground">· {r.subjectName}</span></td>
+                          <td className="p-2">{r.subjectCode} <span className="text-muted-foreground">· {formatSubjectName(subjects.find(s => s.id === r.subjectId), cls?.form)}</span></td>
                           <td className="p-2 text-center">
                             <Input
                               type="number"
