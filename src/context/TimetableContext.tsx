@@ -337,42 +337,24 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return keys.has(code) || keys.has(name);
     };
 
-    // Cambridge A-level stream mapping (Zim curriculum, adapted from Cambridge International).
+    // Cambridge A-level stream mapping — RESTRICTED to subjects actually offered at this school.
     // Normalised keys are compared WITHOUT the trailing "A" that marks A-level codes.
     // A subject may appear in more than one stream — union of memberships is taken.
     const A_LEVEL_SCIENCES_KEYS = new Set([
-      // Maths group (Pure, Mechanics, Statistics, Further Maths)
-      'MATH', 'MATHS', 'MATHEMATICS', 'PUREMATH', 'PUREMATHS', 'PUREMATHEMATICS',
-      'MECH', 'MECHANICS', 'STAT', 'STATS', 'STATISTICS',
-      'FMATH', 'FURTHERMATH', 'FURTHERMATHS', 'FURTHERMATHEMATICS',
-      // Core sciences
+      'MATH', 'MATHS', 'MATHEMATICS',
       'PHY', 'PHYSICS',
       'CHE', 'CHEM', 'CHEMISTRY',
       'BIO', 'BIOLOGY',
-      // Cross-stream sciences
       'COMP', 'COMPUTING', 'COMPUTERSCIENCE', 'CS',
       'GEO', 'GEOG', 'GEOGRAPHY',
-      'DT', 'DESIGNTECH', 'DESIGNANDTECHNOLOGY',
-      'PSY', 'PSYCHOLOGY',
-      'ENVMGT', 'ENVIRONMENTALMANAGEMENT', 'ENVSCI', 'ENVIRONMENTALSCIENCE',
-      'AGR', 'AGRI', 'AGRICULTURE',
-      'SPORT', 'PE', 'PHYSICALEDUCATION',
     ]);
     const A_LEVEL_COMMERCIALS_KEYS = new Set([
-      // Maths (Commercials typically takes Maths / Pure & Stats)
-      'MATH', 'MATHS', 'MATHEMATICS', 'PUREMATH', 'PUREMATHS', 'PUREMATHEMATICS',
-      'STAT', 'STATS', 'STATISTICS',
-      // Core commercials
+      'MATH', 'MATHS', 'MATHEMATICS',
       'ACC', 'ACCT', 'ACCOUNTING', 'ACCOUNTS',
-      'BS', 'BUS', 'BUSINESS', 'BUSINESSSTUDIES', 'BUSINESSMANAGEMENT',
+      'BS', 'BUS', 'BUSINESS', 'BUSINESSSTUDIES',
       'ECO', 'ECON', 'ECONOMICS',
-      // Cross-stream
       'COMP', 'COMPUTING', 'COMPUTERSCIENCE', 'CS',
       'GEO', 'GEOG', 'GEOGRAPHY',
-      'LAW',
-      'PSY', 'PSYCHOLOGY',
-      'ENT', 'ENTREPRENEURSHIP',
-      'MKT', 'MARKETING',
     ]);
     const A_LEVEL_ARTS_KEYS = new Set([
       'LIT', 'LITERATURE', 'LITERATUREINENGLISH', 'ENGLISHLITERATURE',
@@ -384,13 +366,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       'RS', 'RE', 'REL', 'RELIGION', 'RELIGIOUSSTUDIES', 'DIVINITY',
       'HER', 'HEL', 'HERITAGE', 'HERITAGESTUDIES',
       'FRS', 'FRE', 'FRENCH',
-      'SOC', 'SOCIO', 'SOCIOLOGY',
-      'ART', 'ARTDESIGN', 'ARTANDDESIGN',
-      'MUS', 'MUSIC',
-      'MED', 'MEDIA', 'MEDIASTUDIES',
-      'THEATRE', 'DRAMA',
-      'PSY', 'PSYCHOLOGY',
-      'GLOB', 'GLOBALPERSPECTIVES',
     ]);
     // Subjects that must NEVER appear in A-level (Forms 5 & 6) regardless of
     // class configuration or teacher assignments.
