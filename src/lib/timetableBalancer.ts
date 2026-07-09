@@ -1,6 +1,6 @@
 import { Timetable, TimetableSlot, Subject, Teacher, SchoolClass, DayOfWeek } from '@/types/school';
 
-/** Target periods per week for every A-level subject (4 doubles). */
+/** Target periods per week for every A-level subject (4 doubles). Form 6 may be raised via options. */
 export const A_LEVEL_TARGET = 8;
 export const A_LEVEL_MIN = 8;
 export const A_LEVEL_MAX = 8;
@@ -16,7 +16,7 @@ export interface SubjectFairnessRow {
   current: number;
   target: number;
   status: FairnessStatus;
-  delta: number; // current - target
+  delta: number;
   doubles: number;
 }
 
@@ -30,7 +30,7 @@ export interface TeacherLoadRow {
 }
 
 export interface BalancerChange {
-  slotIds: string[]; // includes combined siblings
+  slotIds: string[];
   day: DayOfWeek;
   period: number;
   classId: string;
@@ -48,8 +48,8 @@ export interface BalancerReport {
   fairnessAfter: SubjectFairnessRow[];
   teacherLoads: TeacherLoadRow[];
   changes: BalancerChange[];
-  fairnessScore: number; // 0..100
-  qualityScore: number;  // 0..100
+  fairnessScore: number;
+  qualityScore: number;
   clashes: {
     teacherClashesRemoved: number;
     classClashesRemoved: number;
@@ -57,11 +57,24 @@ export interface BalancerReport {
   };
 }
 
-const isALevel = (form: number) => form === 5 || form === 6;
+export interface RebalanceOptions {
+  /** Max periods/week override for Form 6 (default = A_LEVEL_TARGET). */
+  form6Max?: number;
+  /** Subject-id pairs that must never be scheduled at the same (day, period). */
+  conflictPairs?: Array<[string, string]>;
+  /** When true, O-level classes (Forms 1-4) are also balanced. */
+  includeOLevel?: boolean;
+}
 
-const slotKey = (s: TimetableSlot) => `${s.day}#${s.period}`;
+const isALevelForm = (form: number) => form === 5 || form === 6;
 
-/** Group A-level lesson slots into their double blocks: 2 consecutive periods same class/subject/teacher. */
+function targetFor(cls: SchoolClass, subject: Subject, opts: RebalanceOptions): number {
+  if (cls.form === 5) return A_LEVEL_TARGET;
+  if (cls.form === 6) return opts.form6Max ?? A_LEVEL_TARGET;
+  return cls.subjectPeriods?.[subject.id] ?? subject.periodsPerWeek;
+}
+
+/** Group A-level lesson slots into their double blocks. */
 function collectDoubles(slots: TimetableSlot[], classId: string) {
   const byDay: Record<string, TimetableSlot[]> = {};
   for (const s of slots) {
@@ -92,11 +105,12 @@ function collectDoubles(slots: TimetableSlot[], classId: string) {
 export function analyzeFairness(
   timetable: Timetable,
   classes: SchoolClass[],
-  subjects: Subject[]
+  subjects: Subject[],
+  opts: RebalanceOptions = {}
 ): SubjectFairnessRow[] {
   const rows: SubjectFairnessRow[] = [];
-  const aClasses = classes.filter(c => isALevel(c.form));
-  for (const cls of aClasses) {
+  const targetClasses = classes.filter(c => isALevelForm(c.form) || opts.includeOLevel);
+  for (const cls of targetClasses) {
     const doubles = collectDoubles(timetable.slots, cls.id);
     const bySubj: Record<string, { count: number; doubles: number }> = {};
     for (const d of doubles) {
@@ -104,14 +118,14 @@ export function analyzeFairness(
       rec.count += d.slots.length;
       if (d.slots.length === 2) rec.doubles += 1;
     }
-    // Include every subject present in this class OR currently scheduled
     const subjectIds = new Set<string>([...cls.subjectIds, ...Object.keys(bySubj)]);
     for (const sid of subjectIds) {
       const subj = subjects.find(s => s.id === sid);
       if (!subj) continue;
       const cur = bySubj[sid]?.count || 0;
-      const doubles = bySubj[sid]?.doubles || 0;
-      const status: FairnessStatus = cur === 0 ? 'MISSING' : (cur >= A_LEVEL_MIN && cur <= A_LEVEL_MAX ? 'FAIR' : 'UNFAIR');
+      const doublesCount = bySubj[sid]?.doubles || 0;
+      const t = targetFor(cls, subj, opts);
+      const status: FairnessStatus = cur === 0 ? 'MISSING' : (cur === t ? 'FAIR' : 'UNFAIR');
       rows.push({
         classId: cls.id,
         className: `${cls.form}${cls.stream}`,
@@ -119,10 +133,10 @@ export function analyzeFairness(
         subjectCode: subj.code,
         subjectName: subj.name,
         current: cur,
-        target: A_LEVEL_TARGET,
+        target: t,
         status,
-        delta: cur - A_LEVEL_TARGET,
-        doubles,
+        delta: cur - t,
+        doubles: doublesCount,
       });
     }
   }
@@ -132,7 +146,7 @@ export function analyzeFairness(
 export function fairnessScore(rows: SubjectFairnessRow[]): number {
   if (rows.length === 0) return 100;
   const totalDelta = rows.reduce((sum, r) => sum + Math.abs(r.delta), 0);
-  const worst = rows.length * A_LEVEL_TARGET;
+  const worst = rows.reduce((sum, r) => sum + Math.max(1, r.target), 0);
   return Math.max(0, Math.round(100 - (totalDelta / worst) * 100));
 }
 
@@ -146,7 +160,6 @@ export function teacherLoads(slots: TimetableSlot[], teachers: Teacher[]): Recor
   return load;
 }
 
-/** Find a teacher assigned to (subjectId, classId) who is free at (day, period, period+1). */
 function findFreeTeacher(
   subjectId: string,
   classId: string,
@@ -183,75 +196,255 @@ function sameFormOtherFormHasSubject(
   subjectId: string,
   form: number
 ): boolean {
-  // A-level cross-form lock: same subject cannot be at same (day, period) in the other A-level form.
+  if (!isALevelForm(form)) return false;
   const otherForm = form === 5 ? 6 : 5;
   const otherClassIds = new Set(classes.filter(c => c.form === otherForm).map(c => c.id));
   return slots.some(s => s.day === day && s.period === period && s.subjectId === subjectId && otherClassIds.has(s.classId));
 }
 
+/** Subjects that conflict with `subjectId` per user rules. */
+function conflictingSubjects(subjectId: string, pairs: Array<[string, string]>): Set<string> {
+  const out = new Set<string>();
+  for (const [a, b] of pairs) {
+    if (a === subjectId) out.add(b);
+    else if (b === subjectId) out.add(a);
+  }
+  return out;
+}
+
+/** True if placing subjectId at (day,period) would collide with a user-defined conflict elsewhere. */
+function slotHasConflict(
+  slots: TimetableSlot[],
+  day: DayOfWeek,
+  period: number,
+  subjectId: string,
+  pairs: Array<[string, string]>
+): boolean {
+  const conflicting = conflictingSubjects(subjectId, pairs);
+  if (!conflicting.size) return false;
+  return slots.some(s => s.day === day && s.period === period && s.subjectId && conflicting.has(s.subjectId));
+}
+
+function classLabel(cls: SchoolClass): string { return `${cls.form}${cls.stream}`; }
+
+function clearSlots(working: Timetable, ids: Set<string>) {
+  working.slots = working.slots.map(s => ids.has(s.id)
+    ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
+    : s);
+}
+
+/** Enforce user-defined subject conflict pairs by clearing the collision on the smaller side. */
+function enforceConflictPairs(
+  working: Timetable,
+  classes: SchoolClass[],
+  subjects: Subject[],
+  opts: RebalanceOptions,
+  changes: BalancerChange[]
+) {
+  const pairs = opts.conflictPairs || [];
+  if (!pairs.length) return;
+  const byDP = new Map<string, TimetableSlot[]>();
+  for (const s of working.slots) {
+    if (!s.subjectId) continue;
+    const k = `${s.day}#${s.period}`;
+    let arr = byDP.get(k);
+    if (!arr) { arr = []; byDP.set(k, arr); }
+    arr.push(s);
+  }
+  for (const arr of byDP.values()) {
+    for (const [a, b] of pairs) {
+      const withA = arr.filter(s => s.subjectId === a);
+      const withB = arr.filter(s => s.subjectId === b);
+      if (!withA.length || !withB.length) continue;
+      const toClear = withB.length <= withA.length ? withB : withA;
+      const ids = new Set(toClear.map(s => s.id));
+      for (const s of toClear) {
+        const cls = classes.find(c => c.id === s.classId);
+        const subj = subjects.find(su => su.id === s.subjectId);
+        changes.push({
+          slotIds: [s.id], day: s.day, period: s.period, classId: s.classId,
+          className: cls ? classLabel(cls) : s.classId,
+          oldSubjectId: s.subjectId, oldSubjectCode: subj?.code,
+          oldTeacherId: s.teacherId, newSubjectCode: 'FREE',
+        });
+      }
+      clearSlots(working, ids);
+      arr.forEach(s => { if (ids.has(s.id)) { s.subjectId = undefined; s.teacherId = undefined; } });
+    }
+  }
+}
+
+/** Trim O-level classes to their target by clearing excess. */
+function capOLevel(
+  working: Timetable,
+  classes: SchoolClass[],
+  subjects: Subject[],
+  opts: RebalanceOptions,
+  changes: BalancerChange[]
+) {
+  const oClasses = classes.filter(c => c.form <= 4);
+  for (const cls of oClasses) {
+    const bySubj: Record<string, TimetableSlot[]> = {};
+    for (const s of working.slots) {
+      if (s.classId !== cls.id || s.type !== 'lesson' || !s.subjectId) continue;
+      (bySubj[s.subjectId] ||= []).push(s);
+    }
+    for (const [sid, arr] of Object.entries(bySubj)) {
+      const subj = subjects.find(s => s.id === sid);
+      if (!subj) continue;
+      const t = targetFor(cls, subj, opts);
+      if (arr.length <= t) continue;
+      const toClear = arr.slice(t);
+      const ids = new Set(toClear.map(s => s.id));
+      for (const s of toClear) {
+        changes.push({
+          slotIds: [s.id], day: s.day, period: s.period, classId: cls.id,
+          className: classLabel(cls), oldSubjectId: sid, oldSubjectCode: subj.code,
+          oldTeacherId: s.teacherId, newSubjectCode: 'FREE',
+        });
+      }
+      clearSlots(working, ids);
+    }
+  }
+}
+
+/** Fill missing periods for every class so current → target. */
+function fillDeficits(
+  working: Timetable,
+  classes: SchoolClass[],
+  subjects: Subject[],
+  teachers: Teacher[],
+  opts: RebalanceOptions,
+  changes: BalancerChange[]
+) {
+  const targetClasses = classes.filter(c => isALevelForm(c.form) || opts.includeOLevel);
+  for (const cls of targetClasses) {
+    const isA = isALevelForm(cls.form);
+    for (const sid of cls.subjectIds) {
+      const subj = subjects.find(s => s.id === sid);
+      if (!subj) continue;
+      const t = targetFor(cls, subj, opts);
+      const mine = working.slots.filter(s => s.classId === cls.id && s.subjectId === sid && s.type === 'lesson');
+      let need = t - mine.length;
+      if (need <= 0) continue;
+      const teacher = teachers.find(tc =>
+        tc.subjectIds.includes(sid) &&
+        tc.assignments.some(a => a.subjectId === sid && a.classIds.some(cid => cid === cls.id))
+      ) || teachers.find(tc => tc.subjectIds.includes(sid));
+      if (!teacher) continue;
+      const daysWithSubject = new Set(mine.map(s => s.day));
+      const empties = working.slots
+        .filter(s => s.classId === cls.id && s.type === 'lesson' && !s.subjectId)
+        .sort((a, b) => a.day.localeCompare(b.day) || a.period - b.period);
+      const pairs = opts.conflictPairs || [];
+
+      if (isA) {
+        let pairsNeeded = Math.floor(need / 2);
+        const claimed = new Set<string>();
+        for (let i = 0; i < empties.length - 1 && pairsNeeded > 0; i++) {
+          const a = empties[i], b = empties[i + 1];
+          if (a.day !== b.day || b.period !== a.period + 1) continue;
+          if (claimed.has(a.id) || claimed.has(b.id)) continue;
+          if (daysWithSubject.has(a.day)) continue;
+          if (working.slots.some(x =>
+            (x.day === a.day && (x.period === a.period || x.period === b.period)) &&
+            x.teacherId === teacher.id && x.classId !== cls.id
+          )) continue;
+          if (sameFormOtherFormHasSubject(working.slots, classes, a.day, a.period, sid, cls.form)) continue;
+          if (sameFormOtherFormHasSubject(working.slots, classes, a.day, b.period, sid, cls.form)) continue;
+          if (slotHasConflict(working.slots, a.day, a.period, sid, pairs)) continue;
+          if (slotHasConflict(working.slots, a.day, b.period, sid, pairs)) continue;
+          claimed.add(a.id); claimed.add(b.id); daysWithSubject.add(a.day); pairsNeeded--;
+          working.slots = working.slots.map(s => (s.id === a.id || s.id === b.id)
+            ? { ...s, subjectId: sid, teacherId: teacher.id } : s);
+          changes.push({
+            slotIds: [a.id, b.id], day: a.day, period: a.period,
+            classId: cls.id, className: classLabel(cls),
+            oldSubjectCode: 'FREE', newSubjectId: sid, newSubjectCode: subj.code, newTeacherId: teacher.id,
+          });
+        }
+      } else {
+        for (const empty of empties) {
+          if (need <= 0) break;
+          if (working.slots.some(x =>
+            x.day === empty.day && x.period === empty.period &&
+            x.teacherId === teacher.id && x.classId !== cls.id
+          )) continue;
+          if (slotHasConflict(working.slots, empty.day, empty.period, sid, pairs)) continue;
+          // Avoid stacking >2 of the same subject on a single day for O-level
+          const sameDay = working.slots.filter(x => x.classId === cls.id && x.subjectId === sid && x.day === empty.day).length;
+          if (sameDay >= 2) continue;
+          working.slots = working.slots.map(s => s.id === empty.id
+            ? { ...s, subjectId: sid, teacherId: teacher.id } : s);
+          changes.push({
+            slotIds: [empty.id], day: empty.day, period: empty.period,
+            classId: cls.id, className: classLabel(cls),
+            oldSubjectCode: 'FREE', newSubjectId: sid, newSubjectCode: subj.code, newTeacherId: teacher.id,
+          });
+          need--;
+        }
+      }
+    }
+  }
+}
+
 /**
- * Rebalance A-level subject allocations.
- * For each A-level class:
- *   - Identify subjects OVER target (current > 8) and UNDER target (current < 8, but in class.subjectIds).
- *   - Convert excess doubles of over-allocated subjects into under-allocated ones,
- *     provided no teacher/class/cross-form clash is introduced.
- * Combined slots are updated together (co-taught streams stay in sync).
- * Practical / paired subjects are left untouched (never split).
+ * Rebalance timetable.
  */
 export function rebalance(
   timetable: Timetable,
   classes: SchoolClass[],
   subjects: Subject[],
-  teachers: Teacher[]
+  teachers: Teacher[],
+  options: RebalanceOptions = {}
 ): { nextTimetable: Timetable; report: BalancerReport } {
+  const opts: RebalanceOptions = { form6Max: A_LEVEL_TARGET, conflictPairs: [], includeOLevel: false, ...options };
   const before = JSON.parse(JSON.stringify(timetable)) as Timetable;
   const working = JSON.parse(JSON.stringify(timetable)) as Timetable;
   const changes: BalancerChange[] = [];
   const teacherLoadsBefore = teacherLoads(before.slots, teachers);
 
-  const aClasses = classes.filter(c => isALevel(c.form));
+  // 1. Enforce user-defined conflict pairs first.
+  enforceConflictPairs(working, classes, subjects, opts, changes);
 
+  // 2. Existing A-level over→under redistribution.
+  const aClasses = classes.filter(c => isALevelForm(c.form));
   for (const cls of aClasses) {
+    const clsTargetMax = cls.form === 6 ? (opts.form6Max ?? A_LEVEL_TARGET) : A_LEVEL_TARGET;
     let attempts = 0;
     while (attempts++ < 30) {
       const doubles = collectDoubles(working.slots, cls.id);
       const bySubj: Record<string, number> = {};
       for (const d of doubles) bySubj[d.subjectId] = (bySubj[d.subjectId] || 0) + d.slots.length;
 
-      // Candidate under-allocated subjects: in class.subjectIds AND have an eligible teacher
       const under = cls.subjectIds
         .map(sid => ({ sid, count: bySubj[sid] || 0 }))
-        .filter(x => x.count < A_LEVEL_TARGET)
+        .filter(x => x.count < clsTargetMax)
         .sort((a, b) => a.count - b.count);
       const over = Object.entries(bySubj)
-        .filter(([, c]) => c > A_LEVEL_TARGET)
+        .filter(([, c]) => c > clsTargetMax)
         .sort((a, b) => b[1] - a[1]);
       if (!under.length || !over.length) break;
 
       let didChange = false;
       for (const [overSid, overCount] of over) {
-        if (overCount <= A_LEVEL_TARGET) continue;
-        // Prefer moving a FULL double (2 slots) — never split a paired/practical block.
+        if (overCount <= clsTargetMax) continue;
         const donorDouble = doubles.find(d =>
-          d.subjectId === overSid &&
-          d.slots.length === 2 &&
-          !d.slots.some(s => s.pairedSubjectId) // don't split paired A-level slots
+          d.subjectId === overSid && d.slots.length === 2 && !d.slots.some(s => s.pairedSubjectId)
         );
         if (!donorDouble) continue;
 
         for (const { sid: newSid } of under) {
           if (newSid === overSid) continue;
-          if (bySubj[newSid] >= A_LEVEL_TARGET) continue;
-
-          // Cross-form lock: cannot introduce newSid at this (day,period) if other A-level form has it
+          if ((bySubj[newSid] || 0) >= clsTargetMax) continue;
           if (sameFormOtherFormHasSubject(working.slots, classes, donorDouble.day, donorDouble.period, newSid, cls.form)) continue;
           if (sameFormOtherFormHasSubject(working.slots, classes, donorDouble.day, donorDouble.period + 1, newSid, cls.form)) continue;
+          if (slotHasConflict(working.slots, donorDouble.day, donorDouble.period, newSid, opts.conflictPairs || [])) continue;
+          if (slotHasConflict(working.slots, donorDouble.day, donorDouble.period + 1, newSid, opts.conflictPairs || [])) continue;
 
-          // Find a teacher free for both periods
           const newTeacher = findFreeTeacher(newSid, cls.id, donorDouble.day, donorDouble.period, 2, working.slots, teachers);
           if (!newTeacher) continue;
 
-          // Apply: update the two slots (and any combined siblings at same day/period)
           const affectedIds: string[] = [];
           working.slots = working.slots.map(s => {
             const inBlock = donorDouble.slots.some(d => d.id === s.id);
@@ -264,17 +457,11 @@ export function rebalance(
             return s;
           });
           changes.push({
-            slotIds: affectedIds,
-            day: donorDouble.day,
-            period: donorDouble.period,
-            classId: cls.id,
-            className: `${cls.form}${cls.stream}`,
-            oldSubjectId: overSid,
-            oldSubjectCode: subjects.find(s => s.id === overSid)?.code,
-            newSubjectId: newSid,
-            newSubjectCode: subjects.find(s => s.id === newSid)?.code,
-            oldTeacherId: donorDouble.teacherId,
-            newTeacherId: newTeacher,
+            slotIds: affectedIds, day: donorDouble.day, period: donorDouble.period,
+            classId: cls.id, className: classLabel(cls),
+            oldSubjectId: overSid, oldSubjectCode: subjects.find(s => s.id === overSid)?.code,
+            newSubjectId: newSid, newSubjectCode: subjects.find(s => s.id === newSid)?.code,
+            oldTeacherId: donorDouble.teacherId, newTeacherId: newTeacher,
           });
           didChange = true;
           break;
@@ -284,13 +471,12 @@ export function rebalance(
       if (!didChange) break;
     }
 
-    // HARD CAP: any subject still over 8 periods → convert excess doubles to free slots.
-    // Guarantees "current ≤ 8" in the fairness report even when no receiver exists.
+    // Hard cap: excess doubles → free
     const doublesFinal = collectDoubles(working.slots, cls.id);
     const finalCount: Record<string, number> = {};
     for (const d of doublesFinal) finalCount[d.subjectId] = (finalCount[d.subjectId] || 0) + d.slots.length;
     for (const [sid, count] of Object.entries(finalCount)) {
-      let excess = count - A_LEVEL_TARGET;
+      let excess = count - clsTargetMax;
       if (excess <= 0) continue;
       const donors = doublesFinal
         .filter(d => d.subjectId === sid && d.slots.length === 2 && !d.slots.some(s => s.pairedSubjectId));
@@ -307,41 +493,42 @@ export function rebalance(
           return s;
         });
         changes.push({
-          slotIds: affectedIds,
-          day: donor.day,
-          period: donor.period,
-          classId: cls.id,
-          className: `${cls.form}${cls.stream}`,
-          oldSubjectId: sid,
-          oldSubjectCode: subjects.find(s => s.id === sid)?.code,
-          newSubjectId: undefined,
-          newSubjectCode: 'FREE',
-          oldTeacherId: donor.teacherId,
-          newTeacherId: undefined,
+          slotIds: affectedIds, day: donor.day, period: donor.period,
+          classId: cls.id, className: classLabel(cls),
+          oldSubjectId: sid, oldSubjectCode: subjects.find(s => s.id === sid)?.code,
+          oldTeacherId: donor.teacherId, newSubjectCode: 'FREE',
         });
         excess -= 2;
       }
     }
   }
 
+  // 3. O-level cap (if opted-in).
+  if (opts.includeOLevel) capOLevel(working, classes, subjects, opts, changes);
 
-  const fairnessBefore = analyzeFairness(before, classes, subjects);
-  const fairnessAfter = analyzeFairness(working, classes, subjects);
+  // 4. Fill deficits everywhere so Current → Target automatically.
+  //    Run a few passes since filling one slot may unlock another.
+  for (let pass = 0; pass < 3; pass++) {
+    const before = changes.length;
+    fillDeficits(working, classes, subjects, teachers, opts, changes);
+    if (changes.length === before) break;
+  }
+
+  const fairnessBefore = analyzeFairness(before, classes, subjects, opts);
+  const fairnessAfter = analyzeFairness(working, classes, subjects, opts);
   const teacherLoadsAfter = teacherLoads(working.slots, teachers);
 
   const teacherRows: TeacherLoadRow[] = teachers.map(t => ({
-    teacherId: t.id,
-    teacherName: t.name,
+    teacherId: t.id, teacherName: t.name,
     before: teacherLoadsBefore[t.id] || 0,
     after: teacherLoadsAfter[t.id] || 0,
     max: t.maxPeriodsPerWeek,
     overloaded: (teacherLoadsAfter[t.id] || 0) > t.maxPeriodsPerWeek,
   }));
 
-  // Roll back changes that overloaded a teacher
+  // Roll back moves that overloaded a teacher.
   const overloadedIds = new Set(teacherRows.filter(r => r.overloaded && (teacherLoadsBefore[r.teacherId] || 0) <= r.max).map(r => r.teacherId));
   if (overloadedIds.size) {
-    // Simple safeguard: revert changes assigning to overloaded teachers
     const kept: BalancerChange[] = [];
     for (const ch of changes) {
       if (ch.newTeacherId && overloadedIds.has(ch.newTeacherId)) {
@@ -358,13 +545,11 @@ export function rebalance(
     changes.push(...kept);
   }
 
-  const clashesBefore = before.conflicts.length;
   const clashesAfter = working.conflicts.length;
-
   const report: BalancerReport = {
     fairness: fairnessBefore,
     fairnessAfter,
-    teacherLoads: teacherLoads(working.slots, teachers) as any && teacherRows,
+    teacherLoads: teacherRows,
     changes,
     fairnessScore: fairnessScore(fairnessAfter),
     qualityScore: Math.round((fairnessScore(fairnessAfter) * 0.7) + (Math.max(0, 100 - clashesAfter * 10) * 0.3)),
