@@ -456,10 +456,12 @@ const AdminStudents = () => {
   };
 
   const handleDeleteStudent = async (s: { id: string; first_name: string; last_name: string; registration_number: string }) => {
-    if (!confirm(`Permanently delete ${s.first_name} ${s.last_name} (${s.registration_number})?\n\nThis removes the student profile and cannot be undone.`)) return;
-    const { error } = await supabase.from("profiles").delete().eq("id", s.id);
-    if (error) {
-      toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
+    if (!confirm(`Permanently delete ${s.first_name} ${s.last_name} (${s.registration_number})?\n\nThis removes the student profile, login account, and all related records. This cannot be undone.`)) return;
+    const { data, error } = await supabase.functions.invoke("manage-students", {
+      body: { action: "delete_student", profileId: s.id },
+    });
+    if (error || data?.error) {
+      toast({ title: "Delete Failed", description: data?.error || error?.message || "Something went wrong.", variant: "destructive" });
       return;
     }
     toast({ title: "Student Deleted", description: `${s.first_name} ${s.last_name} has been removed.` });
