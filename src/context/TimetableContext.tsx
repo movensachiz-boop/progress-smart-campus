@@ -337,8 +337,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return keys.has(code) || keys.has(name);
     };
 
+    // Subjects that legitimately appear in every A-level stream (Sciences, Commercials, Arts).
+    // NOTE: Computer Science / COMP A is NOT here — Arts streams do not take Computing.
     const A_LEVEL_ALL_STREAM_KEYS = new Set([
       'GEO', 'GEOGRAPHY', 'GEOALEVEL', 'GEOGRAPHYALEVEL',
+    ]);
+    // Subjects restricted to Sciences + Commercials streams only (never Arts).
+    const A_LEVEL_SCI_COM_KEYS = new Set([
       'COMP', 'COMPA', 'COMPUTING', 'COMPUTINGA', 'COMPUTERSCIENCE', 'COMPUTERSCIENCEA', 'CS', 'CSA',
     ]);
     const A_LEVEL_ARTS_ONLY_KEYS = new Set([
