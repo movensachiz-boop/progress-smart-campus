@@ -280,7 +280,11 @@ const TeacherMarks = () => {
         }
       }
 
-      (subject_codes || []).forEach(c => subjSet.add(normalizeSubjectCode(c)));
+      (subject_codes || []).forEach(c => {
+        const code = normalizeSubjectCode(c);
+        if (teacherScope && !teacherScope.allowedCodes.has(code)) return;
+        subjSet.add(code);
+      });
 
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
