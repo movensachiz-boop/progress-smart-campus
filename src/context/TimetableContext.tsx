@@ -337,23 +337,60 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return keys.has(code) || keys.has(name);
     };
 
-    // Subjects that legitimately appear in every A-level stream (Sciences, Commercials, Arts).
-    // NOTE: Computer Science / COMP A is NOT here — Arts streams do not take Computing.
-    const A_LEVEL_ALL_STREAM_KEYS = new Set([
-      'GEO', 'GEOGRAPHY', 'GEOALEVEL', 'GEOGRAPHYALEVEL',
+    // Cambridge A-level stream mapping (Zim curriculum, adapted from Cambridge International).
+    // Normalised keys are compared WITHOUT the trailing "A" that marks A-level codes.
+    // A subject may appear in more than one stream — union of memberships is taken.
+    const A_LEVEL_SCIENCES_KEYS = new Set([
+      // Maths group (Pure, Mechanics, Statistics, Further Maths)
+      'MATH', 'MATHS', 'MATHEMATICS', 'PUREMATH', 'PUREMATHS', 'PUREMATHEMATICS',
+      'MECH', 'MECHANICS', 'STAT', 'STATS', 'STATISTICS',
+      'FMATH', 'FURTHERMATH', 'FURTHERMATHS', 'FURTHERMATHEMATICS',
+      // Core sciences
+      'PHY', 'PHYSICS',
+      'CHE', 'CHEM', 'CHEMISTRY',
+      'BIO', 'BIOLOGY',
+      // Cross-stream sciences
+      'COMP', 'COMPUTING', 'COMPUTERSCIENCE', 'CS',
+      'GEO', 'GEOG', 'GEOGRAPHY',
+      'DT', 'DESIGNTECH', 'DESIGNANDTECHNOLOGY',
+      'PSY', 'PSYCHOLOGY',
+      'ENVMGT', 'ENVIRONMENTALMANAGEMENT', 'ENVSCI', 'ENVIRONMENTALSCIENCE',
+      'AGR', 'AGRI', 'AGRICULTURE',
+      'SPORT', 'PE', 'PHYSICALEDUCATION',
     ]);
-    // Subjects restricted to Sciences + Commercials streams only (never Arts).
-    const A_LEVEL_SCI_COM_KEYS = new Set([
-      'COMP', 'COMPA', 'COMPUTING', 'COMPUTINGA', 'COMPUTERSCIENCE', 'COMPUTERSCIENCEA', 'CS', 'CSA',
+    const A_LEVEL_COMMERCIALS_KEYS = new Set([
+      // Maths (Commercials typically takes Maths / Pure & Stats)
+      'MATH', 'MATHS', 'MATHEMATICS', 'PUREMATH', 'PUREMATHS', 'PUREMATHEMATICS',
+      'STAT', 'STATS', 'STATISTICS',
+      // Core commercials
+      'ACC', 'ACCT', 'ACCOUNTING', 'ACCOUNTS',
+      'BS', 'BUS', 'BUSINESS', 'BUSINESSSTUDIES', 'BUSINESSMANAGEMENT',
+      'ECO', 'ECON', 'ECONOMICS',
+      // Cross-stream
+      'COMP', 'COMPUTING', 'COMPUTERSCIENCE', 'CS',
+      'GEO', 'GEOG', 'GEOGRAPHY',
+      'LAW',
+      'PSY', 'PSYCHOLOGY',
+      'ENT', 'ENTREPRENEURSHIP',
+      'MKT', 'MARKETING',
     ]);
-    const A_LEVEL_ARTS_ONLY_KEYS = new Set([
-      'HIS', 'HISTORY',
+    const A_LEVEL_ARTS_KEYS = new Set([
       'LIT', 'LITERATURE', 'LITERATUREINENGLISH', 'ENGLISHLITERATURE',
+      'HIS', 'HIST', 'HISTORY',
+      'GEO', 'GEOG', 'GEOGRAPHY',
       'SHO', 'SHON', 'SHONA',
+      'NDE', 'NDEBELE',
       'BIB', 'BIBLE', 'BIBLEKNOWLEDGE', 'BIBLICALSTUDIES',
       'RS', 'RE', 'REL', 'RELIGION', 'RELIGIOUSSTUDIES', 'DIVINITY',
       'HER', 'HEL', 'HERITAGE', 'HERITAGESTUDIES',
       'FRS', 'FRE', 'FRENCH',
+      'SOC', 'SOCIO', 'SOCIOLOGY',
+      'ART', 'ARTDESIGN', 'ARTANDDESIGN',
+      'MUS', 'MUSIC',
+      'MED', 'MEDIA', 'MEDIASTUDIES',
+      'THEATRE', 'DRAMA',
+      'PSY', 'PSYCHOLOGY',
+      'GLOB', 'GLOBALPERSPECTIVES',
     ]);
     // Subjects that must NEVER appear in A-level (Forms 5 & 6) regardless of
     // class configuration or teacher assignments.
@@ -361,13 +398,30 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       'ENG', 'ENGLISH', 'ENGLISHLANGUAGE',
     ]);
 
+    /** Strip the trailing A-level "A" for stream matching, e.g. "MATHA" → "MATH". */
+    const stripALevelSuffix = (raw: string) => {
+      const norm = normaliseSubjectKey(raw);
+      return norm.endsWith('A') && norm.length > 1 ? norm.slice(0, -1) : norm;
+    };
+    const subjectMatchesStreamKey = (subject: Subject, keys: Set<string>) => {
+      const codeStripped = stripALevelSuffix(subject.code || '');
+      const nameStripped = stripALevelSuffix(subject.name || '');
+      const code = normaliseSubjectKey(subject.code || '');
+      const name = normaliseSubjectKey(subject.name || '');
+      return keys.has(codeStripped) || keys.has(nameStripped) || keys.has(code) || keys.has(name);
+    };
+
     const aLevelAllowedAreas = (subject: Subject): SchoolClass['learningArea'][] | null => {
-      if (subjectMatchesAnyKey(subject, A_LEVEL_ALL_STREAM_KEYS)) return ['Sciences', 'Commercials', 'Arts'];
-      if (subjectMatchesAnyKey(subject, A_LEVEL_SCI_COM_KEYS)) return ['Sciences', 'Commercials'];
+      const areas: SchoolClass['learningArea'][] = [];
+      if (subjectMatchesStreamKey(subject, A_LEVEL_SCIENCES_KEYS)) areas.push('Sciences');
+      if (subjectMatchesStreamKey(subject, A_LEVEL_COMMERCIALS_KEYS)) areas.push('Commercials');
+      if (subjectMatchesStreamKey(subject, A_LEVEL_ARTS_KEYS)) areas.push('Arts');
+      if (areas.length) return areas;
+      // Fallback to explicit learningAreas on the subject record.
       if (subject.learningAreas && subject.learningAreas.length > 0) return subject.learningAreas;
-      if (subjectMatchesAnyKey(subject, A_LEVEL_ARTS_ONLY_KEYS)) return ['Arts'];
       return null;
     };
+
     const isExcludedFromALevel = (subject: Subject) => {
       if (subjectMatchesAnyKey(subject, A_LEVEL_EXCLUDED_KEYS)) return true;
       // Rule: A-level subject codes must end with "A" (e.g. MATA, PHYA, GEOA).
