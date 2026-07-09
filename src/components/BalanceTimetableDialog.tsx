@@ -35,16 +35,18 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
   const [conflictPairs, setConflictPairs] = useState<Array<[string, string]>>([]);
   const [pairA, setPairA] = useState<string>('');
   const [pairB, setPairB] = useState<string>('');
+  const [oLevelMax, setOLevelMax] = useState<Record<1 | 2 | 3 | 4, number>>({ 1: 0, 2: 0, 3: 0, 4: 0 });
 
   const maxForForm = (form: number) => {
     if (form === 6) return form6Max;
     if (form === 5) return A_LEVEL_TARGET;
-    return 999; // O-level: bounded by subject target
+    const cap = oLevelMax[form as 1 | 2 | 3 | 4];
+    return cap && cap > 0 ? cap : 999;
   };
 
   const opts: RebalanceOptions = useMemo(() => ({
-    form6Max, conflictPairs, includeOLevel,
-  }), [form6Max, conflictPairs, includeOLevel]);
+    form6Max, conflictPairs, includeOLevel, oLevelMax,
+  }), [form6Max, conflictPairs, includeOLevel, oLevelMax]);
 
   const currentFairness = useMemo(
     () => timetable ? analyzeFairness(timetable, classes, subjects, opts) : [],
