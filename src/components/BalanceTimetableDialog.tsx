@@ -245,7 +245,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
   );
   const subjectLabel = (id: string) => {
     const s = subjects.find(x => x.id === id);
-    return s ? `${s.code}` : id;
+    return s ? `${s.code} — ${formatSubjectName(s)}` : id;
   };
 
   return (
