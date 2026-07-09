@@ -271,6 +271,8 @@ const TeacherMarks = () => {
           const mark = parseMarkValue(val);
           if (mark == null) continue;
           const code = normalizeSubjectCode(rawCode);
+          // Teachers may only capture marks for their own subject(s).
+          if (teacherScope && !teacherScope.allowedCodes.has(code)) continue;
           nextMarks[s.id][code] = mark;
           subjSet.add(code);
           pushOrder(code);
