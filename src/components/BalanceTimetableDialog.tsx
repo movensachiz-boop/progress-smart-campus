@@ -23,7 +23,10 @@ interface Props {
 }
 
 export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
-  const { timetable, classes, subjects, teachers, replaceTimetable } = useTimetable();
+  const { timetable, classes, subjects, teachers, replaceTimetable, setClasses } = useTimetable();
+  const [bulkSubject, setBulkSubject] = useState<string>('');
+  const [bulkTarget, setBulkTarget] = useState<number>(0);
+  const [bulkScope, setBulkScope] = useState<'all' | 'olevel' | 'alevel'>('all');
   const { toast } = useToast();
   const [preview, setPreview] = useState<{ next: Timetable; report: BalancerReport } | null>(null);
   const [undoStack, setUndoStack] = useState<Timetable[]>([]);
@@ -105,6 +108,26 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
     setPairA(''); setPairB('');
   };
   const removePair = (i: number) => setConflictPairs(prev => prev.filter((_, idx) => idx !== i));
+
+  /** Apply the same target periods/week to a subject across all matching classes (streams). */
+  const applyBulkTarget = () => {
+    if (!bulkSubject) return;
+    const t = Math.max(0, Math.floor(bulkTarget));
+    let touched = 0;
+    const next = classes.map(cls => {
+      if (!cls.subjectIds.includes(bulkSubject)) return cls;
+      if (bulkScope === 'olevel' && cls.form > 4) return cls;
+      if (bulkScope === 'alevel' && cls.form < 5) return cls;
+      touched++;
+      return { ...cls, subjectPeriods: { ...(cls.subjectPeriods || {}), [bulkSubject]: t } };
+    });
+    setClasses(next);
+    const subj = subjects.find(s => s.id === bulkSubject);
+    toast({
+      title: 'Targets updated',
+      description: `${subj?.code || 'Subject'} → ${t} period(s)/week across ${touched} class(es). Run Auto-correct to apply.`,
+    });
+  };
 
   // Manual "Current" editor kept for A-level fine-tuning.
   const adjustCurrent = (classId: string, subjectId: string, newCount: number) => {
@@ -322,6 +345,44 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Bulk target editor: set periods/week for ONE subject across ALL streams at once */}
+            <div className="rounded-lg border p-3">
+              <p className="text-sm font-semibold mb-1">Bulk-set target periods per week</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Pick a subject and a target — it is written as an override on every class (stream) that teaches it. Then hit Auto-correct.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={bulkSubject} onValueChange={setBulkSubject}>
+                  <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Subject" /></SelectTrigger>
+                  <SelectContent>
+                    {pairSubjectOptions.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={bulkScope} onValueChange={(v: 'all' | 'olevel' | 'alevel') => setBulkScope(v)}>
+                  <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All forms</SelectItem>
+                    <SelectItem value="olevel">O-level only (F1-4)</SelectItem>
+                    <SelectItem value="alevel">A-level only (F5-6)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                  Periods/week
+                  <Input
+                    type="number" min={0} max={20}
+                    value={bulkTarget}
+                    onChange={(e) => setBulkTarget(Number(e.target.value) || 0)}
+                    className="h-8 w-20 text-center"
+                  />
+                </label>
+                <Button size="sm" variant="outline" onClick={applyBulkTarget} disabled={!bulkSubject}>
+                  Apply to all streams
+                </Button>
               </div>
             </div>
 
