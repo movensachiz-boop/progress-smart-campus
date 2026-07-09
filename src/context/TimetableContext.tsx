@@ -433,11 +433,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const compASubject = subjects.find(s => /^COMP.*A$/i.test((s.code || '').trim()));
     classes.forEach(c => {
       const fromClass = c.subjectIds.filter(sId => subjects.some(s => s.id === sId));
-      let merged = Array.from(new Set([...fromClass, ...teacherAssignedByClass[c.id]]));
-      // A-level (Forms 5 & 6) is strictly split by learning area. A Sciences stream
-      // must never receive Arts/Commercials subjects (e.g. GEO A) even if a teacher
-      // was mistakenly assigned or the class definition drifted.
-      if (c.form === 5 || c.form === 6) {
+      // A-level (Forms 5 & 6): admin's per-class subject ticks are the SINGLE
+      // source of truth. Do NOT merge teacher assignments — otherwise a teacher
+      // who teaches e.g. Accounting A in Commercials but is also (mistakenly)
+      // linked to an Arts class would silently inject Accounting A into Arts.
+      // Forms 1-4 still merge teacher assignments (helps recover from missing ticks).
+      const isALevel = c.form === 5 || c.form === 6;
+      let merged = isALevel
+        ? [...fromClass]
+        : Array.from(new Set([...fromClass, ...teacherAssignedByClass[c.id]]));
+      // A-level is strictly split by learning area. A Sciences stream must never
+      // receive Arts/Commercials subjects (e.g. GEO A) even if the class definition
+      // drifted or an unknown subject slipped in.
+      if (isALevel) {
         // Ensure every Sciences/Commercials A-level stream offers COMP A — but NOT Arts.
         if (compASubject && c.learningArea !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
         merged = merged.filter(sId => {
@@ -446,7 +454,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           if (isExcludedFromALevel(subj)) return false;
           if (!c.learningArea) return true;
           const allowedAreas = aLevelAllowedAreas(subj);
-          if (!allowedAreas) return true;
+          // Unknown A-level subject (no stream key match, no learningAreas set):
+          // reject rather than allow everywhere — prevents silent cross-stream leaks.
+          if (!allowedAreas) return false;
           return allowedAreas.includes(c.learningArea);
         });
       }
