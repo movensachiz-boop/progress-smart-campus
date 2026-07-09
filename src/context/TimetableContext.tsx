@@ -409,8 +409,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // must never receive Arts/Commercials subjects (e.g. GEO A) even if a teacher
       // was mistakenly assigned or the class definition drifted.
       if (c.form === 5 || c.form === 6) {
-        // Ensure every A-level stream offers COMP A.
-        if (compASubject && !merged.includes(compASubject.id)) merged.push(compASubject.id);
+        // Ensure every Sciences/Commercials A-level stream offers COMP A — but NOT Arts.
+        if (compASubject && c.learningArea !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
         merged = merged.filter(sId => {
           const subj = subjects.find(s => s.id === sId);
           if (!subj) return false;
