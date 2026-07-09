@@ -118,6 +118,10 @@ const TeacherMarks = () => {
 
   useEffect(() => {
     if (!activeExam) { setStudents([]); setMarks({}); setSubjects([]); return; }
+    // Hard block: signed-in teacher without a resolved scope must not load anyone else's data.
+    if (role === "teacher" && (!teacherScope || teacherScope.allowedCodes.size === 0)) {
+      setStudents([]); setMarks({}); setSubjects([]); return;
+    }
     (async () => {
       setLoading(true);
       const [{ data: profs }, { data: rows }] = await Promise.all([
@@ -159,7 +163,8 @@ const TeacherMarks = () => {
       setScanStudentOrder([]);
       setLoading(false);
     })();
-  }, [examId, activeExam, teacherScope]);
+  }, [examId, activeExam, teacherScope, role, ttSubjects]);
+
 
   const saveAll = async () => {
     if (!activeExam) return;
