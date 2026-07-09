@@ -202,6 +202,41 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return owner !== undefined && owner !== form;
     };
 
+    // Related-subject family lock: subjects whose names/codes are variants of one
+    // another (English/Literature, Geo/Geo-A, Math/Pure-Math-A, BS/BS-A, RS/Bible-A,
+    // etc.) share teaching staff and must NEVER be scheduled at the same (day, slot)
+    // anywhere in the school — even across different classes/forms. Multiple classes
+    // taking the SAME subject in parallel is still allowed.
+    const subjectByIdMap = new Map(subjects.map(s => [s.id, s]));
+    const familyOfCode = (rawCode: string): string | null => {
+      const c = (rawCode || '').toUpperCase().replace(/[^A-Z]/g, '');
+      if (!c) return null;
+      if (['ENG', 'ENGLISH', 'ENGLA', 'ENGA', 'LIT', 'LITERATURE', 'ENGLIT', 'LITA'].includes(c)) return 'ENG';
+      if (c === 'GEO' || c === 'GEOA' || c.startsWith('GEOGRAPHY')) return 'GEO';
+      if (['MATH', 'MATHS', 'MATHEMATICS', 'MATHA', 'MATHSA', 'PMATH', 'PMATHA', 'PUREMATH', 'PUREMATHS', 'PUREA', 'PUREMATHA', 'MECHA', 'STATSA'].includes(c)) return 'MATH';
+      if (['BS', 'BSA', 'BUSINESS', 'BUSINESSA', 'BUSINESSSTUDIES', 'BUSINESSSTUDIESA', 'BSTUDIES', 'BSTUDIESA'].includes(c)) return 'BS';
+      if (['RS', 'RSA', 'RE', 'REA', 'BIB', 'BIBA', 'BIBLE', 'BIBLEA', 'BIBLESTUDIES', 'BIBLESTUDIESA', 'RELIGIOUS', 'RELIGIOUSSTUDIES', 'RELIGIOUSSTUDIESA', 'DIVINITY', 'DIVINITYA'].includes(c)) return 'RS';
+      return null;
+    };
+    const familyOfSubject = (subjectId: string) => {
+      const s = subjectByIdMap.get(subjectId);
+      return s ? familyOfCode(s.code) : null;
+    };
+    const familySlotOwner: Record<string, string> = {}; // `${fam}-${day}-${slot}` -> owning subjectId
+    const fKey = (fam: string, day: string, slot: number) => `${fam}-${day}-${slot}`;
+    const markFamily = (subjectId: string, day: string, slot: number) => {
+      const fam = familyOfSubject(subjectId);
+      if (!fam) return;
+      const k = fKey(fam, day, slot);
+      if (!familySlotOwner[k]) familySlotOwner[k] = subjectId;
+    };
+    const blockedByFamily = (subjectId: string, day: string, slot: number) => {
+      const fam = familyOfSubject(subjectId);
+      if (!fam) return false;
+      const owner = familySlotOwner[fKey(fam, day, slot)];
+      return owner !== undefined && owner !== subjectId;
+    };
+
     const totalSlots = config.periodsPerDay + 2;
     const breakSlot = config.morningBreakAfterPeriod + 1;
     const lunchSlot = config.lunchAfterPeriod + 2;
