@@ -240,7 +240,11 @@ const TeacherMarks = () => {
         if (id && !studentRank.find(r => r.id === id)) studentRank.push({ id, rank, sequence });
       };
       // Seed order from explicit subject_codes (header row, left→right)
-      (subject_codes || []).forEach(c => pushOrder(normalizeSubjectCode(c)));
+      (subject_codes || []).forEach(c => {
+        const code = normalizeSubjectCode(c);
+        if (teacherScope && !teacherScope.allowedCodes.has(code)) return;
+        pushOrder(code);
+      });
       const matched = new Set<string>();
       let matchedCount = 0;
       let cellCount = 0;
@@ -271,6 +275,8 @@ const TeacherMarks = () => {
           const mark = parseMarkValue(val);
           if (mark == null) continue;
           const code = normalizeSubjectCode(rawCode);
+          // Teachers may only capture marks for their own subject(s).
+          if (teacherScope && !teacherScope.allowedCodes.has(code)) continue;
           nextMarks[s.id][code] = mark;
           subjSet.add(code);
           pushOrder(code);
@@ -278,7 +284,11 @@ const TeacherMarks = () => {
         }
       }
 
-      (subject_codes || []).forEach(c => subjSet.add(normalizeSubjectCode(c)));
+      (subject_codes || []).forEach(c => {
+        const code = normalizeSubjectCode(c);
+        if (teacherScope && !teacherScope.allowedCodes.has(code)) return;
+        subjSet.add(code);
+      });
 
       setMarks(nextMarks);
       setSubjects([...subjSet].sort());
