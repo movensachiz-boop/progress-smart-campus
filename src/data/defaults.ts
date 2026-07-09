@@ -29,7 +29,7 @@ export const defaultSubjects: Subject[] = [
   { id: 's8', name: 'Chemistry', code: 'CHE', forms: [3,4,5,6], periodsPerWeek: 6, isCompulsory: false, learningAreas: ['Sciences'] },
   { id: 's9', name: 'Biology', code: 'BIO', forms: [1,2,3,4,5,6], periodsPerWeek: 6, isCompulsory: false, learningAreas: ['Sciences'] },
   { id: 's10', name: 'Crop Science', code: 'CROP', forms: [1,2,3,4], periodsPerWeek: 5, isCompulsory: false },
-  { id: 's11', name: 'Computer Science', code: 'Comp', forms: [1,2,3,4,5,6], periodsPerWeek: 6, isCompulsory: false },
+  { id: 's11', name: 'Computer Science', code: 'Comp', forms: [1,2,3,4,5,6], periodsPerWeek: 6, isCompulsory: false, learningAreas: ['Sciences', 'Commercials'] },
   { id: 's12', name: 'Agriculture', code: 'Agri', forms: [1,2,3,4], periodsPerWeek: 6, isCompulsory: false },
   { id: 's13', name: 'Accounting', code: 'ACC', forms: [1,2,3,4,5,6], periodsPerWeek: 5, isCompulsory: false, learningAreas: ['Commercials'] },
   { id: 's14', name: 'Business Studies', code: 'BUS', forms: [1,2,3,4,5,6], periodsPerWeek: 5, isCompulsory: false, learningAreas: ['Commercials'] },

@@ -337,8 +337,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return keys.has(code) || keys.has(name);
     };
 
+    // Subjects that legitimately appear in every A-level stream (Sciences, Commercials, Arts).
+    // NOTE: Computer Science / COMP A is NOT here — Arts streams do not take Computing.
     const A_LEVEL_ALL_STREAM_KEYS = new Set([
       'GEO', 'GEOGRAPHY', 'GEOALEVEL', 'GEOGRAPHYALEVEL',
+    ]);
+    // Subjects restricted to Sciences + Commercials streams only (never Arts).
+    const A_LEVEL_SCI_COM_KEYS = new Set([
       'COMP', 'COMPA', 'COMPUTING', 'COMPUTINGA', 'COMPUTERSCIENCE', 'COMPUTERSCIENCEA', 'CS', 'CSA',
     ]);
     const A_LEVEL_ARTS_ONLY_KEYS = new Set([
@@ -358,6 +363,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const aLevelAllowedAreas = (subject: Subject): SchoolClass['learningArea'][] | null => {
       if (subjectMatchesAnyKey(subject, A_LEVEL_ALL_STREAM_KEYS)) return ['Sciences', 'Commercials', 'Arts'];
+      if (subjectMatchesAnyKey(subject, A_LEVEL_SCI_COM_KEYS)) return ['Sciences', 'Commercials'];
       if (subject.learningAreas && subject.learningAreas.length > 0) return subject.learningAreas;
       if (subjectMatchesAnyKey(subject, A_LEVEL_ARTS_ONLY_KEYS)) return ['Arts'];
       return null;
@@ -403,8 +409,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // must never receive Arts/Commercials subjects (e.g. GEO A) even if a teacher
       // was mistakenly assigned or the class definition drifted.
       if (c.form === 5 || c.form === 6) {
-        // Ensure every A-level stream offers COMP A.
-        if (compASubject && !merged.includes(compASubject.id)) merged.push(compASubject.id);
+        // Ensure every Sciences/Commercials A-level stream offers COMP A — but NOT Arts.
+        if (compASubject && c.learningArea !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
         merged = merged.filter(sId => {
           const subj = subjects.find(s => s.id === sId);
           if (!subj) return false;
