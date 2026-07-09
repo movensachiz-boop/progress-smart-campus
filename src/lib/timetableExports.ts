@@ -127,7 +127,7 @@ export const exportFairnessPDF = (report: BalancerReport) => {
     head: [['Class', 'Subject', 'Current', 'Target', 'Final', 'Status']],
     body: report.fairness.map(r => {
       const f = report.fairnessAfter.find(a => a.classId === r.classId && a.subjectId === r.subjectId);
-      return [r.className, r.subjectCode, String(r.current), String(r.target), String(f?.current ?? r.current), f?.status || r.status];
+      return [r.className, r.subjectName, String(r.current), String(r.target), String(f?.current ?? r.current), f?.status || r.status];
     }),
     theme: 'grid',
     headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 9 },
