@@ -89,55 +89,93 @@ export const generateCombinedRequisitions = async (reqs: CombinedRequisition[]) 
   // @ts-ignore
   y = doc.lastAutoTable.finalY + 8;
 
-  // Totals by currency
+  // Group by department
+  const groups = new Map<string, CombinedRequisition[]>();
+  for (const r of reqs) {
+    const dept = (r.department || "Unspecified Department").trim() || "Unspecified Department";
+    if (!groups.has(dept)) groups.set(dept, []);
+    groups.get(dept)!.push(r);
+  }
+
   const byCcy: Record<string, number> = {};
   for (const r of reqs) {
     const t = (r.items || []).reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0);
     byCcy[r.currency] = (byCcy[r.currency] || 0) + t;
   }
 
-  // Consolidated line items across all reqs
-  const allItems = reqs.flatMap((r) =>
-    (r.items || []).map((it) => ({
-      req: r.requisition_number,
-      description: it.description,
-      qty: Number(it.quantity) || 0,
-      unit: it.unit || "—",
-      unit_price: Number(it.unit_price) || 0,
-      currency: r.currency,
-      total: (Number(it.quantity) || 0) * (Number(it.unit_price) || 0),
-    }))
-  );
-
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...primary);
-  doc.text("Consolidated Line Items", margin, y);
+  doc.text("Line Items by Department", margin, y);
   y += 4;
 
-  autoTable(doc, {
-    startY: y,
-    margin: { left: margin, right: margin },
-    head: [["Req", "Description", "Qty", "Unit", "Unit Price", "Total"]],
-    body: allItems.map((it) => [
-      it.req,
-      it.description,
-      String(it.qty),
-      it.unit,
-      `${it.currency} ${it.unit_price.toFixed(2)}`,
-      `${it.currency} ${it.total.toFixed(2)}`,
-    ]),
-    theme: "striped",
-    headStyles: { fillColor: [...primary], textColor: [255, 255, 255], fontSize: 9.5 },
-    bodyStyles: { fontSize: 8.8, cellPadding: 2 },
-    columnStyles: {
-      0: { cellWidth: 22, fontStyle: "bold" },
-      2: { halign: "right", cellWidth: 14 },
-      3: { cellWidth: 16 },
-      4: { halign: "right", cellWidth: 28 },
-      5: { halign: "right", cellWidth: 30 },
-    },
-  });
+  for (const [dept, deptReqs] of groups) {
+    if (y > ph - 40) { doc.addPage(); y = 20; }
+    doc.setFillColor(...blue);
+    doc.rect(margin, y, pw - 2 * margin, 7, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`DEPARTMENT: ${dept.toUpperCase()}`, margin + 2, y + 5);
+    doc.text(`${deptReqs.length} requisition${deptReqs.length === 1 ? "" : "s"}`, pw - margin - 2, y + 5, { align: "right" });
+    y += 9;
+
+    const deptItems = deptReqs.flatMap((r) =>
+      (r.items || []).map((it) => ({
+        req: r.requisition_number,
+        description: it.description,
+        qty: Number(it.quantity) || 0,
+        unit: it.unit || "—",
+        unit_price: Number(it.unit_price) || 0,
+        currency: r.currency,
+        total: (Number(it.quantity) || 0) * (Number(it.unit_price) || 0),
+      }))
+    );
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [["Req", "Description", "Qty", "Unit", "Unit Price", "Total"]],
+      body: deptItems.map((it) => [
+        it.req,
+        it.description,
+        String(it.qty),
+        it.unit,
+        `${it.currency} ${it.unit_price.toFixed(2)}`,
+        `${it.currency} ${it.total.toFixed(2)}`,
+      ]),
+      theme: "striped",
+      headStyles: { fillColor: [...primary], textColor: [255, 255, 255], fontSize: 9.5 },
+      bodyStyles: { fontSize: 8.8, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 22, fontStyle: "bold" },
+        2: { halign: "right", cellWidth: 14 },
+        3: { cellWidth: 16 },
+        4: { halign: "right", cellWidth: 28 },
+        5: { halign: "right", cellWidth: 30 },
+      },
+    });
+    // @ts-ignore
+    y = doc.lastAutoTable.finalY + 2;
+
+    const deptByCcy: Record<string, number> = {};
+    for (const it of deptItems) deptByCcy[it.currency] = (deptByCcy[it.currency] || 0) + it.total;
+    const subtotalLines = Object.entries(deptByCcy);
+    const boxH = 6 + subtotalLines.length * 5;
+    if (y + boxH > ph - 20) { doc.addPage(); y = 20; }
+    doc.setFillColor(230, 240, 250);
+    doc.rect(margin, y, pw - 2 * margin, boxH, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(...primary);
+    doc.text(`${dept} Subtotal`, margin + 2, y + 5);
+    let sy = y + 5;
+    for (const [c, v] of subtotalLines) {
+      doc.text(`${c} ${v.toFixed(2)}`, pw - margin - 2, sy, { align: "right" });
+      sy += 5;
+    }
+    y += boxH + 6;
+  }
   // @ts-ignore
   y = doc.lastAutoTable.finalY + 8;
 
