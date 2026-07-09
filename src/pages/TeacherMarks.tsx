@@ -436,11 +436,17 @@ const TeacherMarks = () => {
           // (Per-student allocations are NOT added as columns — they only control which cells are editable.)
           const colMap = new Map<string, string>();
           const allowCode = (c: string) => !teacherScope || teacherScope.allowedCodes.has(c);
-          subjects.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
-          scanOrder.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
-          Object.values(marks).forEach(r => Object.keys(r || {}).forEach(c => {
-            if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c);
-          }));
+          if (role === "teacher" && teacherScope) {
+            // Strict teacher mode: columns are ONLY the teacher's assigned subject codes.
+            // Nothing else (saved marks, scan headers, defaults) can add extra columns.
+            teacherScope.allowedCodes.forEach(c => colMap.set(c, SUBJECT_CODES[c] || c));
+          } else {
+            subjects.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
+            scanOrder.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
+            Object.values(marks).forEach(r => Object.keys(r || {}).forEach(c => {
+              if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c);
+            }));
+          }
           let columns = Array.from(colMap, ([code, name]) => ({ code, name }));
           // Preferred mark-sheet column order (matches the printed form) — identical to ScanMarks.
           const maxForm = activeExam ? Math.max(...activeExam.form_levels) : 0;
@@ -460,6 +466,7 @@ const TeacherMarks = () => {
             if (sa !== sb) return sa - sb;
             return a.code.localeCompare(b.code);
           });
+
 
 
           const addColumn = () => {
