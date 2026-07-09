@@ -363,6 +363,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const aLevelAllowedAreas = (subject: Subject): SchoolClass['learningArea'][] | null => {
       if (subjectMatchesAnyKey(subject, A_LEVEL_ALL_STREAM_KEYS)) return ['Sciences', 'Commercials', 'Arts'];
+      if (subjectMatchesAnyKey(subject, A_LEVEL_SCI_COM_KEYS)) return ['Sciences', 'Commercials'];
       if (subject.learningAreas && subject.learningAreas.length > 0) return subject.learningAreas;
       if (subjectMatchesAnyKey(subject, A_LEVEL_ARTS_ONLY_KEYS)) return ['Arts'];
       return null;
