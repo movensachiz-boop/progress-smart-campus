@@ -109,6 +109,26 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
   };
   const removePair = (i: number) => setConflictPairs(prev => prev.filter((_, idx) => idx !== i));
 
+  /** Apply the same target periods/week to a subject across all matching classes (streams). */
+  const applyBulkTarget = () => {
+    if (!bulkSubject) return;
+    const t = Math.max(0, Math.floor(bulkTarget));
+    let touched = 0;
+    const next = classes.map(cls => {
+      if (!cls.subjectIds.includes(bulkSubject)) return cls;
+      if (bulkScope === 'olevel' && cls.form > 4) return cls;
+      if (bulkScope === 'alevel' && cls.form < 5) return cls;
+      touched++;
+      return { ...cls, subjectPeriods: { ...(cls.subjectPeriods || {}), [bulkSubject]: t } };
+    });
+    setClasses(next);
+    const subj = subjects.find(s => s.id === bulkSubject);
+    toast({
+      title: 'Targets updated',
+      description: `${subj?.code || 'Subject'} → ${t} period(s)/week across ${touched} class(es). Run Auto-correct to apply.`,
+    });
+  };
+
   // Manual "Current" editor kept for A-level fine-tuning.
   const adjustCurrent = (classId: string, subjectId: string, newCount: number) => {
     if (!timetable) return;
