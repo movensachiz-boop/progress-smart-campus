@@ -240,7 +240,11 @@ const TeacherMarks = () => {
         if (id && !studentRank.find(r => r.id === id)) studentRank.push({ id, rank, sequence });
       };
       // Seed order from explicit subject_codes (header row, left→right)
-      (subject_codes || []).forEach(c => pushOrder(normalizeSubjectCode(c)));
+      (subject_codes || []).forEach(c => {
+        const code = normalizeSubjectCode(c);
+        if (teacherScope && !teacherScope.allowedCodes.has(code)) return;
+        pushOrder(code);
+      });
       const matched = new Set<string>();
       let matchedCount = 0;
       let cellCount = 0;
