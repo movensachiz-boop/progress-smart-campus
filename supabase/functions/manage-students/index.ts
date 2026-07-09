@@ -213,6 +213,39 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "delete_student") {
+      const { profileId, registrationNumber } = payload;
+      if (!profileId && !registrationNumber) {
+        return new Response(JSON.stringify({ error: "profileId or registrationNumber required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      let query = supabaseAdmin.from("profiles").select("id, user_id, first_name, last_name, registration_number");
+      if (profileId) query = query.eq("id", profileId);
+      else query = query.ilike("registration_number", String(registrationNumber).trim().toUpperCase());
+      const { data: profile, error: findErr } = await query.maybeSingle();
+      if (findErr || !profile) {
+        return new Response(JSON.stringify({ error: "Student not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error: delErr } = await supabaseAdmin.from("profiles").delete().eq("id", profile.id);
+      if (delErr) {
+        return new Response(JSON.stringify({ error: delErr.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (profile.user_id) {
+        try {
+          await supabaseAdmin.from("user_roles").delete().eq("user_id", profile.user_id);
+          await supabaseAdmin.auth.admin.deleteUser(profile.user_id);
+        } catch (_) { /* non-fatal */ }
+      }
+      return new Response(JSON.stringify({ success: true, deleted: `${profile.first_name} ${profile.last_name}` }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "list_students") {
       // Paginated fetch — get ALL students in batches of 1000
       let allStudents: any[] = [];
