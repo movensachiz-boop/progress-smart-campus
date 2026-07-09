@@ -347,7 +347,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                     <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Subject B" /></SelectTrigger>
                     <SelectContent>
                       {pairSubjectOptions.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>
+                        <SelectItem key={s.id} value={s.id}>{s.code} — {formatSubjectName(s)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
