@@ -116,10 +116,8 @@ const StudentTimetable = () => {
                           }
                           const subj = subjects.find(s => s.id === slot.subjectId);
                           const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
-                          const compFirst = paired && subj && ['COMP', 'CS'].includes((paired.code || '').toUpperCase());
-                          const label = paired && subj
-                            ? (compFirst ? `${paired.name} / ${subj.name}` : `${subj.name} / ${paired.name}`)
-                            : (subj?.name || "Free");
+                          const classForm = cls ? cls.form : undefined;
+                          const label = formatPairedSubjectNames(subj, paired, classForm, ' / ') || "Free";
                           return (
                             <td key={i} className="p-3">
                               <Badge variant="secondary" className={subjectColor("lesson")}>
