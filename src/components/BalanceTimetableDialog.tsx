@@ -12,6 +12,7 @@ import {
   exportTimetableJSON, exportFairnessCSV, exportFairnessPDF, exportTeacherLoadCSV,
   exportClassTimetablesCSV, exportTeacherTimetablesCSV, exportRoomUsageCSV,
 } from '@/lib/timetableExports';
+import { formatSubjectName } from '@/lib/timetableUtils';
 import { Timetable, TimetableSlot } from '@/types/school';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { AlertTriangle, CheckCircle2, FileDown, RotateCcw, Sparkles, Wand2, X, Plus } from 'lucide-react';
