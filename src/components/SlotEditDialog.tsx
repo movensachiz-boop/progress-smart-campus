@@ -172,7 +172,7 @@ export default function SlotEditDialog({
               <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— Free —</SelectItem>
-                {availableSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>)}
+                {availableSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {formatSubjectName(s, cls?.form)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
