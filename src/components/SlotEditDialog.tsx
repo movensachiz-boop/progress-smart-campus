@@ -193,7 +193,7 @@ export default function SlotEditDialog({
               <SelectTrigger><SelectValue placeholder="Select a second subject" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— None —</SelectItem>
-                {availablePairedSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>)}
+                {availablePairedSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {formatSubjectName(s, cls?.form)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
