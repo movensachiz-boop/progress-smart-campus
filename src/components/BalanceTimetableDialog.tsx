@@ -23,7 +23,10 @@ interface Props {
 }
 
 export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
-  const { timetable, classes, subjects, teachers, replaceTimetable } = useTimetable();
+  const { timetable, classes, subjects, teachers, replaceTimetable, setClasses } = useTimetable();
+  const [bulkSubject, setBulkSubject] = useState<string>('');
+  const [bulkTarget, setBulkTarget] = useState<number>(0);
+  const [bulkScope, setBulkScope] = useState<'all' | 'olevel' | 'alevel'>('all');
   const { toast } = useToast();
   const [preview, setPreview] = useState<{ next: Timetable; report: BalancerReport } | null>(null);
   const [undoStack, setUndoStack] = useState<Timetable[]>([]);
