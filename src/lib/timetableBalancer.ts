@@ -136,7 +136,7 @@ export function analyzeFairness(
         className: `${cls.form}${cls.stream}`,
         subjectId: sid,
         subjectCode: subj.code,
-        subjectName: subj.name,
+        subjectName: formatSubjectName(subj, cls.form),
         current: cur,
         target: t,
         status,
