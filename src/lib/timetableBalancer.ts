@@ -60,6 +60,8 @@ export interface BalancerReport {
 export interface RebalanceOptions {
   /** Max periods/week override for Form 6 (default = A_LEVEL_TARGET). */
   form6Max?: number;
+  /** Per-form max periods/week for O-level (Forms 1-4). Caps every subject target in that form. */
+  oLevelMax?: Partial<Record<1 | 2 | 3 | 4, number>>;
   /** Subject-id pairs that must never be scheduled at the same (day, period). */
   conflictPairs?: Array<[string, string]>;
   /** When true, O-level classes (Forms 1-4) are also balanced. */
@@ -71,7 +73,9 @@ const isALevelForm = (form: number) => form === 5 || form === 6;
 function targetFor(cls: SchoolClass, subject: Subject, opts: RebalanceOptions): number {
   if (cls.form === 5) return A_LEVEL_TARGET;
   if (cls.form === 6) return opts.form6Max ?? A_LEVEL_TARGET;
-  return cls.subjectPeriods?.[subject.id] ?? subject.periodsPerWeek;
+  const base = cls.subjectPeriods?.[subject.id] ?? subject.periodsPerWeek;
+  const cap = opts.oLevelMax?.[cls.form as 1 | 2 | 3 | 4];
+  return cap && cap > 0 ? Math.min(base, cap) : base;
 }
 
 /** Group A-level lesson slots into their double blocks. */
