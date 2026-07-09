@@ -1,4 +1,5 @@
 import { Timetable, TimetableSlot, Subject, Teacher, SchoolClass, DayOfWeek } from '@/types/school';
+import { formatSubjectName } from './timetableUtils';
 
 /** Target periods per week for every A-level subject (4 doubles). Form 6 may be raised via options. */
 export const A_LEVEL_TARGET = 8;
@@ -135,7 +136,7 @@ export function analyzeFairness(
         className: `${cls.form}${cls.stream}`,
         subjectId: sid,
         subjectCode: subj.code,
-        subjectName: subj.name,
+        subjectName: formatSubjectName(subj, cls.form),
         current: cur,
         target: t,
         status,

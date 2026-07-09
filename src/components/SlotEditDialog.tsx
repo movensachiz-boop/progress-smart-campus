@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, Users } from 'lucide-react';
 import { TimetableSlot, Subject, Teacher, SchoolClass } from '@/types/school';
+import { formatSubjectName } from '@/lib/timetableUtils';
 
 interface SlotEditDialogProps {
   slot: TimetableSlot | null;
@@ -171,7 +172,7 @@ export default function SlotEditDialog({
               <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— Free —</SelectItem>
-                {availableSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>)}
+                {availableSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {formatSubjectName(s, cls?.form)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -192,7 +193,7 @@ export default function SlotEditDialog({
               <SelectTrigger><SelectValue placeholder="Select a second subject" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— None —</SelectItem>
-                {availablePairedSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>)}
+                {availablePairedSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.code} — {formatSubjectName(s, cls?.form)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

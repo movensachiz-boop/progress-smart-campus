@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DayOfWeek } from "@/types/school";
+import { formatPairedSubjectNames, formatSubjectName } from "@/lib/timetableUtils";
 
 const days: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const dayLabels = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6"];
@@ -115,10 +116,8 @@ const StudentTimetable = () => {
                           }
                           const subj = subjects.find(s => s.id === slot.subjectId);
                           const paired = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
-                          const compFirst = paired && subj && ['COMP', 'CS'].includes((paired.code || '').toUpperCase());
-                          const label = paired && subj
-                            ? (compFirst ? `${paired.name} / ${subj.name}` : `${subj.name} / ${paired.name}`)
-                            : (subj?.name || "Free");
+                          const classForm = cls ? cls.form : undefined;
+                          const label = formatPairedSubjectNames(subj, paired, classForm, ' / ') || "Free";
                           return (
                             <td key={i} className="p-3">
                               <Badge variant="secondary" className={subjectColor("lesson")}>

@@ -12,6 +12,7 @@ import {
   exportTimetableJSON, exportFairnessCSV, exportFairnessPDF, exportTeacherLoadCSV,
   exportClassTimetablesCSV, exportTeacherTimetablesCSV, exportRoomUsageCSV,
 } from '@/lib/timetableExports';
+import { formatSubjectName } from '@/lib/timetableUtils';
 import { Timetable, TimetableSlot } from '@/types/school';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { AlertTriangle, CheckCircle2, FileDown, RotateCcw, Sparkles, Wand2, X, Plus } from 'lucide-react';
@@ -244,7 +245,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
   );
   const subjectLabel = (id: string) => {
     const s = subjects.find(x => x.id === id);
-    return s ? `${s.code}` : id;
+    return s ? `${s.code} — ${formatSubjectName(s)}` : id;
   };
 
   return (
@@ -337,7 +338,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                     <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Subject A" /></SelectTrigger>
                     <SelectContent>
                       {pairSubjectOptions.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>
+                        <SelectItem key={s.id} value={s.id}>{s.code} — {formatSubjectName(s)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -346,7 +347,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                     <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Subject B" /></SelectTrigger>
                     <SelectContent>
                       {pairSubjectOptions.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>
+                        <SelectItem key={s.id} value={s.id}>{s.code} — {formatSubjectName(s)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -380,7 +381,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                   <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Subject" /></SelectTrigger>
                   <SelectContent>
                     {pairSubjectOptions.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.code} — {s.name}</SelectItem>
+                      <SelectItem key={s.id} value={s.id}>{s.code} — {formatSubjectName(s)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -434,7 +435,7 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                       return (
                         <tr key={`${r.classId}-${r.subjectId}`} className="border-b">
                           <td className="p-2 font-medium">{r.className}</td>
-                          <td className="p-2">{r.subjectCode} <span className="text-muted-foreground">· {r.subjectName}</span></td>
+                          <td className="p-2">{r.subjectCode} <span className="text-muted-foreground">· {formatSubjectName(subjects.find(s => s.id === r.subjectId), cls?.form)}</span></td>
                           <td className="p-2 text-center">
                             <Input
                               type="number"
