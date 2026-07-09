@@ -35,16 +35,18 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
   const [conflictPairs, setConflictPairs] = useState<Array<[string, string]>>([]);
   const [pairA, setPairA] = useState<string>('');
   const [pairB, setPairB] = useState<string>('');
+  const [oLevelMax, setOLevelMax] = useState<Record<1 | 2 | 3 | 4, number>>({ 1: 0, 2: 0, 3: 0, 4: 0 });
 
   const maxForForm = (form: number) => {
     if (form === 6) return form6Max;
     if (form === 5) return A_LEVEL_TARGET;
-    return 999; // O-level: bounded by subject target
+    const cap = oLevelMax[form as 1 | 2 | 3 | 4];
+    return cap && cap > 0 ? cap : 999;
   };
 
   const opts: RebalanceOptions = useMemo(() => ({
-    form6Max, conflictPairs, includeOLevel,
-  }), [form6Max, conflictPairs, includeOLevel]);
+    form6Max, conflictPairs, includeOLevel, oLevelMax,
+  }), [form6Max, conflictPairs, includeOLevel, oLevelMax]);
 
   const currentFairness = useMemo(
     () => timetable ? analyzeFairness(timetable, classes, subjects, opts) : [],
@@ -303,6 +305,25 @@ export default function BalanceTimetableDialog({ open, onOpenChange }: Props) {
                     className="h-7 w-16 text-center"
                   />
                 </label>
+              </div>
+
+              {/* O-level per-form max periods/week */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs text-muted-foreground">O-level max periods/week (0 = no cap):</span>
+                {([1, 2, 3, 4] as const).map(f => (
+                  <label key={f} className="flex items-center gap-1 text-xs">
+                    <span className="font-medium">F{f}</span>
+                    <Input
+                      type="number" min={0} max={20}
+                      value={oLevelMax[f]}
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.min(20, Number(e.target.value) || 0));
+                        setOLevelMax(prev => ({ ...prev, [f]: v }));
+                      }}
+                      className="h-7 w-16 text-center"
+                    />
+                  </label>
+                ))}
               </div>
 
               {/* Conflict pair editor */}
