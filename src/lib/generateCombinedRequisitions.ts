@@ -176,8 +176,7 @@ export const generateCombinedRequisitions = async (reqs: CombinedRequisition[]) 
     }
     y += boxH + 6;
   }
-  // @ts-ignore
-  y = doc.lastAutoTable.finalY + 8;
+  if (y > ph - 40) { doc.addPage(); y = 20; }
 
   // Grand totals
   doc.setFont("helvetica", "bold");
