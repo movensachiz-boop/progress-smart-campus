@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { Timetable, Subject, Teacher, SchoolClass, DayOfWeek } from '@/types/school';
 import { DAYS } from '@/data/defaults';
 import { BalancerReport } from './timetableBalancer';
+import { formatSubjectName } from './timetableUtils';
 
 const download = (content: string, filename: string, mime: string) => {
   const blob = new Blob([content], { type: mime });
