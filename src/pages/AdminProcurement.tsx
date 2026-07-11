@@ -624,32 +624,29 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
     try {
       let payload: Record<string, string> = {};
       let previewDataUrl = "";
+      const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+      const ext = file.name.split(".").pop()?.toLowerCase() || (isPdf ? "pdf" : "jpg");
+      const path = `${Date.now()}-quote-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("requisition-scans").upload(path, file, { contentType: file.type || (isPdf ? "application/pdf" : "image/jpeg") });
+      if (upErr) {
+        toast({ title: "Upload failed", description: upErr.message, variant: "destructive" });
+        return;
+      }
+      setImageUrl(path);
+
       if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
-        const fileBase64 = await fileToDataUrl(file);
-        payload = { fileBase64, mimeType: file.type || "application/pdf", fileName: file.name || "quotation.pdf" };
+        setSignedPreview(null);
+        payload = { filePath: path, mimeType: file.type || "application/pdf", fileName: file.name || "quotation.pdf" };
       } else if (file.type.startsWith("image/")) {
         previewDataUrl = await fileToDataUrl(file);
-        payload = { imageBase64: previewDataUrl };
+        setSignedPreview(previewDataUrl);
+        payload = { imagePath: path };
       } else {
         toast({ title: "Unsupported file", description: "Upload a PDF or image quotation.", variant: "destructive" });
         return;
       }
 
       toast({ title: "Processing quotation...", description: file.type === "application/pdf" || /\.pdf$/i.test(file.name) ? "Scanning the PDF directly." : "Extracting items from the image." });
-
-      // Upload the original file/image as scan evidence in the background.
-      (async () => {
-        try {
-          const ext = file.name.split(".").pop()?.toLowerCase() || (file.type.includes("pdf") ? "pdf" : "jpg");
-          const path = `${Date.now()}-quote-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-          const { error: upErr } = await supabase.storage.from("requisition-scans").upload(path, file, { contentType: file.type || (ext === "pdf" ? "application/pdf" : "image/jpeg") });
-          if (!upErr) {
-            setImageUrl(path);
-            setSignedPreview(previewDataUrl || await signUrl(path));
-          }
-        } catch {}
-      })();
-
       const { data, error } = await supabase.functions.invoke("extract-requisition", { body: payload });
       if (error) {
         toast({ title: "PDF scan failed", description: error.message, variant: "destructive" });
