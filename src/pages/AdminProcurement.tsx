@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, ShoppingCart, Pencil, Receipt, Camera, Loader2, Eye } from "lucide-react";
+import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, ShoppingCart, Pencil, Receipt, Camera, Loader2, Eye, Upload } from "lucide-react";
+import { pdfFileToImages } from "@/lib/pdfToImages";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcurementDoc";
@@ -609,6 +610,84 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
     }
   };
 
+  const quotationFileId = useId();
+  const handleUploadQuotation = async (file: File) => {
+    setScanning(true);
+    setForm({ requested_by: "", department: "", purpose: "", currency: "USD", notes: "" });
+    setItems([emptyItem()]);
+    try {
+      let pages: string[] = [];
+      if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
+        try {
+          pages = await pdfFileToImages(file);
+        } catch (e: any) {
+          toast({ title: "Could not read PDF", description: e?.message || String(e), variant: "destructive" });
+          return;
+        }
+      } else if (file.type.startsWith("image/")) {
+        pages = [await new Promise<string>((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(String(r.result));
+          r.onerror = () => rej(r.error);
+          r.readAsDataURL(file);
+        })];
+      } else {
+        toast({ title: "Unsupported file", description: "Upload a PDF or image quotation.", variant: "destructive" });
+        return;
+      }
+
+      // Upload first page as the scan preview
+      try {
+        const firstBlob = await (await fetch(pages[0])).blob();
+        const path = `${Date.now()}-quote-${Math.random().toString(36).slice(2, 8)}.jpg`;
+        const { error: upErr } = await supabase.storage.from("requisition-scans").upload(path, firstBlob, { contentType: "image/jpeg" });
+        if (!upErr) { setImageUrl(path); setSignedPreview(await signUrl(path)); }
+      } catch {}
+
+      let header = { requested_by: "", department: "", purpose: "", currency: "USD", notes: "" };
+      const allItems: Item[] = [];
+      for (let i = 0; i < pages.length; i++) {
+        const { data, error } = await supabase.functions.invoke("extract-requisition", {
+          body: { imageBase64: pages[i] },
+        });
+        if (error) {
+          toast({ title: `Page ${i + 1} OCR failed`, description: error.message, variant: "destructive" });
+          continue;
+        }
+        if (!header.requested_by && data.requested_by) header.requested_by = data.requested_by;
+        if (!header.department && data.department) header.department = data.department;
+        if (!header.purpose && data.purpose) header.purpose = data.purpose;
+        if (data.currency && header.currency === "USD") header.currency = data.currency;
+        if (data.notes) header.notes = header.notes ? `${header.notes}\n${data.notes}` : data.notes;
+        if (Array.isArray(data.items)) {
+          for (const it of data.items) {
+            allItems.push({
+              description: String(it.description || ""),
+              quantity: Number(it.quantity) || 1,
+              unit: String(it.unit || "pcs"),
+              unit_price: Number(it.unit_price) || 0,
+            });
+          }
+        }
+      }
+
+      setForm(header);
+      if (allItems.length) {
+        const mergedMap = mergePricesIntoMap(allItems, header.currency || "USD", priceMap);
+        setPriceMap(mergedMap);
+        const { items: enriched } = applyPriceHistory(allItems, mergedMap);
+        setItems(enriched);
+        toast({ title: `Extracted ${allItems.length} item${allItems.length === 1 ? "" : "s"} from quotation`, description: `${pages.length} page${pages.length === 1 ? "" : "s"} processed. Verify before saving.` });
+      } else {
+        toast({ title: "No items detected", description: "Try a clearer quotation or enter items manually.", variant: "destructive" });
+      }
+    } finally {
+      setScanning(false);
+    }
+  };
+
+
+
   const submit = async () => {
     if (!form.requested_by.trim()) {
       toast({ title: "Requested by is required", variant: "destructive" });
@@ -730,6 +809,21 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                   </Button>
                   <Button type="button" variant="outline" onClick={() => setPhonePairOpen(true)} disabled={scanning} title="Scan QR with phone to capture from phone camera">
                     <Smartphone size={14} /> Use Phone
+                  </Button>
+                  <input
+                    id={quotationFileId}
+                    type="file"
+                    accept="application/pdf,image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.currentTarget.value = "";
+                      if (f) await handleUploadQuotation(f);
+                    }}
+                  />
+                  <Button type="button" variant="outline" onClick={() => document.getElementById(quotationFileId)?.click()} disabled={scanning} title="Upload a PDF or image quotation to auto-fill the requisition">
+                    {scanning ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    Upload Quotation
                   </Button>
                 </div>
               </div>
