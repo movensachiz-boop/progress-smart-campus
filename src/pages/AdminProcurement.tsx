@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, ShoppingCart, Pencil, Receipt, Camera, Loader2, Eye, Upload } from "lucide-react";
-import { pdfFileToImages } from "@/lib/pdfToImages";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcurementDoc";
@@ -611,73 +610,68 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
   };
 
   const quotationFileId = useId();
+  const fileToDataUrl = (file: File) => new Promise<string>((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(file);
+  });
+
   const handleUploadQuotation = async (file: File) => {
     setScanning(true);
     setForm({ requested_by: "", department: "", purpose: "", currency: "USD", notes: "" });
     setItems([emptyItem()]);
     try {
-      let pages: string[] = [];
+      let payload: Record<string, string> = {};
+      let previewDataUrl = "";
       if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
-        try {
-          pages = await pdfFileToImages(file, 1.5);
-        } catch (e: any) {
-          toast({ title: "Could not read PDF", description: e?.message || String(e), variant: "destructive" });
-          return;
-        }
+        const fileBase64 = await fileToDataUrl(file);
+        payload = { fileBase64, mimeType: file.type || "application/pdf", fileName: file.name || "quotation.pdf" };
       } else if (file.type.startsWith("image/")) {
-        pages = [await new Promise<string>((res, rej) => {
-          const r = new FileReader();
-          r.onload = () => res(String(r.result));
-          r.onerror = () => rej(r.error);
-          r.readAsDataURL(file);
-        })];
+        previewDataUrl = await fileToDataUrl(file);
+        payload = { imageBase64: previewDataUrl };
       } else {
         toast({ title: "Unsupported file", description: "Upload a PDF or image quotation.", variant: "destructive" });
         return;
       }
 
-      toast({ title: `Processing ${pages.length} page${pages.length === 1 ? "" : "s"}...`, description: "Extracting items in parallel." });
+      toast({ title: "Processing quotation...", description: file.type === "application/pdf" || /\.pdf$/i.test(file.name) ? "Scanning the PDF directly." : "Extracting items from the image." });
 
-      // Upload first page as the scan preview (in background, don't await)
+      // Upload the original file/image as scan evidence in the background.
       (async () => {
         try {
-          const firstBlob = await (await fetch(pages[0])).blob();
-          const path = `${Date.now()}-quote-${Math.random().toString(36).slice(2, 8)}.jpg`;
-          const { error: upErr } = await supabase.storage.from("requisition-scans").upload(path, firstBlob, { contentType: "image/jpeg" });
-          if (!upErr) { setImageUrl(path); setSignedPreview(await signUrl(path)); }
+          const ext = file.name.split(".").pop()?.toLowerCase() || (file.type.includes("pdf") ? "pdf" : "jpg");
+          const path = `${Date.now()}-quote-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+          const { error: upErr } = await supabase.storage.from("requisition-scans").upload(path, file, { contentType: file.type || (ext === "pdf" ? "application/pdf" : "image/jpeg") });
+          if (!upErr) {
+            setImageUrl(path);
+            setSignedPreview(previewDataUrl || await signUrl(path));
+          }
         } catch {}
       })();
 
-      // Process all pages in parallel
-      const results = await Promise.all(pages.map(async (pg, i) => {
-        const { data, error } = await supabase.functions.invoke("extract-requisition", {
-          body: { imageBase64: pg },
-        });
-        if (error) {
-          toast({ title: `Page ${i + 1} OCR failed`, description: error.message, variant: "destructive" });
-          return null;
-        }
-        return data;
-      }));
-
+      const { data, error } = await supabase.functions.invoke("extract-requisition", { body: payload });
+      if (error) {
+        toast({ title: "PDF scan failed", description: error.message, variant: "destructive" });
+        return;
+      }
       let header = { requested_by: "", department: "", purpose: "", currency: "USD", notes: "" };
       const allItems: Item[] = [];
-      for (const data of results) {
-        if (!data) continue;
-        if (!header.requested_by && data.requested_by) header.requested_by = data.requested_by;
-        if (!header.department && data.department) header.department = data.department;
-        if (!header.purpose && data.purpose) header.purpose = data.purpose;
-        if (data.currency && header.currency === "USD") header.currency = data.currency;
-        if (data.notes) header.notes = header.notes ? `${header.notes}\n${data.notes}` : data.notes;
+      if (data) {
+        header = {
+          requested_by: data.requested_by || "",
+          department: data.department || "",
+          purpose: data.purpose || "",
+          currency: data.currency || "USD",
+          notes: data.notes || "",
+        };
         if (Array.isArray(data.items)) {
-          for (const it of data.items) {
-            allItems.push({
-              description: String(it.description || ""),
-              quantity: Number(it.quantity) || 1,
-              unit: String(it.unit || "pcs"),
-              unit_price: Number(it.unit_price) || 0,
-            });
-          }
+          data.items.forEach((it: any) => allItems.push({
+            description: String(it.description || ""),
+            quantity: Number(it.quantity) || 1,
+            unit: String(it.unit || "pcs"),
+            unit_price: Number(it.unit_price) || 0,
+          }));
         }
       }
 
@@ -687,7 +681,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
         setPriceMap(mergedMap);
         const { items: enriched } = applyPriceHistory(allItems, mergedMap);
         setItems(enriched);
-        toast({ title: `Extracted ${allItems.length} item${allItems.length === 1 ? "" : "s"} from quotation`, description: `${pages.length} page${pages.length === 1 ? "" : "s"} processed. Verify before saving.` });
+        toast({ title: `Extracted ${allItems.length} item${allItems.length === 1 ? "" : "s"} from quotation`, description: "Verify before saving." });
       } else {
         toast({ title: "No items detected", description: "Try a clearer quotation or enter items manually.", variant: "destructive" });
       }
