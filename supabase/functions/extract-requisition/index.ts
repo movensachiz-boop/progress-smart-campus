@@ -46,15 +46,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { imageBase64, imagePath } = await req.json();
-    let imageDataUrl: string | null = null;
+    const { imageBase64, imagePath, fileBase64, filePath, fileName, mimeType } = await req.json();
+    let uploadedDataUrl: string | null = null;
+    let uploadedMime = "image/jpeg";
+    let uploadedName = typeof fileName === "string" && fileName.trim() ? fileName.trim() : "quotation";
 
-    if (imagePath && typeof imagePath === "string") {
-      // Download from storage server-side to avoid huge request bodies
+    if ((filePath || imagePath) && typeof (filePath || imagePath) === "string") {
+      // Download from storage server-side to avoid huge request bodies.
+      const storagePath = String(filePath || imagePath);
       const { data: fileData, error: dlErr } = await supabaseAdmin.storage
-        .from("requisition-scans").download(imagePath);
+        .from("requisition-scans").download(storagePath);
       if (dlErr || !fileData) {
-        return new Response(JSON.stringify({ error: `Could not load image: ${dlErr?.message || "not found"}` }), {
+        return new Response(JSON.stringify({ error: `Could not load file: ${dlErr?.message || "not found"}` }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -62,15 +65,24 @@ Deno.serve(async (req) => {
       let bin = "";
       for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
       const b64 = btoa(bin);
-      const mime = fileData.type || "image/jpeg";
-      imageDataUrl = `data:${mime};base64,${b64}`;
+      uploadedMime = fileData.type || mimeType || (storagePath.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg");
+      uploadedName = uploadedName.includes(".") ? uploadedName : storagePath.split("/").pop() || uploadedName;
+      uploadedDataUrl = `data:${uploadedMime};base64,${b64}`;
+    } else if (fileBase64 && typeof fileBase64 === "string") {
+      uploadedMime = typeof mimeType === "string" && mimeType ? mimeType : (fileBase64.startsWith("data:application/pdf") ? "application/pdf" : "image/jpeg");
+      uploadedDataUrl = fileBase64.startsWith("data:") ? fileBase64 : `data:${uploadedMime};base64,${fileBase64}`;
     } else if (imageBase64 && typeof imageBase64 === "string") {
-      imageDataUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+      uploadedMime = "image/jpeg";
+      uploadedDataUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
     } else {
-      return new Response(JSON.stringify({ error: "No image provided" }), {
+      return new Response(JSON.stringify({ error: "No file provided" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const attachment = uploadedMime.includes("pdf")
+      ? { type: "file", file: { filename: uploadedName.toLowerCase().endsWith(".pdf") ? uploadedName : `${uploadedName}.pdf`, file_data: uploadedDataUrl } }
+      : { type: "image_url", image_url: { url: uploadedDataUrl } };
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -80,13 +92,13 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a strict OCR assistant for a school procurement system. Extract requisition details ONLY from the photo attached in this request. Do NOT carry over, remember, or invent details from any previous requisition, conversation, or example. If a field is not clearly visible in THIS image, return an empty string (or 0 for numbers). If the image is blank, unreadable, or not a requisition form, return an empty items array and empty fields.`,
+            content: `You are a strict OCR assistant for a school procurement system. Extract procurement details ONLY from the quotation, invoice, receipt, or requisition attached in this request. Do NOT carry over, remember, or invent details from any previous document, conversation, or example. If a field is not clearly visible in THIS document, return an empty string (or 0 for numbers). If the document is blank or unreadable, return an empty items array and empty fields.`,
           },
           {
             role: "user",
             content: [
-              { type: "text", text: "Read ONLY the attached image and extract the requisition header and line items. Ignore anything you may have seen before." },
-              { type: "image_url", image_url: { url: imageDataUrl } },
+              { type: "text", text: "Read ONLY the attached document and extract supplier/request details and every visible line item with quantity, unit, and unit price where available. Ignore anything you may have seen before." },
+              attachment,
             ],
           },
         ],
