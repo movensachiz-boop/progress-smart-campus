@@ -810,6 +810,21 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                   <Button type="button" variant="outline" onClick={() => setPhonePairOpen(true)} disabled={scanning} title="Scan QR with phone to capture from phone camera">
                     <Smartphone size={14} /> Use Phone
                   </Button>
+                  <input
+                    id={quotationFileId}
+                    type="file"
+                    accept="application/pdf,image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.currentTarget.value = "";
+                      if (f) await handleUploadQuotation(f);
+                    }}
+                  />
+                  <Button type="button" variant="outline" onClick={() => document.getElementById(quotationFileId)?.click()} disabled={scanning} title="Upload a PDF or image quotation to auto-fill the requisition">
+                    {scanning ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    Upload Quotation
+                  </Button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
