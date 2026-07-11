@@ -684,6 +684,9 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
     } finally {
       setScanning(false);
     }
+  };
+
+
 
   const submit = async () => {
     if (!form.requested_by.trim()) {
