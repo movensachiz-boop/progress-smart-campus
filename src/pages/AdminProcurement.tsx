@@ -619,7 +619,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
       let pages: string[] = [];
       if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
         try {
-          pages = await pdfFileToImages(file);
+          pages = await pdfFileToImages(file, 1.5);
         } catch (e: any) {
           toast({ title: "Could not read PDF", description: e?.message || String(e), variant: "destructive" });
           return;
@@ -636,24 +636,34 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
         return;
       }
 
-      // Upload first page as the scan preview
-      try {
-        const firstBlob = await (await fetch(pages[0])).blob();
-        const path = `${Date.now()}-quote-${Math.random().toString(36).slice(2, 8)}.jpg`;
-        const { error: upErr } = await supabase.storage.from("requisition-scans").upload(path, firstBlob, { contentType: "image/jpeg" });
-        if (!upErr) { setImageUrl(path); setSignedPreview(await signUrl(path)); }
-      } catch {}
+      toast({ title: `Processing ${pages.length} page${pages.length === 1 ? "" : "s"}...`, description: "Extracting items in parallel." });
 
-      let header = { requested_by: "", department: "", purpose: "", currency: "USD", notes: "" };
-      const allItems: Item[] = [];
-      for (let i = 0; i < pages.length; i++) {
+      // Upload first page as the scan preview (in background, don't await)
+      (async () => {
+        try {
+          const firstBlob = await (await fetch(pages[0])).blob();
+          const path = `${Date.now()}-quote-${Math.random().toString(36).slice(2, 8)}.jpg`;
+          const { error: upErr } = await supabase.storage.from("requisition-scans").upload(path, firstBlob, { contentType: "image/jpeg" });
+          if (!upErr) { setImageUrl(path); setSignedPreview(await signUrl(path)); }
+        } catch {}
+      })();
+
+      // Process all pages in parallel
+      const results = await Promise.all(pages.map(async (pg, i) => {
         const { data, error } = await supabase.functions.invoke("extract-requisition", {
-          body: { imageBase64: pages[i] },
+          body: { imageBase64: pg },
         });
         if (error) {
           toast({ title: `Page ${i + 1} OCR failed`, description: error.message, variant: "destructive" });
-          continue;
+          return null;
         }
+        return data;
+      }));
+
+      let header = { requested_by: "", department: "", purpose: "", currency: "USD", notes: "" };
+      const allItems: Item[] = [];
+      for (const data of results) {
+        if (!data) continue;
         if (!header.requested_by && data.requested_by) header.requested_by = data.requested_by;
         if (!header.department && data.department) header.department = data.department;
         if (!header.purpose && data.purpose) header.purpose = data.purpose;
@@ -681,6 +691,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
       } else {
         toast({ title: "No items detected", description: "Try a clearer quotation or enter items manually.", variant: "destructive" });
       }
+
     } finally {
       setScanning(false);
     }
