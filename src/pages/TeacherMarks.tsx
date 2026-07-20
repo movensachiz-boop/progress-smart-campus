@@ -677,8 +677,6 @@ const TeacherMarks = () => {
                                 </td>
                               );
                             })}
-                            <td className="border-b border-r px-2 py-2 text-center text-xs font-medium text-green-600 min-w-[140px] w-[140px]">{passed.join(", ") || "—"}</td>
-                            <td className="border-b px-2 py-2 text-center text-xs font-medium text-red-600 min-w-[140px] w-[140px]">{failed.join(", ") || "—"}</td>
                           </tr>
                         );
                       })}
