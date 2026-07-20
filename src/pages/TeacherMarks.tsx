@@ -116,6 +116,8 @@ const TeacherMarks = () => {
   const [scanStudentOrder, setScanStudentOrder] = useState<string[]>([]);
   // Teacher-selected active subject (only this column is editable)
   const [activeSubject, setActiveSubject] = useState<string>("");
+  // Teacher-selected active class (filters students to that class only)
+  const [activeClass, setActiveClass] = useState<string>("");
   // Subjects unlocked this session after entering the per-subject password
   const [unlockedSubjects, setUnlockedSubjects] = useState<Set<string>>(new Set());
 
