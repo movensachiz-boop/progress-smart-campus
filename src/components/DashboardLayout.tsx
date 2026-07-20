@@ -88,7 +88,10 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
       links = adminLinks.filter(l => l.path === "/admin/kitchen");
     } else if (actualRole === "principal") {
       links = adminLinks.filter(l => l.path === "/admin/principal-marks" || l.path === "/admin/principal-docs");
+    } else if (actualRole === "it_assistant") {
+      links = [{ label: "Reset Teacher Passwords", icon: ShieldCheck, path: "/admin/it" }];
     }
+
   }
 
   return (

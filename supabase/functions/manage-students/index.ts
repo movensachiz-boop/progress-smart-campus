@@ -37,21 +37,68 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check admin or cashier role (both can manage students/reset passwords)
+    // Check caller role (admin, cashier, or it_assistant can reach this function)
     const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id)
-      .in("role", ["admin", "cashier"]);
+      .in("role", ["admin", "cashier", "it_assistant"]);
 
     if (!roleData || roleData.length === 0) {
-      return new Response(JSON.stringify({ error: "Forbidden: admin or cashier only" }), {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const callerRoles = new Set((roleData || []).map((r: any) => r.role));
+    const isAdminCaller = callerRoles.has("admin") || callerRoles.has("cashier");
+    const isItAssistant = callerRoles.has("it_assistant");
+
+    const { action, ...payload } = await req.json();
+
+    // IT Assistant is limited to resetting teacher passwords only.
+    if (!isAdminCaller && isItAssistant && action !== "reset_teacher_password") {
+      return new Response(JSON.stringify({ error: "IT Assistant can only reset teacher passwords" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { action, ...payload } = await req.json();
+    if (action === "reset_teacher_password") {
+      const { teacherUserId, newPassword } = payload;
+      if (!teacherUserId || !newPassword || String(newPassword).length < 4) {
+        return new Response(JSON.stringify({ error: "Teacher and a password of 4+ characters are required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Verify target is actually a teacher
+      const { data: targetRoles } = await supabaseAdmin
+        .from("user_roles").select("role").eq("user_id", teacherUserId);
+      const targetSet = new Set((targetRoles || []).map((r: any) => r.role));
+      if (!targetSet.has("teacher")) {
+        return new Response(JSON.stringify({ error: "Target account is not a teacher" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // IT assistant must NOT be allowed to reset admins/owners even if they somehow also have teacher role
+      if (!isAdminCaller && (targetSet.has("admin") || targetSet.has("owner") || targetSet.has("principal"))) {
+        return new Response(JSON.stringify({ error: "Not permitted for this account" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error: upErr } = await supabaseAdmin.auth.admin.updateUserById(teacherUserId, {
+        password: String(newPassword),
+      });
+      if (upErr) {
+        return new Response(JSON.stringify({ error: upErr.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     if (action === "create_student") {
       const { firstName, lastName, form, stream, gender, guardianName, guardianPhone, registrationNumber, isBeginner, residency } = payload;
@@ -348,7 +395,7 @@ Deno.serve(async (req) => {
 
     if (action === "create_staff") {
       const { fullName, password, role } = payload;
-      const allowedRoles = ["admin", "cashier", "timetable_manager", "teacher", "owner", "kitchen", "principal"];
+      const allowedRoles = ["admin", "cashier", "timetable_manager", "teacher", "owner", "kitchen", "principal", "it_assistant"];
       if (!fullName || !password || !role) {
         return new Response(JSON.stringify({ error: "Full name, password, and role are required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
