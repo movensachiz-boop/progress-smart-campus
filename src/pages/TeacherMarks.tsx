@@ -663,7 +663,7 @@ const TeacherMarks = () => {
                         <th className="sticky top-0 left-0 z-[60] bg-background border-b border-r h-12 px-3 text-left align-middle font-semibold text-muted-foreground min-w-[220px] w-[220px] shadow-sm">Student</th>
                         {columns.map(col => (
                           <th key={col.code} title={col.name}
-                              className="sticky top-0 z-50 bg-background border-b border-r h-12 px-2 text-center align-middle font-semibold text-muted-foreground min-w-[64px] w-[64px] shadow-sm">
+                              className="sticky top-0 z-50 bg-background border-b border-r h-12 px-2 text-center align-middle font-semibold text-muted-foreground min-w-[96px] w-[96px] shadow-sm">
                             {col.code}
                           </th>
                         ))}
