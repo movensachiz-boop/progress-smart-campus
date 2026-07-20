@@ -690,15 +690,15 @@ const TeacherMarks = () => {
                                 ? canTeacherEnterSubjectForStudent(s, col.code)
                                 : allowed.has(col.code) || m != null;
                               return (
-                                <td key={col.code} className="border-b border-r p-1 text-center min-w-[64px] w-[64px]">
+                                <td key={col.code} className="border-b border-r p-1 text-center min-w-[96px] w-[96px]">
                                   {isAllowed ? (
-                                    <div className="flex flex-col items-center gap-0.5">
+                                    <div className="flex items-center justify-center gap-1">
                                       <Input type="number" min={0} max={100}
-                                        className="h-8 px-1 text-center text-sm"
+                                        className="h-8 px-1 text-center text-sm w-14"
                                         value={m ?? ""}
                                         onChange={(e) => updateMark(s.id, col.code, e.target.value)}/>
                                       {m != null && (
-                                        <span className={`text-[10px] font-bold ${computeGrade(m, level) === "U" ? "text-red-600" : "text-blue-600"}`}>
+                                        <span className={`text-xs font-bold min-w-[18px] ${computeGrade(m, level) === "U" ? "text-red-600" : "text-blue-600"}`}>
                                           {computeGrade(m, level)}
                                         </span>
                                       )}
