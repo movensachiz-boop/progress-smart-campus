@@ -116,6 +116,8 @@ const TeacherMarks = () => {
   const [scanStudentOrder, setScanStudentOrder] = useState<string[]>([]);
   // Teacher-selected active subject (only this column is editable)
   const [activeSubject, setActiveSubject] = useState<string>("");
+  // Teacher-selected active class (filters students to that class only)
+  const [activeClass, setActiveClass] = useState<string>("");
   // Subjects unlocked this session after entering the per-subject password
   const [unlockedSubjects, setUnlockedSubjects] = useState<Set<string>>(new Set());
 
@@ -160,6 +162,21 @@ const TeacherMarks = () => {
     if (!restrictedMarksMode || !activeSubject) return;
     if (!teacherScope?.allowedCodes.has(activeSubject)) setActiveSubject("");
   }, [restrictedMarksMode, activeSubject, teacherScope]);
+
+  // Reset selected class when subject changes so teacher picks the correct class next.
+  useEffect(() => { setActiveClass(""); }, [activeSubject, examId]);
+
+  // Classes available to filter by (based on selected subject for teachers, or all present classes for admins).
+  const availableClasses = useMemo(() => {
+    const set = new Set<string>();
+    if (restrictedMarksMode && teacherScope && activeSubject) {
+      const assigned = teacherScope.codeToClasses.get(activeSubject);
+      if (assigned && assigned.size > 0) assigned.forEach(c => set.add(c));
+    }
+    // Always union with the classes actually present in the loaded student list.
+    students.forEach(s => { const c = studentClassId(s); if (c) set.add(c); });
+    return Array.from(set).sort();
+  }, [restrictedMarksMode, teacherScope, activeSubject, students]);
 
   useEffect(() => {
     (async () => {
@@ -447,16 +464,18 @@ const TeacherMarks = () => {
   };
 
   const orderedStudents = useMemo(() => {
-    if (!scanStudentOrder.length) return students;
+    let base = students;
+    if (activeClass) base = base.filter(s => studentClassId(s) === activeClass);
+    if (!scanStudentOrder.length) return base;
     const rank = new Map(scanStudentOrder.map((id, i) => [id, i]));
-    const originalIndex = new Map(students.map((s, i) => [s.id, i]));
-    return [...students].sort((a, b) => {
+    const originalIndex = new Map(base.map((s, i) => [s.id, i]));
+    return [...base].sort((a, b) => {
       const ra = rank.has(a.id) ? (rank.get(a.id) as number) : Number.POSITIVE_INFINITY;
       const rb = rank.has(b.id) ? (rank.get(b.id) as number) : Number.POSITIVE_INFINITY;
       if (ra !== rb) return ra - rb;
       return (originalIndex.get(a.id) ?? 0) - (originalIndex.get(b.id) ?? 0);
     });
-  }, [students, scanStudentOrder]);
+  }, [students, scanStudentOrder, activeClass]);
 
   return (
     <DashboardLayout role="teacher">
@@ -510,6 +529,18 @@ const TeacherMarks = () => {
               <Button variant="outline" size="sm" onClick={() => resetSubjectPassword(activeSubject)}>
                 Reset password
               </Button>
+            )}
+            {availableClasses.length > 0 && (
+              <div className="min-w-[180px]">
+                <Label>Class</Label>
+                <Select value={activeClass || "__all"} onValueChange={(v) => setActiveClass(v === "__all" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="All classes"/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all">All classes</SelectItem>
+                    {availableClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
             <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (restrictedMarksMode && !activeSubject)}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
