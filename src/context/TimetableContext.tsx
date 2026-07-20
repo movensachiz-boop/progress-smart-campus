@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, TimetableConflict, DayOfWeek, FormLevel } from '@/types/school';
 import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefaultTeachers, DAYS } from '@/data/defaults';
 import { v4 } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TimetableContextType {
   config: SchoolConfig;
@@ -58,6 +59,68 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     return stored;
   });
   const [timetable, setTimetable] = useState<Timetable | null>(() => loadLS<Timetable | null>('tt_timetable', null));
+  const cloudSaveTimer = useRef<NodeJS.Timeout | null>(null);
+  const snapshotRef = useRef({ config, subjects, teachers, classes, timetable });
+
+  useEffect(() => {
+    snapshotRef.current = { config, subjects, teachers, classes, timetable };
+  }, [config, subjects, teachers, classes, timetable]);
+
+  const scheduleCloudSave = (patch: Partial<typeof snapshotRef.current>) => {
+    snapshotRef.current = { ...snapshotRef.current, ...patch };
+    if (cloudSaveTimer.current) clearTimeout(cloudSaveTimer.current);
+    cloudSaveTimer.current = setTimeout(async () => {
+      const payload = snapshotRef.current;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .in('role', ['admin', 'owner']);
+      if (!roles?.length) return;
+      await supabase.from('timetable_snapshots').insert({
+        name: `Auto-save ${new Date().toLocaleString()}`,
+        snapshot_data: { version: 1, exportedAt: new Date().toISOString(), ...payload } as any,
+        is_auto: true,
+        created_by: user.id,
+      });
+    }, 1500);
+  };
+
+  // Keep all accounts/devices on the latest cloud timetable setup so teacher portals
+  // receive the teacher-subject-class assignments configured by admins.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      const isFullTimetableEditor = (roles || []).some((r: any) => r.role === 'admin' || r.role === 'owner');
+      const hasLocalSetup = localStorage.getItem('tt_teachers') || localStorage.getItem('tt_classes') || localStorage.getItem('tt_subjects');
+      if (isFullTimetableEditor && hasLocalSetup) return;
+      const { data, error } = await supabase
+        .from('timetable_snapshots')
+        .select('snapshot_data,created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled || error || !data?.snapshot_data) return;
+      const lastApplied = localStorage.getItem('tt_cloud_snapshot_at');
+      if (lastApplied === data.created_at) return;
+      const snapshot = data.snapshot_data as any;
+      if (snapshot.config) { _setConfig(snapshot.config); localStorage.setItem('tt_config', JSON.stringify(snapshot.config)); }
+      if (snapshot.subjects) { _setSubjects(snapshot.subjects); localStorage.setItem('tt_subjects', JSON.stringify(snapshot.subjects)); }
+      if (snapshot.teachers) { _setTeachers(snapshot.teachers); localStorage.setItem('tt_teachers', JSON.stringify(snapshot.teachers)); }
+      if (snapshot.classes) { _setClasses(snapshot.classes); localStorage.setItem('tt_classes', JSON.stringify(snapshot.classes)); }
+      if (snapshot.timetable) { setTimetable(snapshot.timetable); localStorage.setItem('tt_timetable', JSON.stringify(snapshot.timetable)); }
+      localStorage.setItem('tt_cloud_snapshot_at', data.created_at);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const persistTimetable = (v: Timetable | null) => {
     setTimetable(v);
@@ -65,13 +128,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (v) localStorage.setItem('tt_timetable', JSON.stringify(v));
       else localStorage.removeItem('tt_timetable');
     } catch {}
+    scheduleCloudSave({ timetable: v });
   };
   const invalidateTimetable = () => persistTimetable(null);
 
-  const setConfig = (v: SchoolConfig) => { _setConfig(v); try { localStorage.setItem('tt_config', JSON.stringify(v)); } catch {} invalidateTimetable(); };
-  const setSubjects = (v: Subject[]) => { _setSubjects(v); try { localStorage.setItem('tt_subjects', JSON.stringify(v)); } catch {} invalidateTimetable(); };
-  const setTeachers = (v: Teacher[]) => { _setTeachers(v); try { localStorage.setItem('tt_teachers', JSON.stringify(v)); } catch {} invalidateTimetable(); };
-  const setClasses = (v: SchoolClass[]) => { _setClasses(v); try { localStorage.setItem('tt_classes', JSON.stringify(v)); } catch {} invalidateTimetable(); };
+  const setConfig = (v: SchoolConfig) => { _setConfig(v); try { localStorage.setItem('tt_config', JSON.stringify(v)); } catch {} scheduleCloudSave({ config: v }); invalidateTimetable(); };
+  const setSubjects = (v: Subject[]) => { _setSubjects(v); try { localStorage.setItem('tt_subjects', JSON.stringify(v)); } catch {} scheduleCloudSave({ subjects: v }); invalidateTimetable(); };
+  const setTeachers = (v: Teacher[]) => { _setTeachers(v); try { localStorage.setItem('tt_teachers', JSON.stringify(v)); } catch {} scheduleCloudSave({ teachers: v }); invalidateTimetable(); };
+  const setClasses = (v: SchoolClass[]) => { _setClasses(v); try { localStorage.setItem('tt_classes', JSON.stringify(v)); } catch {} scheduleCloudSave({ classes: v }); invalidateTimetable(); };
 
   // Auto-purge: any subject whose code doesn't end with "A" is not an A-level subject.
   // Strip it from Forms 5 & 6 class allocations and any existing A-level timetable slots.

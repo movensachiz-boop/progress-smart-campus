@@ -51,21 +51,29 @@ const studentClassId = (s: { form: string | null; stream: string | null }): stri
 const TeacherMarks = () => {
   const { toast } = useToast();
   const { subjects: ttSubjects, teachers: ttTeachers } = useTimetable();
-  const { role } = useUserRole();
+  const { role, loading: roleLoading } = useUserRole();
   const [teacherAccount, setTeacherAccount] = useState<Teacher | null>(null);
+  const hasFullMarksAccess = role === "admin" || role === "owner";
+  const restrictedMarksMode = !hasFullMarksAccess;
 
   // Identify the signed-in teacher via their `firstname.lastname@pcc.local` email.
   useEffect(() => {
     (async () => {
-      if (role !== "teacher") { setTeacherAccount(null); return; }
+      if (roleLoading) return;
+      if (hasFullMarksAccess) { setTeacherAccount(null); return; }
       const { data: { user } } = await supabase.auth.getUser();
       const email = user?.email || "";
       const local = email.split("@")[0]?.toLowerCase();
-      if (!local) return;
-      const match = ttTeachers.find(t => slugifyName(t.name) === local);
+      const metadata = (user?.user_metadata || {}) as Record<string, unknown>;
+      const candidates = new Set<string>();
+      if (local) candidates.add(local);
+      [metadata.full_name, metadata.name, metadata.teacher_name].forEach((value) => {
+        if (typeof value === "string" && value.trim()) candidates.add(slugifyName(value));
+      });
+      const match = ttTeachers.find(t => candidates.has(slugifyName(t.name)) || candidates.has(slugifyName(`${t.title} ${t.name}`)));
       setTeacherAccount(match || null);
     })();
-  }, [role, ttTeachers]);
+  }, [roleLoading, hasFullMarksAccess, ttTeachers]);
 
   // Codes the teacher is authorised to enter, and (per code) which class IDs.
   const teacherScope = useMemo(() => {
@@ -149,6 +157,11 @@ const TeacherMarks = () => {
   };
 
   useEffect(() => {
+    if (!restrictedMarksMode || !activeSubject) return;
+    if (!teacherScope?.allowedCodes.has(activeSubject)) setActiveSubject("");
+  }, [restrictedMarksMode, activeSubject, teacherScope]);
+
+  useEffect(() => {
     (async () => {
       const { data } = await supabase.from("exams").select("id, name, form_levels, published").order("created_at", { ascending: false });
       setExams((data || []) as Exam[]);
@@ -158,9 +171,10 @@ const TeacherMarks = () => {
   const activeExam = exams.find(e => e.id === examId);
 
   useEffect(() => {
+    if (roleLoading) return;
     if (!activeExam) { setStudents([]); setMarks({}); setSubjects([]); return; }
-    // Hard block: signed-in teacher without a resolved scope must not load anyone else's data.
-    if (role === "teacher" && (!teacherScope || teacherScope.allowedCodes.size === 0)) {
+    // Hard block: the teacher portal must never fall back to the full admin mark schedule.
+    if (restrictedMarksMode && (!teacherScope || teacherScope.allowedCodes.size === 0)) {
       setStudents([]); setMarks({}); setSubjects([]); return;
     }
     (async () => {
@@ -186,13 +200,13 @@ const TeacherMarks = () => {
         const inForm = (sb.forms || []).some((f: any) => activeExam.form_levels.includes(Number(f)));
         if (!inForm || !sb.code) continue;
         const code = normalizeSubjectCode(sb.code);
-        if (teacherScope && !teacherScope.allowedCodes.has(code)) continue;
+        if (restrictedMarksMode && (!teacherScope?.allowedCodes.has(code))) continue;
         subjSet.add(code);
       }
       for (const r of (rows || []) as any[]) {
         const sid = r.student_profile_id;
         const code = normalizeSubjectCode(r.subject_code);
-        if (teacherScope && !teacherScope.allowedCodes.has(code)) continue;
+        if (restrictedMarksMode && (!teacherScope?.allowedCodes.has(code))) continue;
         if (!m[sid]) m[sid] = {};
         m[sid][code] = r.mark != null ? Number(r.mark) : null;
         subjSet.add(code);
@@ -204,11 +218,14 @@ const TeacherMarks = () => {
       setScanStudentOrder([]);
       setLoading(false);
     })();
-  }, [examId, activeExam, teacherScope, role, ttSubjects]);
+  }, [examId, activeExam, teacherScope, restrictedMarksMode, roleLoading, ttSubjects]);
 
 
   const saveAll = async () => {
     if (!activeExam) return;
+    if (restrictedMarksMode && (!activeSubject || !unlockedSubjects.has(activeSubject))) {
+      return toast({ title: "Select and unlock your subject first", variant: "destructive" });
+    }
     setSaving(true);
     const payload: any[] = [];
     for (const s of students) {
@@ -217,8 +234,8 @@ const TeacherMarks = () => {
       for (const code of Object.keys(row)) {
         const mark = row[code];
         if (mark == null || isNaN(mark as number)) continue;
-        if (teacherScope) {
-          if (!teacherScope.allowedCodes.has(code)) continue;
+        if (restrictedMarksMode) {
+          if (code !== activeSubject || !teacherScope?.allowedCodes.has(code)) continue;
           const allowedClasses = teacherScope.codeToClasses.get(code);
           if (allowedClasses && allowedClasses.size > 0) {
             const cid = studentClassId(s);
@@ -250,12 +267,16 @@ const TeacherMarks = () => {
       toast({ title: "Choose an exam first", variant: "destructive" });
       return;
     }
+    if (restrictedMarksMode && (!activeSubject || !unlockedSubjects.has(activeSubject))) {
+      toast({ title: "Select and unlock your subject first", variant: "destructive" });
+      return;
+    }
     setOcrLoading(true);
     try {
       const expectedSubjectCodes = Array.from(new Set([
-        ...subjects,
+        ...(restrictedMarksMode ? [activeSubject] : subjects),
         ...students.flatMap((s) => subjectsForStudent(s).map((sub) => sub.code)),
-      ]));
+      ])).filter(Boolean);
       const expectedStudents = students.map((s) => ({
         name: `${s.last_name} ${s.first_name}`.trim(),
         form: s.form,
@@ -283,7 +304,7 @@ const TeacherMarks = () => {
       // Seed order from explicit subject_codes (header row, left→right)
       (subject_codes || []).forEach(c => {
         const code = normalizeSubjectCode(c);
-        if (teacherScope && !teacherScope.allowedCodes.has(code)) return;
+        if (restrictedMarksMode && code !== activeSubject) return;
         pushOrder(code);
       });
       const matched = new Set<string>();
@@ -317,7 +338,7 @@ const TeacherMarks = () => {
           if (mark == null) continue;
           const code = normalizeSubjectCode(rawCode);
           // Teachers may only capture marks for their own subject(s).
-          if (teacherScope && !teacherScope.allowedCodes.has(code)) continue;
+          if (restrictedMarksMode && code !== activeSubject) continue;
           nextMarks[s.id][code] = mark;
           subjSet.add(code);
           pushOrder(code);
@@ -327,7 +348,7 @@ const TeacherMarks = () => {
 
       (subject_codes || []).forEach(c => {
         const code = normalizeSubjectCode(c);
-        if (teacherScope && !teacherScope.allowedCodes.has(code)) return;
+        if (restrictedMarksMode && code !== activeSubject) return;
         subjSet.add(code);
       });
 
@@ -355,7 +376,7 @@ const TeacherMarks = () => {
   };
 
   const updateMark = (sid: string, code: string, val: string) => {
-    if (role === "teacher") {
+    if (restrictedMarksMode) {
       if (!teacherScope?.allowedCodes.has(code)) {
         toast({ title: "Not your subject", variant: "destructive" }); return;
       }
@@ -389,9 +410,9 @@ const TeacherMarks = () => {
     list.forEach((sb: any) => {
       const code = normalizeSubjectCode(sb.code || sb.name);
       if (!code) return;
-      if (teacherScope && !teacherScope.allowedCodes.has(code)) return;
+      if (restrictedMarksMode && !teacherScope?.allowedCodes.has(code)) return;
       // Enforce per-subject class assignment: teacher must be assigned to this student's class.
-      if (teacherScope) {
+      if (restrictedMarksMode && teacherScope) {
         const cid = studentClassId(s);
         const allowedClasses = teacherScope.codeToClasses.get(code);
         if (allowedClasses && allowedClasses.size > 0 && (!cid || !allowedClasses.has(cid))) return;
@@ -400,7 +421,7 @@ const TeacherMarks = () => {
     });
     // Include any extra codes already saved for this student
     Object.keys(marks[s.id] || {}).forEach(c => {
-      if (teacherScope && !teacherScope.allowedCodes.has(c)) return;
+      if (restrictedMarksMode && !teacherScope?.allowedCodes.has(c)) return;
       if (!map.has(c)) map.set(c, SUBJECT_CODES[c] || c);
     });
     const entries = [...map.entries()].map(([code, name]) => ({ code, name }));
@@ -442,20 +463,20 @@ const TeacherMarks = () => {
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Enter Marks</h2>
 
-        {role === "teacher" && (
+        {restrictedMarksMode && (
           <Card><CardContent className="p-3 text-xs bg-slate-50 border rounded">
-            <b>Account check:</b> role=<code>{role}</code> · teacherMatched=<code>{teacherAccount ? teacherAccount.name : "NO MATCH"}</code> · subjectsAssigned=<code>{teacherScope ? teacherScope.allowedCodes.size : 0}</code>
+            <b>Account check:</b> role=<code>{roleLoading ? "checking" : role || "not admin"}</code> · teacherMatched=<code>{teacherAccount ? teacherAccount.name : "NO MATCH"}</code> · subjectsAssigned=<code>{teacherScope ? teacherScope.allowedCodes.size : 0}</code>
             {teacherScope && teacherScope.allowedCodes.size > 0 && (
               <> · codes=<code>{Array.from(teacherScope.allowedCodes).join(", ")}</code></>
             )}
           </CardContent></Card>
         )}
-        {role === "teacher" && !teacherAccount && (
+        {restrictedMarksMode && !roleLoading && !teacherAccount && (
           <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
             Your login email does not match any teacher record in Timetable → Teachers. Ask an administrator to add your name so it slugifies to your email prefix (e.g. <code>jane.doe</code>).
           </CardContent></Card>
         )}
-        {role === "teacher" && teacherAccount && (!teacherScope || teacherScope.allowedCodes.size === 0) && (
+        {restrictedMarksMode && teacherAccount && (!teacherScope || teacherScope.allowedCodes.size === 0) && (
           <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
             Your teacher profile <b>{teacherAccount.name}</b> has no subject assignments. Ask an admin to assign subjects/classes in Timetable → Teachers.
           </CardContent></Card>
@@ -470,7 +491,7 @@ const TeacherMarks = () => {
                 <SelectContent>{exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            {role === "teacher" && teacherScope && teacherScope.allowedCodes.size > 0 && (
+            {restrictedMarksMode && teacherScope && teacherScope.allowedCodes.size > 0 && (
               <div className="min-w-[220px]">
                 <Label>Subject (password-protected)</Label>
                 <Select value={activeSubject} onValueChange={selectSubject}>
@@ -485,24 +506,24 @@ const TeacherMarks = () => {
                 </Select>
               </div>
             )}
-            {role === "teacher" && activeSubject && (
+            {restrictedMarksMode && activeSubject && (
               <Button variant="outline" size="sm" onClick={() => resetSubjectPassword(activeSubject)}>
                 Reset password
               </Button>
             )}
-            <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (role === "teacher" && !activeSubject)}>
+            <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (restrictedMarksMode && !activeSubject)}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
-            <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (role === "teacher" && !activeSubject)} title="Scan QR with phone to capture from phone camera">
+            <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (restrictedMarksMode && !activeSubject)} title="Scan QR with phone to capture from phone camera">
               <Camera size={14}/> Use Phone Camera
             </Button>
-            <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving}>
+            <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving || (restrictedMarksMode && !activeSubject)}>
               {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save All
             </Button>
           </CardContent>
         </Card>
 
-        {role === "teacher" && teacherScope && teacherScope.allowedCodes.size > 0 && !activeSubject && (
+        {restrictedMarksMode && teacherScope && teacherScope.allowedCodes.size > 0 && !activeSubject && (
           <Card><CardContent className="p-4 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded">
             Select a subject above and enter its password to reveal the mark column. Each subject you teach has its own password so no one else can access it from your account.
           </CardContent></Card>
@@ -521,10 +542,10 @@ const TeacherMarks = () => {
           // Sources: saved marks + scan-detected codes + manually added subject columns.
           // (Per-student allocations are NOT added as columns — they only control which cells are editable.)
           const colMap = new Map<string, string>();
-          const allowCode = (c: string) => !teacherScope || teacherScope.allowedCodes.has(c);
-          if (role === "teacher" && teacherScope) {
+          const allowCode = (c: string) => !restrictedMarksMode || !!teacherScope?.allowedCodes.has(c);
+          if (restrictedMarksMode) {
             // Strict teacher mode: only the selected & unlocked subject is shown as a column.
-            if (activeSubject && teacherScope.allowedCodes.has(activeSubject) && unlockedSubjects.has(activeSubject)) {
+            if (activeSubject && teacherScope?.allowedCodes.has(activeSubject) && unlockedSubjects.has(activeSubject)) {
               colMap.set(activeSubject, SUBJECT_CODES[activeSubject] || activeSubject);
             }
           } else {
@@ -570,9 +591,9 @@ const TeacherMarks = () => {
                 <div className="flex items-center justify-between p-3 border-b">
                   <div className="text-sm text-muted-foreground">
                     {orderedStudents.length} students · {columns.length} subjects
-                    {teacherScope && <span className="ml-2 text-blue-600">· Restricted to your subject{teacherScope.allowedCodes.size === 1 ? "" : "s"}</span>}
+                    {restrictedMarksMode && <span className="ml-2 text-blue-600">· Restricted to your subject{teacherScope?.allowedCodes.size === 1 ? "" : "s"}</span>}
                   </div>
-                  {!teacherScope && <Button size="sm" variant="outline" onClick={addColumn}>+ Subject Column</Button>}
+                  {hasFullMarksAccess && <Button size="sm" variant="outline" onClick={addColumn}>+ Subject Column</Button>}
                 </div>
                 <div className="relative overflow-auto max-h-[75vh]">
                   <table className="caption-bottom text-sm border-separate border-spacing-0">
