@@ -93,6 +93,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      const isFullTimetableEditor = (roles || []).some((r: any) => r.role === 'admin' || r.role === 'owner');
+      const hasLocalSetup = localStorage.getItem('tt_teachers') || localStorage.getItem('tt_classes') || localStorage.getItem('tt_subjects');
+      if (isFullTimetableEditor && hasLocalSetup) return;
       const { data, error } = await supabase
         .from('timetable_snapshots')
         .select('snapshot_data,created_at')
