@@ -34,6 +34,7 @@ const adminLinks = [
   { label: "Exam Results", icon: Award, path: "/admin/exams" },
   { label: "Student Performance", icon: Trophy, path: "/admin/performance" },
   { label: "Principal's Documents", icon: Target, path: "/admin/principal-docs" },
+  { label: "Principal — Mark Schedules", icon: ClipboardList, path: "/admin/principal-marks" },
   { label: "Audit Trail", icon: ShieldCheck, path: "/admin/audit" },
   { label: "Announcements", icon: Bell, path: "/admin/announcements" },
   { label: "Fees & Requirements", icon: Receipt, path: "/admin/fees" },
