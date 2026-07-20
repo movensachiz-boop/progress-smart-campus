@@ -48,6 +48,7 @@ import StudentReports from "./pages/StudentReports";
 import VerifyReport from "./pages/VerifyReport";
 import ScanMarks from "./pages/ScanMarks";
 import AdminPrincipalDocs from "./pages/AdminPrincipalDocs";
+import AdminPrincipalMarks from "./pages/AdminPrincipalMarks";
 import AdminPerformance from "./pages/AdminPerformance";
 import StudentCompleteProfile from "./pages/StudentCompleteProfile";
 import StudentProfile from "./pages/StudentProfile";
@@ -111,6 +112,7 @@ const App = () => (
             <Route path="/admin/exams" element={<StaffGuard deny={DENY_TM}><AdminExams /></StaffGuard>} />
             <Route path="/admin/performance" element={<StaffGuard deny={DENY_TM}><AdminPerformance /></StaffGuard>} />
             <Route path="/admin/principal-docs" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminPrincipalDocs /></StaffGuard>} />
+            <Route path="/admin/principal-marks" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminPrincipalMarks /></StaffGuard>} />
             <Route path="/teacher/marks" element={<TeacherMarks />} />
             <Route path="/student/results" element={<StudentProfileGate><StudentReports /></StudentProfileGate>} />
             <Route path="/phone-scan/:sessionId" element={<PhoneScan />} />
