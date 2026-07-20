@@ -23,6 +23,9 @@ const StaffGuard = ({ children, allow, deny, redirectTo = "/admin/students" }: P
 
   if (allow && allow.includes(role)) return <>{children}</>;
 
+  // Principal can only reach pages that explicitly allow them.
+  if (role === "principal") return <Navigate to="/admin/principal-marks" replace />;
+
   // Kitchen staff only allowed where explicitly listed in `allow`
   if (role === "kitchen") return <Navigate to="/admin/kitchen" replace />;
 
