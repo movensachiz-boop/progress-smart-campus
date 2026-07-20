@@ -277,19 +277,39 @@ const TeacherMarks = () => {
     }
     setSaving(true);
     const payload: any[] = [];
-    for (const s of students) {
+    let skippedUnknownStudent = 0;
+    let skippedNotAllowed = 0;
+    let skippedInvalidMark = 0;
+    const studentIndex = new Map(students.map(s => [s.id, s]));
+    // Canonical subject name lookup — prefers the label set in the Subjects module,
+    // falls back to the SUBJECT_CODES map, then the code itself.
+    const nameForCode = (code: string): string => {
+      const match = ttSubjects.find((sb: any) => normalizeSubjectCode(sb.code || sb.name) === code);
+      return (match && (match.name || match.code)) || SUBJECT_CODES[code] || code;
+    };
+    // Iterate over every entered mark so nothing typed is silently dropped.
+    for (const [sid, row] of Object.entries(marks)) {
+      const s = studentIndex.get(sid);
+      if (!s) { skippedUnknownStudent++; continue; }
       const level = formToLevel(s.form);
-      const row = marks[s.id] || {};
-      for (const code of Object.keys(row)) {
-        const mark = row[code];
-        if (mark == null || isNaN(mark as number)) continue;
+      for (const [rawCode, mark] of Object.entries(row || {})) {
+        if (mark == null || isNaN(mark as number)) { skippedInvalidMark++; continue; }
+        const code = normalizeSubjectCode(rawCode);
+        if (!code) { skippedInvalidMark++; continue; }
         if (restrictedMarksMode) {
-          if (code !== activeSubject || !canTeacherEnterSubjectForStudent(s, code)) continue;
+          if (code !== activeSubject || !canTeacherEnterSubjectForStudent(s, code)) {
+            skippedNotAllowed++; continue;
+          }
         }
+        const clean = Math.max(0, Math.min(100, Math.round(Number(mark))));
         payload.push({
-          exam_id: examId, student_profile_id: s.id, subject_code: code,
-          subject_name: SUBJECT_CODES[code] || code, mark,
-          grade: computeGrade(mark, level, code), points: computePoints(mark, level, code),
+          exam_id: examId,
+          student_profile_id: s.id,
+          subject_code: code,
+          subject_name: nameForCode(code),
+          mark: clean,
+          grade: computeGrade(clean, level, code),
+          points: computePoints(clean, level, code),
         });
       }
     }
@@ -301,7 +321,14 @@ const TeacherMarks = () => {
       .upsert(payload, { onConflict: "exam_id,student_profile_id,subject_code" });
     setSaving(false);
     if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
-    toast({ title: `Saved ${payload.length} marks` });
+    const notes: string[] = [];
+    if (skippedUnknownStudent) notes.push(`${skippedUnknownStudent} unknown student row(s)`);
+    if (skippedNotAllowed) notes.push(`${skippedNotAllowed} outside your subject/class`);
+    if (skippedInvalidMark) notes.push(`${skippedInvalidMark} blank/invalid`);
+    toast({
+      title: `Saved ${payload.length} marks to student records`,
+      description: notes.length ? `Skipped: ${notes.join(", ")}.` : "All entered marks are now visible on the student portal.",
+    });
     setLastMatched(new Set());
   };
 
