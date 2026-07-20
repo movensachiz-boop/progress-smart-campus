@@ -277,19 +277,39 @@ const TeacherMarks = () => {
     }
     setSaving(true);
     const payload: any[] = [];
-    for (const s of students) {
+    let skippedUnknownStudent = 0;
+    let skippedNotAllowed = 0;
+    let skippedInvalidMark = 0;
+    const studentIndex = new Map(students.map(s => [s.id, s]));
+    // Canonical subject name lookup — prefers the label set in the Subjects module,
+    // falls back to the SUBJECT_CODES map, then the code itself.
+    const nameForCode = (code: string): string => {
+      const match = ttSubjects.find((sb: any) => normalizeSubjectCode(sb.code || sb.name) === code);
+      return (match && (match.name || match.code)) || SUBJECT_CODES[code] || code;
+    };
+    // Iterate over every entered mark so nothing typed is silently dropped.
+    for (const [sid, row] of Object.entries(marks)) {
+      const s = studentIndex.get(sid);
+      if (!s) { skippedUnknownStudent++; continue; }
       const level = formToLevel(s.form);
-      const row = marks[s.id] || {};
-      for (const code of Object.keys(row)) {
-        const mark = row[code];
-        if (mark == null || isNaN(mark as number)) continue;
+      for (const [rawCode, mark] of Object.entries(row || {})) {
+        if (mark == null || isNaN(mark as number)) { skippedInvalidMark++; continue; }
+        const code = normalizeSubjectCode(rawCode);
+        if (!code) { skippedInvalidMark++; continue; }
         if (restrictedMarksMode) {
-          if (code !== activeSubject || !canTeacherEnterSubjectForStudent(s, code)) continue;
+          if (code !== activeSubject || !canTeacherEnterSubjectForStudent(s, code)) {
+            skippedNotAllowed++; continue;
+          }
         }
+        const clean = Math.max(0, Math.min(100, Math.round(Number(mark))));
         payload.push({
-          exam_id: examId, student_profile_id: s.id, subject_code: code,
-          subject_name: SUBJECT_CODES[code] || code, mark,
-          grade: computeGrade(mark, level, code), points: computePoints(mark, level, code),
+          exam_id: examId,
+          student_profile_id: s.id,
+          subject_code: code,
+          subject_name: nameForCode(code),
+          mark: clean,
+          grade: computeGrade(clean, level, code),
+          points: computePoints(clean, level, code),
         });
       }
     }
@@ -301,7 +321,14 @@ const TeacherMarks = () => {
       .upsert(payload, { onConflict: "exam_id,student_profile_id,subject_code" });
     setSaving(false);
     if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
-    toast({ title: `Saved ${payload.length} marks` });
+    const notes: string[] = [];
+    if (skippedUnknownStudent) notes.push(`${skippedUnknownStudent} unknown student row(s)`);
+    if (skippedNotAllowed) notes.push(`${skippedNotAllowed} outside your subject/class`);
+    if (skippedInvalidMark) notes.push(`${skippedInvalidMark} blank/invalid`);
+    toast({
+      title: `Saved ${payload.length} marks to student records`,
+      description: notes.length ? `Skipped: ${notes.join(", ")}.` : "All entered marks are now visible on the student portal.",
+    });
     setLastMatched(new Set());
   };
 
@@ -408,17 +435,20 @@ const TeacherMarks = () => {
       const matchCandidates = scanCandidates.length ? scanCandidates : students;
 
       let fallbackSeq = 0;
+      const skippedNames: string[] = [];
       for (const r of rows) {
         const target = nameKey(r.name || "");
         if (!target) continue;
-        const s = matchCandidates.find(p => {
+        // Strict match: exact full name OR reversed full name. Substring matching is
+        // unsafe (e.g. "MOYO" would hit every Moyo) and caused marks to land on the
+        // wrong student. Fall back to fuzzy only with a tight threshold.
+        const exact = matchCandidates.find(p => {
           const full = nameKey(`${p.first_name} ${p.last_name}`);
           const rev = nameKey(`${p.last_name} ${p.first_name}`);
-          return full === target || rev === target ||
-            full.includes(target) || target.includes(full) ||
-            rev.includes(target) || target.includes(rev);
-        }) || bestFuzzyMatch(r.name || "", matchCandidates, (p) => `${p.last_name} ${p.first_name}`, 4);
-        if (!s) continue;
+          return full === target || rev === target;
+        });
+        const s = exact || bestFuzzyMatch(r.name || "", matchCandidates, (p) => `${p.last_name} ${p.first_name}`, 2);
+        if (!s) { skippedNames.push(r.name || "(blank)"); continue; }
         matched.add(s.id);
         fallbackSeq++;
         const rank = Number.isFinite(Number(r.row_number)) ? Number(r.row_number) : fallbackSeq;
@@ -458,7 +488,7 @@ const TeacherMarks = () => {
         : "";
       toast({
         title: "Scan complete",
-        description: `Matched ${matchedCount} students, ${cellCount} marks.${formNote}${formMismatch} Review highlighted rows then click Save All.`,
+        description: `Matched ${matchedCount} students, ${cellCount} marks.${formNote}${formMismatch}${skippedNames.length ? ` Skipped ${skippedNames.length} unmatched name(s): ${skippedNames.slice(0, 3).join(", ")}${skippedNames.length > 3 ? "…" : ""}. Enter those manually to avoid wrong-student assignment.` : ""} Review highlighted rows then click Save All.`,
       });
     } catch (err: any) {
       toast({ title: "OCR failed", description: err.message, variant: "destructive" });
