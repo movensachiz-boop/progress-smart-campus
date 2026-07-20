@@ -106,6 +106,47 @@ const TeacherMarks = () => {
   const [scanOrder, setScanOrder] = useState<string[]>([]);
   // Order of students as they appeared on the scanned sheet (top→bottom)
   const [scanStudentOrder, setScanStudentOrder] = useState<string[]>([]);
+  // Teacher-selected active subject (only this column is editable)
+  const [activeSubject, setActiveSubject] = useState<string>("");
+  // Subjects unlocked this session after entering the per-subject password
+  const [unlockedSubjects, setUnlockedSubjects] = useState<Set<string>>(new Set());
+
+  const pwKey = (code: string) => `mark-pw:${teacherAccount?.id || "anon"}:${code}`;
+  const unlockSubject = (code: string): boolean => {
+    const stored = localStorage.getItem(pwKey(code));
+    if (!stored) {
+      const p1 = prompt(`Set a password for ${SUBJECT_CODES[code] || code} (${code}). It will be required each time you enter marks for this subject.`);
+      if (!p1) return false;
+      const p2 = prompt("Confirm password");
+      if (p1 !== p2) { toast({ title: "Passwords do not match", variant: "destructive" }); return false; }
+      localStorage.setItem(pwKey(code), btoa(p1));
+      setUnlockedSubjects(prev => new Set(prev).add(code));
+      toast({ title: `Password set for ${code}` });
+      return true;
+    }
+    const entered = prompt(`Enter password for ${SUBJECT_CODES[code] || code} (${code})`);
+    if (!entered) return false;
+    if (btoa(entered) !== stored) { toast({ title: "Wrong password", variant: "destructive" }); return false; }
+    setUnlockedSubjects(prev => new Set(prev).add(code));
+    return true;
+  };
+  const resetSubjectPassword = (code: string) => {
+    const stored = localStorage.getItem(pwKey(code));
+    if (stored) {
+      const entered = prompt(`Enter CURRENT password for ${code} to reset it`);
+      if (!entered) return;
+      if (btoa(entered) !== stored) { toast({ title: "Wrong password", variant: "destructive" }); return; }
+    }
+    localStorage.removeItem(pwKey(code));
+    setUnlockedSubjects(prev => { const n = new Set(prev); n.delete(code); return n; });
+    if (activeSubject === code) setActiveSubject("");
+    toast({ title: `Password cleared for ${code}. You'll set a new one on next unlock.` });
+  };
+  const selectSubject = (code: string) => {
+    if (!code) { setActiveSubject(""); return; }
+    if (unlockedSubjects.has(code)) { setActiveSubject(code); return; }
+    if (unlockSubject(code)) setActiveSubject(code);
+  };
 
   useEffect(() => {
     (async () => {
@@ -314,6 +355,17 @@ const TeacherMarks = () => {
   };
 
   const updateMark = (sid: string, code: string, val: string) => {
+    if (role === "teacher") {
+      if (!teacherScope?.allowedCodes.has(code)) {
+        toast({ title: "Not your subject", variant: "destructive" }); return;
+      }
+      if (activeSubject !== code) {
+        toast({ title: "Select this subject first", variant: "destructive" }); return;
+      }
+      if (!unlockedSubjects.has(code)) {
+        if (!unlockSubject(code)) return;
+      }
+    }
     setMarks(prev => ({
       ...prev,
       [sid]: { ...(prev[sid] || {}), [code]: val === "" ? null : Number(val) },
@@ -410,10 +462,30 @@ const TeacherMarks = () => {
                 <SelectContent>{exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading}>
+            {role === "teacher" && teacherScope && teacherScope.allowedCodes.size > 0 && (
+              <div className="min-w-[220px]">
+                <Label>Subject (password-protected)</Label>
+                <Select value={activeSubject} onValueChange={selectSubject}>
+                  <SelectTrigger><SelectValue placeholder="Select your subject"/></SelectTrigger>
+                  <SelectContent>
+                    {Array.from(teacherScope.allowedCodes).sort().map(c => (
+                      <SelectItem key={c} value={c}>
+                        {SUBJECT_CODES[c] || c} ({c}) {unlockedSubjects.has(c) ? "🔓" : "🔒"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {role === "teacher" && activeSubject && (
+              <Button variant="outline" size="sm" onClick={() => resetSubjectPassword(activeSubject)}>
+                Reset password
+              </Button>
+            )}
+            <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (role === "teacher" && !activeSubject)}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
-            <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading} title="Scan QR with phone to capture from phone camera">
+            <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (role === "teacher" && !activeSubject)} title="Scan QR with phone to capture from phone camera">
               <Camera size={14}/> Use Phone Camera
             </Button>
             <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving}>
@@ -421,6 +493,12 @@ const TeacherMarks = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {role === "teacher" && teacherScope && teacherScope.allowedCodes.size > 0 && !activeSubject && (
+          <Card><CardContent className="p-4 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded">
+            Select a subject above and enter its password to reveal the mark column. Each subject you teach has its own password so no one else can access it from your account.
+          </CardContent></Card>
+        )}
 
         {ocrLoading && (
           <div className="p-4 text-center text-sm text-muted-foreground">
@@ -437,9 +515,10 @@ const TeacherMarks = () => {
           const colMap = new Map<string, string>();
           const allowCode = (c: string) => !teacherScope || teacherScope.allowedCodes.has(c);
           if (role === "teacher" && teacherScope) {
-            // Strict teacher mode: columns are ONLY the teacher's assigned subject codes.
-            // Nothing else (saved marks, scan headers, defaults) can add extra columns.
-            teacherScope.allowedCodes.forEach(c => colMap.set(c, SUBJECT_CODES[c] || c));
+            // Strict teacher mode: only the selected & unlocked subject is shown as a column.
+            if (activeSubject && teacherScope.allowedCodes.has(activeSubject) && unlockedSubjects.has(activeSubject)) {
+              colMap.set(activeSubject, SUBJECT_CODES[activeSubject] || activeSubject);
+            }
           } else {
             subjects.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
             scanOrder.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
