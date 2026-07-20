@@ -51,10 +51,31 @@ const studentClassId = (s: { form: string | null; stream: string | null }): stri
 const TeacherMarks = () => {
   const { toast } = useToast();
   const { subjects: ttSubjects, teachers: ttTeachers } = useTimetable();
-  const { role, loading: roleLoading } = useUserRole();
+  const { role, loading: baseRoleLoading } = useUserRole();
+  const [hasPrivilegedMarksRole, setHasPrivilegedMarksRole] = useState(false);
+  const [marksRoleLoading, setMarksRoleLoading] = useState(true);
   const [teacherAccount, setTeacherAccount] = useState<Teacher | null>(null);
-  const hasFullMarksAccess = role === "admin" || role === "owner";
+  const hasFullMarksAccess = role === "admin" || role === "owner" || hasPrivilegedMarksRole;
   const restrictedMarksMode = !hasFullMarksAccess;
+  const roleLoading = baseRoleLoading || marksRoleLoading;
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        if (mounted) { setHasPrivilegedMarksRole(false); setMarksRoleLoading(false); }
+        return;
+      }
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      const roles = (data || []).map((r: any) => String(r.role));
+      if (mounted) {
+        setHasPrivilegedMarksRole(roles.includes("admin") || roles.includes("owner"));
+        setMarksRoleLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // Identify the signed-in teacher via their `firstname.lastname@pcc.local` email.
   useEffect(() => {
@@ -187,6 +208,15 @@ const TeacherMarks = () => {
 
   const activeExam = exams.find(e => e.id === examId);
 
+  const canTeacherEnterSubjectForStudent = (student: Profile, code: string): boolean => {
+    if (!restrictedMarksMode) return true;
+    if (!teacherScope?.allowedCodes.has(code)) return false;
+    const allowedClasses = teacherScope.codeToClasses.get(code);
+    if (!allowedClasses || allowedClasses.size === 0) return true;
+    const cid = studentClassId(student);
+    return !!cid && allowedClasses.has(cid);
+  };
+
   useEffect(() => {
     if (roleLoading) return;
     if (!activeExam) { setStudents([]); setMarks({}); setSubjects([]); return; }
@@ -252,12 +282,7 @@ const TeacherMarks = () => {
         const mark = row[code];
         if (mark == null || isNaN(mark as number)) continue;
         if (restrictedMarksMode) {
-          if (code !== activeSubject || !teacherScope?.allowedCodes.has(code)) continue;
-          const allowedClasses = teacherScope.codeToClasses.get(code);
-          if (allowedClasses && allowedClasses.size > 0) {
-            const cid = studentClassId(s);
-            if (!cid || !allowedClasses.has(cid)) continue;
-          }
+          if (code !== activeSubject || !canTeacherEnterSubjectForStudent(s, code)) continue;
         }
         payload.push({
           exam_id: examId, student_profile_id: s.id, subject_code: code,
@@ -441,6 +466,11 @@ const TeacherMarks = () => {
       if (restrictedMarksMode && !teacherScope?.allowedCodes.has(c)) return;
       if (!map.has(c)) map.set(c, SUBJECT_CODES[c] || c);
     });
+    // In teacher mode, the selected subject must be editable for every assigned class
+    // even when the subject/class ticks in the Subjects module are incomplete.
+    if (restrictedMarksMode && activeSubject && canTeacherEnterSubjectForStudent(s, activeSubject)) {
+      map.set(activeSubject, SUBJECT_CODES[activeSubject] || activeSubject);
+    }
     const entries = [...map.entries()].map(([code, name]) => ({ code, name }));
     // If a scan provided an order, surface those subjects first in that exact order
     if (scanOrder.length) {
@@ -656,7 +686,9 @@ const TeacherMarks = () => {
                             </td>
                             {columns.map(col => {
                               const m = row[col.code];
-                              const isAllowed = allowed.has(col.code) || m != null;
+                              const isAllowed = restrictedMarksMode
+                                ? canTeacherEnterSubjectForStudent(s, col.code)
+                                : allowed.has(col.code) || m != null;
                               return (
                                 <td key={col.code} className="border-b border-r p-1 text-center min-w-[64px] w-[64px]">
                                   {isAllowed ? (
