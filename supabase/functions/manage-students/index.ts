@@ -348,7 +348,7 @@ Deno.serve(async (req) => {
 
     if (action === "create_staff") {
       const { fullName, password, role } = payload;
-      const allowedRoles = ["admin", "cashier", "timetable_manager", "teacher", "owner", "kitchen"];
+      const allowedRoles = ["admin", "cashier", "timetable_manager", "teacher", "owner", "kitchen", "principal"];
       if (!fullName || !password || !role) {
         return new Response(JSON.stringify({ error: "Full name, password, and role are required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -383,6 +383,7 @@ Deno.serve(async (req) => {
       }
 
       // Grant admin role for admin-portal staff so they pass admin RLS, plus their sub-role.
+      // Principal is intentionally NOT granted admin — they only see the mark schedules page.
       const rolesToInsert: { user_id: string; role: string }[] = [];
       if (role === "cashier" || role === "timetable_manager" || role === "admin") {
         rolesToInsert.push({ user_id: created.user.id, role: "admin" });

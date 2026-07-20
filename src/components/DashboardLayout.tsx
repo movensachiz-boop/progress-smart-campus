@@ -86,6 +86,8 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
       links = adminLinks.filter(l => allowed.includes(l.path));
     } else if (actualRole === "kitchen") {
       links = adminLinks.filter(l => l.path === "/admin/kitchen");
+    } else if (actualRole === "principal") {
+      links = adminLinks.filter(l => l.path === "/admin/principal-marks" || l.path === "/admin/principal-docs");
     }
   }
 

@@ -14,6 +14,7 @@ const STAFF_ROLES = [
   { value: "cashier", label: "Cashier (no Dashboard, no Settings)" },
   { value: "timetable_manager", label: "Timetable Manager (timetable + classes only)" },
   { value: "kitchen", label: "Kitchen Staff (kitchen stock only)" },
+  { value: "principal", label: "Principal (combined mark schedules only)" },
 ];
 
 const AdminSettings = () => {
