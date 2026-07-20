@@ -637,8 +637,6 @@ const TeacherMarks = () => {
                             {col.code}
                           </th>
                         ))}
-                        <th className="sticky top-0 z-50 bg-background border-b border-r h-12 px-2 text-center align-middle font-semibold text-muted-foreground min-w-[140px] w-[140px] shadow-sm">Passed</th>
-                        <th className="sticky top-0 z-50 bg-background border-b h-12 px-2 text-center align-middle font-semibold text-muted-foreground min-w-[140px] w-[140px] shadow-sm">Failed</th>
                       </tr>
                     </thead>
                     <tbody>
