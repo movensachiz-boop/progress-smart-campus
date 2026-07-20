@@ -631,6 +631,9 @@ const TeacherMarks = () => {
             <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving || (restrictedMarksMode && !activeSubject)}>
               {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save All
             </Button>
+            <Button onClick={downloadPdf} variant="outline" className="gap-2" disabled={!activeExam || (restrictedMarksMode && !activeSubject)}>
+              <FileDown size={14}/> Download PDF
+            </Button>
           </CardContent>
         </Card>
 
