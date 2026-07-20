@@ -657,11 +657,6 @@ const TeacherMarks = () => {
                             {columns.map(col => {
                               const m = row[col.code];
                               const isAllowed = allowed.has(col.code) || m != null;
-                              if (m != null) {
-                                const g = computeGrade(m, level);
-                                if (g === "U") failed.push(col.code);
-                                else if (g) passed.push(col.code);
-                              }
                               return (
                                 <td key={col.code} className="border-b border-r p-1 text-center min-w-[64px] w-[64px]">
                                   {isAllowed ? (
