@@ -29,6 +29,10 @@ const StaffGuard = ({ children, allow, deny, redirectTo = "/admin/students" }: P
   // Kitchen staff only allowed where explicitly listed in `allow`
   if (role === "kitchen") return <Navigate to="/admin/kitchen" replace />;
 
+  // IT Assistant only allowed where explicitly listed in `allow`
+  if (role === "it_assistant") return <Navigate to="/admin/it" replace />;
+
+
   if (deny && deny.includes(role)) {
     const fallback = role === "timetable_manager" ? "/admin/timetable" : redirectTo;
     return <Navigate to={fallback} replace />;
