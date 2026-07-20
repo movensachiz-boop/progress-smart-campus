@@ -106,6 +106,47 @@ const TeacherMarks = () => {
   const [scanOrder, setScanOrder] = useState<string[]>([]);
   // Order of students as they appeared on the scanned sheet (top→bottom)
   const [scanStudentOrder, setScanStudentOrder] = useState<string[]>([]);
+  // Teacher-selected active subject (only this column is editable)
+  const [activeSubject, setActiveSubject] = useState<string>("");
+  // Subjects unlocked this session after entering the per-subject password
+  const [unlockedSubjects, setUnlockedSubjects] = useState<Set<string>>(new Set());
+
+  const pwKey = (code: string) => `mark-pw:${teacherAccount?.id || "anon"}:${code}`;
+  const unlockSubject = (code: string): boolean => {
+    const stored = localStorage.getItem(pwKey(code));
+    if (!stored) {
+      const p1 = prompt(`Set a password for ${SUBJECT_CODES[code] || code} (${code}). It will be required each time you enter marks for this subject.`);
+      if (!p1) return false;
+      const p2 = prompt("Confirm password");
+      if (p1 !== p2) { toast({ title: "Passwords do not match", variant: "destructive" }); return false; }
+      localStorage.setItem(pwKey(code), btoa(p1));
+      setUnlockedSubjects(prev => new Set(prev).add(code));
+      toast({ title: `Password set for ${code}` });
+      return true;
+    }
+    const entered = prompt(`Enter password for ${SUBJECT_CODES[code] || code} (${code})`);
+    if (!entered) return false;
+    if (btoa(entered) !== stored) { toast({ title: "Wrong password", variant: "destructive" }); return false; }
+    setUnlockedSubjects(prev => new Set(prev).add(code));
+    return true;
+  };
+  const resetSubjectPassword = (code: string) => {
+    const stored = localStorage.getItem(pwKey(code));
+    if (stored) {
+      const entered = prompt(`Enter CURRENT password for ${code} to reset it`);
+      if (!entered) return;
+      if (btoa(entered) !== stored) { toast({ title: "Wrong password", variant: "destructive" }); return; }
+    }
+    localStorage.removeItem(pwKey(code));
+    setUnlockedSubjects(prev => { const n = new Set(prev); n.delete(code); return n; });
+    if (activeSubject === code) setActiveSubject("");
+    toast({ title: `Password cleared for ${code}. You'll set a new one on next unlock.` });
+  };
+  const selectSubject = (code: string) => {
+    if (!code) { setActiveSubject(""); return; }
+    if (unlockedSubjects.has(code)) { setActiveSubject(code); return; }
+    if (unlockSubject(code)) setActiveSubject(code);
+  };
 
   useEffect(() => {
     (async () => {
