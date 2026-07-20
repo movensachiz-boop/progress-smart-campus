@@ -111,8 +111,8 @@ const App = () => (
             <Route path="/scan-marks/:examId" element={<ScanMarks />} />
             <Route path="/admin/exams" element={<StaffGuard deny={DENY_TM}><AdminExams /></StaffGuard>} />
             <Route path="/admin/performance" element={<StaffGuard deny={DENY_TM}><AdminPerformance /></StaffGuard>} />
-            <Route path="/admin/principal-docs" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminPrincipalDocs /></StaffGuard>} />
-            <Route path="/admin/principal-marks" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminPrincipalMarks /></StaffGuard>} />
+            <Route path="/admin/principal-docs" element={<StaffGuard allow={["principal"]} deny={DENY_TM_AND_CASHIER}><AdminPrincipalDocs /></StaffGuard>} />
+            <Route path="/admin/principal-marks" element={<StaffGuard allow={["principal"]} deny={DENY_TM_AND_CASHIER}><AdminPrincipalMarks /></StaffGuard>} />
             <Route path="/teacher/marks" element={<TeacherMarks />} />
             <Route path="/student/results" element={<StudentProfileGate><StudentReports /></StudentProfileGate>} />
             <Route path="/phone-scan/:sessionId" element={<PhoneScan />} />
