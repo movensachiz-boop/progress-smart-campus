@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, TimetableConflict, DayOfWeek, FormLevel } from '@/types/school';
 import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefaultTeachers, DAYS } from '@/data/defaults';
 import { v4 } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TimetableContextType {
   config: SchoolConfig;
@@ -58,6 +59,31 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     return stored;
   });
   const [timetable, setTimetable] = useState<Timetable | null>(() => loadLS<Timetable | null>('tt_timetable', null));
+
+  // Keep all accounts/devices on the latest cloud timetable setup so teacher portals
+  // receive the teacher-subject-class assignments configured by admins.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('timetable_snapshots')
+        .select('snapshot_data,created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled || error || !data?.snapshot_data) return;
+      const lastApplied = localStorage.getItem('tt_cloud_snapshot_at');
+      if (lastApplied === data.created_at) return;
+      const snapshot = data.snapshot_data as any;
+      if (snapshot.config) { _setConfig(snapshot.config); localStorage.setItem('tt_config', JSON.stringify(snapshot.config)); }
+      if (snapshot.subjects) { _setSubjects(snapshot.subjects); localStorage.setItem('tt_subjects', JSON.stringify(snapshot.subjects)); }
+      if (snapshot.teachers) { _setTeachers(snapshot.teachers); localStorage.setItem('tt_teachers', JSON.stringify(snapshot.teachers)); }
+      if (snapshot.classes) { _setClasses(snapshot.classes); localStorage.setItem('tt_classes', JSON.stringify(snapshot.classes)); }
+      if (snapshot.timetable) { setTimetable(snapshot.timetable); localStorage.setItem('tt_timetable', JSON.stringify(snapshot.timetable)); }
+      localStorage.setItem('tt_cloud_snapshot_at', data.created_at);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const persistTimetable = (v: Timetable | null) => {
     setTimetable(v);
