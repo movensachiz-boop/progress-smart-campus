@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableHeader, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
-import { Loader2, Save, Camera, CheckCircle2 } from "lucide-react";
+import { Loader2, Save, Camera, CheckCircle2, FileDown } from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
@@ -303,6 +305,54 @@ const TeacherMarks = () => {
     setLastMatched(new Set());
   };
 
+  const downloadPdf = () => {
+    if (!activeExam) return toast({ title: "Choose an exam first", variant: "destructive" });
+    // Determine columns: restricted teacher = only their active subject; otherwise all present subjects
+    const codes = restrictedMarksMode
+      ? (activeSubject ? [activeSubject] : Array.from(teacherScope?.allowedCodes || []))
+      : Array.from(new Set([
+          ...subjects,
+          ...Object.values(marks).flatMap(r => Object.keys(r || {})),
+        ]));
+    if (!codes.length) return toast({ title: "Nothing to export", variant: "destructive" });
+    const rows = orderedStudents;
+    if (!rows.length) return toast({ title: "No students to export", variant: "destructive" });
+
+    const doc = new jsPDF({ orientation: codes.length > 4 ? "landscape" : "portrait", unit: "pt", format: "a4" });
+    const title = `${activeExam.name} — Mark Schedule`;
+    const sub = restrictedMarksMode && teacherAccount
+      ? `Teacher: ${teacherAccount.title || ""} ${teacherAccount.name}`.trim()
+      : "";
+    doc.setFontSize(14); doc.text(title, 40, 40);
+    if (sub) { doc.setFontSize(10); doc.text(sub, 40, 58); }
+    if (activeClass) { doc.setFontSize(10); doc.text(`Class: ${activeClass}`, 40, sub ? 72 : 58); }
+
+    const head = [["#", "Student", "Class", ...codes.flatMap(c => [c, "Grade"])]];
+    const body = rows.map((s, i) => {
+      const level = formToLevel(s.form);
+      const row = marks[s.id] || {};
+      const cells: (string | number)[] = [i + 1, `${s.last_name} ${s.first_name}`, `F${s.form || "-"} ${s.stream || ""}`.trim()];
+      for (const c of codes) {
+        const m = row[c];
+        cells.push(m == null || isNaN(m as number) ? "" : String(m));
+        cells.push(m == null || isNaN(m as number) ? "" : computeGrade(m as number, level, c));
+      }
+      return cells;
+    });
+    autoTable(doc, {
+      head, body,
+      startY: (activeClass ? 88 : sub ? 82 : 68),
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [0, 51, 102], textColor: 255 },
+      columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 140 }, 2: { cellWidth: 50 } },
+    });
+    const stamp = new Date().toISOString().slice(0, 10);
+    const fname = `${activeExam.name.replace(/\s+/g, "_")}_${activeClass || "all"}_${stamp}.pdf`;
+    doc.save(fname);
+    toast({ title: "PDF downloaded" });
+  };
+
+
   const handleCapture = async (dataUrl: string) => {
     setScanOpen(false);
     if (!activeExam) {
@@ -580,6 +630,9 @@ const TeacherMarks = () => {
             </Button>
             <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving || (restrictedMarksMode && !activeSubject)}>
               {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save All
+            </Button>
+            <Button onClick={downloadPdf} variant="outline" className="gap-2" disabled={!activeExam || (restrictedMarksMode && !activeSubject)}>
+              <FileDown size={14}/> Download PDF
             </Button>
           </CardContent>
         </Card>
