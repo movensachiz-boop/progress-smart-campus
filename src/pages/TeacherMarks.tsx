@@ -461,7 +461,7 @@ const TeacherMarks = () => {
         : "";
       toast({
         title: "Scan complete",
-        description: `Matched ${matchedCount} students, ${cellCount} marks.${formNote}${formMismatch} Review highlighted rows then click Save All.`,
+        description: `Matched ${matchedCount} students, ${cellCount} marks.${formNote}${formMismatch}${skippedNames.length ? ` Skipped ${skippedNames.length} unmatched name(s): ${skippedNames.slice(0, 3).join(", ")}${skippedNames.length > 3 ? "…" : ""}. Enter those manually to avoid wrong-student assignment.` : ""} Review highlighted rows then click Save All.`,
       });
     } catch (err: any) {
       toast({ title: "OCR failed", description: err.message, variant: "destructive" });
