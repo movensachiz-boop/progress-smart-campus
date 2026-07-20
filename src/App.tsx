@@ -53,6 +53,8 @@ import AdminPerformance from "./pages/AdminPerformance";
 import StudentCompleteProfile from "./pages/StudentCompleteProfile";
 import StudentProfile from "./pages/StudentProfile";
 import StudentProfileGate from "./components/StudentProfileGate";
+import AdminITAssistant from "./pages/AdminITAssistant";
+
 
 // Sub-roles
 const DENY_TM_AND_CASHIER: ("cashier" | "timetable_manager")[] = ["cashier", "timetable_manager"];
@@ -113,6 +115,8 @@ const App = () => (
             <Route path="/admin/performance" element={<StaffGuard deny={DENY_TM}><AdminPerformance /></StaffGuard>} />
             <Route path="/admin/principal-docs" element={<StaffGuard allow={["principal"]} deny={DENY_TM_AND_CASHIER}><AdminPrincipalDocs /></StaffGuard>} />
             <Route path="/admin/principal-marks" element={<StaffGuard allow={["principal"]} deny={DENY_TM_AND_CASHIER}><AdminPrincipalMarks /></StaffGuard>} />
+            <Route path="/admin/it" element={<StaffGuard allow={["it_assistant"]} deny={DENY_TM_AND_CASHIER}><AdminITAssistant /></StaffGuard>} />
+
             <Route path="/teacher/marks" element={<TeacherMarks />} />
             <Route path="/student/results" element={<StudentProfileGate><StudentReports /></StudentProfileGate>} />
             <Route path="/phone-scan/:sessionId" element={<PhoneScan />} />

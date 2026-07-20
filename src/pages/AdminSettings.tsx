@@ -15,6 +15,8 @@ const STAFF_ROLES = [
   { value: "timetable_manager", label: "Timetable Manager (timetable + classes only)" },
   { value: "kitchen", label: "Kitchen Staff (kitchen stock only)" },
   { value: "principal", label: "Principal (combined mark schedules only)" },
+  { value: "it_assistant", label: "IT Assistant (reset teacher passwords only)" },
+
 ];
 
 const AdminSettings = () => {
