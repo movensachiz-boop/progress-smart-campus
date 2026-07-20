@@ -442,14 +442,22 @@ const TeacherMarks = () => {
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Enter Marks</h2>
 
-        {role === "teacher" && !teacherScope && (
-          <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
-            No subjects have been assigned to your account yet. Ask an administrator to link your teacher profile and class assignments.
+        {role === "teacher" && (
+          <Card><CardContent className="p-3 text-xs bg-slate-50 border rounded">
+            <b>Account check:</b> role=<code>{role}</code> · teacherMatched=<code>{teacherAccount ? teacherAccount.name : "NO MATCH"}</code> · subjectsAssigned=<code>{teacherScope ? teacherScope.allowedCodes.size : 0}</code>
+            {teacherScope && teacherScope.allowedCodes.size > 0 && (
+              <> · codes=<code>{Array.from(teacherScope.allowedCodes).join(", ")}</code></>
+            )}
           </CardContent></Card>
         )}
-        {teacherScope && teacherScope.allowedCodes.size === 0 && (
+        {role === "teacher" && !teacherAccount && (
           <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
-            Your teacher profile has no subject assignments. Please contact the administrator.
+            Your login email does not match any teacher record in Timetable → Teachers. Ask an administrator to add your name so it slugifies to your email prefix (e.g. <code>jane.doe</code>).
+          </CardContent></Card>
+        )}
+        {role === "teacher" && teacherAccount && (!teacherScope || teacherScope.allowedCodes.size === 0) && (
+          <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
+            Your teacher profile <b>{teacherAccount.name}</b> has no subject assignments. Ask an admin to assign subjects/classes in Timetable → Teachers.
           </CardContent></Card>
         )}
 
