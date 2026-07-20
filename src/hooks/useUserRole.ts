@@ -16,7 +16,7 @@ export function useUserRole() {
       const roles = (data || []).map((r: any) => r.role as AppRole);
       const preferred: AppRole =
         roles.find(r => r === "principal") ||
-        roles.find(r => r === "cashier" || r === "timetable_manager" || r === "kitchen") ||
+        roles.find(r => r === "cashier" || r === "timetable_manager" || r === "kitchen" || r === "it_assistant") ||
         roles.find(r => r === "owner" || r === "teacher") ||
         roles.find(r => r === "admin") ||
         "student";
