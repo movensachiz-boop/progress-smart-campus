@@ -51,10 +51,31 @@ const studentClassId = (s: { form: string | null; stream: string | null }): stri
 const TeacherMarks = () => {
   const { toast } = useToast();
   const { subjects: ttSubjects, teachers: ttTeachers } = useTimetable();
-  const { role, loading: roleLoading } = useUserRole();
+  const { role, loading: baseRoleLoading } = useUserRole();
+  const [hasPrivilegedMarksRole, setHasPrivilegedMarksRole] = useState(false);
+  const [marksRoleLoading, setMarksRoleLoading] = useState(true);
   const [teacherAccount, setTeacherAccount] = useState<Teacher | null>(null);
-  const hasFullMarksAccess = role === "admin" || role === "owner";
+  const hasFullMarksAccess = role === "admin" || role === "owner" || hasPrivilegedMarksRole;
   const restrictedMarksMode = !hasFullMarksAccess;
+  const roleLoading = baseRoleLoading || marksRoleLoading;
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        if (mounted) { setHasPrivilegedMarksRole(false); setMarksRoleLoading(false); }
+        return;
+      }
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      const roles = (data || []).map((r: any) => String(r.role));
+      if (mounted) {
+        setHasPrivilegedMarksRole(roles.includes("admin") || roles.includes("owner"));
+        setMarksRoleLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // Identify the signed-in teacher via their `firstname.lastname@pcc.local` email.
   useEffect(() => {
