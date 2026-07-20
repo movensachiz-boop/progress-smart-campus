@@ -48,6 +48,7 @@ import StudentReports from "./pages/StudentReports";
 import VerifyReport from "./pages/VerifyReport";
 import ScanMarks from "./pages/ScanMarks";
 import AdminPrincipalDocs from "./pages/AdminPrincipalDocs";
+import AdminPrincipalMarks from "./pages/AdminPrincipalMarks";
 import AdminPerformance from "./pages/AdminPerformance";
 import StudentCompleteProfile from "./pages/StudentCompleteProfile";
 import StudentProfile from "./pages/StudentProfile";
