@@ -489,9 +489,10 @@ const TeacherMarks = () => {
           const colMap = new Map<string, string>();
           const allowCode = (c: string) => !teacherScope || teacherScope.allowedCodes.has(c);
           if (role === "teacher" && teacherScope) {
-            // Strict teacher mode: columns are ONLY the teacher's assigned subject codes.
-            // Nothing else (saved marks, scan headers, defaults) can add extra columns.
-            teacherScope.allowedCodes.forEach(c => colMap.set(c, SUBJECT_CODES[c] || c));
+            // Strict teacher mode: only the selected & unlocked subject is shown as a column.
+            if (activeSubject && teacherScope.allowedCodes.has(activeSubject) && unlockedSubjects.has(activeSubject)) {
+              colMap.set(activeSubject, SUBJECT_CODES[activeSubject] || activeSubject);
+            }
           } else {
             subjects.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
             scanOrder.forEach(c => { if (allowCode(c) && !colMap.has(c)) colMap.set(c, SUBJECT_CODES[c] || c); });
