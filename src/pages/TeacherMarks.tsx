@@ -530,6 +530,18 @@ const TeacherMarks = () => {
                 Reset password
               </Button>
             )}
+            {availableClasses.length > 0 && (
+              <div className="min-w-[180px]">
+                <Label>Class</Label>
+                <Select value={activeClass || "__all"} onValueChange={(v) => setActiveClass(v === "__all" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="All classes"/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all">All classes</SelectItem>
+                    {availableClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (restrictedMarksMode && !activeSubject)}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
