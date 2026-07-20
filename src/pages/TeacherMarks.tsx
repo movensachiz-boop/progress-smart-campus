@@ -408,17 +408,20 @@ const TeacherMarks = () => {
       const matchCandidates = scanCandidates.length ? scanCandidates : students;
 
       let fallbackSeq = 0;
+      const skippedNames: string[] = [];
       for (const r of rows) {
         const target = nameKey(r.name || "");
         if (!target) continue;
-        const s = matchCandidates.find(p => {
+        // Strict match: exact full name OR reversed full name. Substring matching is
+        // unsafe (e.g. "MOYO" would hit every Moyo) and caused marks to land on the
+        // wrong student. Fall back to fuzzy only with a tight threshold.
+        const exact = matchCandidates.find(p => {
           const full = nameKey(`${p.first_name} ${p.last_name}`);
           const rev = nameKey(`${p.last_name} ${p.first_name}`);
-          return full === target || rev === target ||
-            full.includes(target) || target.includes(full) ||
-            rev.includes(target) || target.includes(rev);
-        }) || bestFuzzyMatch(r.name || "", matchCandidates, (p) => `${p.last_name} ${p.first_name}`, 4);
-        if (!s) continue;
+          return full === target || rev === target;
+        });
+        const s = exact || bestFuzzyMatch(r.name || "", matchCandidates, (p) => `${p.last_name} ${p.first_name}`, 2);
+        if (!s) { skippedNames.push(r.name || "(blank)"); continue; }
         matched.add(s.id);
         fallbackSeq++;
         const rank = Number.isFinite(Number(r.row_number)) ? Number(r.row_number) : fallbackSeq;
