@@ -355,6 +355,17 @@ const TeacherMarks = () => {
   };
 
   const updateMark = (sid: string, code: string, val: string) => {
+    if (role === "teacher") {
+      if (!teacherScope?.allowedCodes.has(code)) {
+        toast({ title: "Not your subject", variant: "destructive" }); return;
+      }
+      if (activeSubject !== code) {
+        toast({ title: "Select this subject first", variant: "destructive" }); return;
+      }
+      if (!unlockedSubjects.has(code)) {
+        if (!unlockSubject(code)) return;
+      }
+    }
     setMarks(prev => ({
       ...prev,
       [sid]: { ...(prev[sid] || {}), [code]: val === "" ? null : Number(val) },
