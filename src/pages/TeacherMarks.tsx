@@ -463,20 +463,20 @@ const TeacherMarks = () => {
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Enter Marks</h2>
 
-        {role === "teacher" && (
+        {restrictedMarksMode && (
           <Card><CardContent className="p-3 text-xs bg-slate-50 border rounded">
-            <b>Account check:</b> role=<code>{role}</code> · teacherMatched=<code>{teacherAccount ? teacherAccount.name : "NO MATCH"}</code> · subjectsAssigned=<code>{teacherScope ? teacherScope.allowedCodes.size : 0}</code>
+            <b>Account check:</b> role=<code>{roleLoading ? "checking" : role || "not admin"}</code> · teacherMatched=<code>{teacherAccount ? teacherAccount.name : "NO MATCH"}</code> · subjectsAssigned=<code>{teacherScope ? teacherScope.allowedCodes.size : 0}</code>
             {teacherScope && teacherScope.allowedCodes.size > 0 && (
               <> · codes=<code>{Array.from(teacherScope.allowedCodes).join(", ")}</code></>
             )}
           </CardContent></Card>
         )}
-        {role === "teacher" && !teacherAccount && (
+        {restrictedMarksMode && !roleLoading && !teacherAccount && (
           <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
             Your login email does not match any teacher record in Timetable → Teachers. Ask an administrator to add your name so it slugifies to your email prefix (e.g. <code>jane.doe</code>).
           </CardContent></Card>
         )}
-        {role === "teacher" && teacherAccount && (!teacherScope || teacherScope.allowedCodes.size === 0) && (
+        {restrictedMarksMode && teacherAccount && (!teacherScope || teacherScope.allowedCodes.size === 0) && (
           <Card><CardContent className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded">
             Your teacher profile <b>{teacherAccount.name}</b> has no subject assignments. Ask an admin to assign subjects/classes in Timetable → Teachers.
           </CardContent></Card>
@@ -491,7 +491,7 @@ const TeacherMarks = () => {
                 <SelectContent>{exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            {role === "teacher" && teacherScope && teacherScope.allowedCodes.size > 0 && (
+            {restrictedMarksMode && teacherScope && teacherScope.allowedCodes.size > 0 && (
               <div className="min-w-[220px]">
                 <Label>Subject (password-protected)</Label>
                 <Select value={activeSubject} onValueChange={selectSubject}>
@@ -506,24 +506,24 @@ const TeacherMarks = () => {
                 </Select>
               </div>
             )}
-            {role === "teacher" && activeSubject && (
+            {restrictedMarksMode && activeSubject && (
               <Button variant="outline" size="sm" onClick={() => resetSubjectPassword(activeSubject)}>
                 Reset password
               </Button>
             )}
-            <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (role === "teacher" && !activeSubject)}>
+            <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (restrictedMarksMode && !activeSubject)}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
-            <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (role === "teacher" && !activeSubject)} title="Scan QR with phone to capture from phone camera">
+            <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (restrictedMarksMode && !activeSubject)} title="Scan QR with phone to capture from phone camera">
               <Camera size={14}/> Use Phone Camera
             </Button>
-            <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving}>
+            <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving || (restrictedMarksMode && !activeSubject)}>
               {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save All
             </Button>
           </CardContent>
         </Card>
 
-        {role === "teacher" && teacherScope && teacherScope.allowedCodes.size > 0 && !activeSubject && (
+        {restrictedMarksMode && teacherScope && teacherScope.allowedCodes.size > 0 && !activeSubject && (
           <Card><CardContent className="p-4 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded">
             Select a subject above and enter its password to reveal the mark column. Each subject you teach has its own password so no one else can access it from your account.
           </CardContent></Card>
@@ -542,10 +542,10 @@ const TeacherMarks = () => {
           // Sources: saved marks + scan-detected codes + manually added subject columns.
           // (Per-student allocations are NOT added as columns — they only control which cells are editable.)
           const colMap = new Map<string, string>();
-          const allowCode = (c: string) => !teacherScope || teacherScope.allowedCodes.has(c);
-          if (role === "teacher" && teacherScope) {
+          const allowCode = (c: string) => !restrictedMarksMode || !!teacherScope?.allowedCodes.has(c);
+          if (restrictedMarksMode) {
             // Strict teacher mode: only the selected & unlocked subject is shown as a column.
-            if (activeSubject && teacherScope.allowedCodes.has(activeSubject) && unlockedSubjects.has(activeSubject)) {
+            if (activeSubject && teacherScope?.allowedCodes.has(activeSubject) && unlockedSubjects.has(activeSubject)) {
               colMap.set(activeSubject, SUBJECT_CODES[activeSubject] || activeSubject);
             }
           } else {
@@ -591,9 +591,9 @@ const TeacherMarks = () => {
                 <div className="flex items-center justify-between p-3 border-b">
                   <div className="text-sm text-muted-foreground">
                     {orderedStudents.length} students · {columns.length} subjects
-                    {teacherScope && <span className="ml-2 text-blue-600">· Restricted to your subject{teacherScope.allowedCodes.size === 1 ? "" : "s"}</span>}
+                    {restrictedMarksMode && <span className="ml-2 text-blue-600">· Restricted to your subject{teacherScope?.allowedCodes.size === 1 ? "" : "s"}</span>}
                   </div>
-                  {!teacherScope && <Button size="sm" variant="outline" onClick={addColumn}>+ Subject Column</Button>}
+                  {hasFullMarksAccess && <Button size="sm" variant="outline" onClick={addColumn}>+ Subject Column</Button>}
                 </div>
                 <div className="relative overflow-auto max-h-[75vh]">
                   <table className="caption-bottom text-sm border-separate border-spacing-0">
