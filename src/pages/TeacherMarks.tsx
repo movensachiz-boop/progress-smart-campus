@@ -462,10 +462,30 @@ const TeacherMarks = () => {
                 <SelectContent>{exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading}>
+            {role === "teacher" && teacherScope && teacherScope.allowedCodes.size > 0 && (
+              <div className="min-w-[220px]">
+                <Label>Subject (password-protected)</Label>
+                <Select value={activeSubject} onValueChange={selectSubject}>
+                  <SelectTrigger><SelectValue placeholder="Select your subject"/></SelectTrigger>
+                  <SelectContent>
+                    {Array.from(teacherScope.allowedCodes).sort().map(c => (
+                      <SelectItem key={c} value={c}>
+                        {SUBJECT_CODES[c] || c} ({c}) {unlockedSubjects.has(c) ? "🔓" : "🔒"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {role === "teacher" && activeSubject && (
+              <Button variant="outline" size="sm" onClick={() => resetSubjectPassword(activeSubject)}>
+                Reset password
+              </Button>
+            )}
+            <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (role === "teacher" && !activeSubject)}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
-            <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading} title="Scan QR with phone to capture from phone camera">
+            <Button onClick={() => setPhonePairOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (role === "teacher" && !activeSubject)} title="Scan QR with phone to capture from phone camera">
               <Camera size={14}/> Use Phone Camera
             </Button>
             <Button onClick={saveAll} className="gap-2" disabled={!activeExam || saving}>
@@ -473,6 +493,12 @@ const TeacherMarks = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {role === "teacher" && teacherScope && teacherScope.allowedCodes.size > 0 && !activeSubject && (
+          <Card><CardContent className="p-4 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded">
+            Select a subject above and enter its password to reveal the mark column. Each subject you teach has its own password so no one else can access it from your account.
+          </CardContent></Card>
+        )}
 
         {ocrLoading && (
           <div className="p-4 text-center text-sm text-muted-foreground">
