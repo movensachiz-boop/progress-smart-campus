@@ -645,8 +645,6 @@ const TeacherMarks = () => {
                         const row = marks[s.id] || {};
                         const isMatched = lastMatched.has(s.id);
                         const allowed = new Set(subjectsForStudent(s).map(x => x.code));
-                        const passed: string[] = [];
-                        const failed: string[] = [];
                         return (
                           <tr key={s.id} className={isMatched ? "bg-green-500/5" : ""}>
                             <td className="sticky left-0 z-30 bg-background border-b border-r px-3 py-2 min-w-[220px] w-[220px] shadow-sm">
