@@ -163,6 +163,21 @@ const TeacherMarks = () => {
     if (!teacherScope?.allowedCodes.has(activeSubject)) setActiveSubject("");
   }, [restrictedMarksMode, activeSubject, teacherScope]);
 
+  // Reset selected class when subject changes so teacher picks the correct class next.
+  useEffect(() => { setActiveClass(""); }, [activeSubject, examId]);
+
+  // Classes available to filter by (based on selected subject for teachers, or all present classes for admins).
+  const availableClasses = useMemo(() => {
+    const set = new Set<string>();
+    if (restrictedMarksMode && teacherScope && activeSubject) {
+      const assigned = teacherScope.codeToClasses.get(activeSubject);
+      if (assigned && assigned.size > 0) assigned.forEach(c => set.add(c));
+    }
+    // Always union with the classes actually present in the loaded student list.
+    students.forEach(s => { const c = studentClassId(s); if (c) set.add(c); });
+    return Array.from(set).sort();
+  }, [restrictedMarksMode, teacherScope, activeSubject, students]);
+
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("exams").select("id, name, form_levels, published").order("created_at", { ascending: false });
