@@ -75,6 +75,10 @@ export default function AdminTeachers() {
 
   const createLogin = async () => {
     if (!loginTarget) return;
+    if (loginPassword.trim() && loginPassword.trim().length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
     setCreatingLogin(true);
     try {
       const { data, error } = await supabase.functions.invoke('manage-teachers', {
@@ -86,7 +90,14 @@ export default function AdminTeachers() {
         },
       });
       if (error || data?.error) {
-        toast.error(data?.error || error?.message || 'Failed to create account');
+        let message = data?.error || error?.message || 'Failed to create account';
+        try {
+          if ((error as any)?.context?.json) {
+            const body = await (error as any).context.json();
+            if (body?.error) message = body.error;
+          }
+        } catch {}
+        toast.error(message);
         return;
       }
       setCreatedCreds({ name: data.loginName, password: data.password });
