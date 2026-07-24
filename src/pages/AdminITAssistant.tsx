@@ -49,7 +49,7 @@ const AdminITAssistant = () => {
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selected || password.length < 4) return;
+    if (!selected || password.length < 6) return;
     setSaving(true);
     try {
       const { data, error } = await supabase.functions.invoke("manage-students", {
@@ -71,7 +71,10 @@ const AdminITAssistant = () => {
         toast({ title: "Error", description: errMsg, variant: "destructive" });
         return;
       }
-      toast({ title: "Password reset", description: `${selected.full_name}'s password has been updated.` });
+      toast({
+        title: "Password reset ✓",
+        description: `Tell ${data?.loginName || selected.full_name} to log in with name "${data?.loginName || selected.full_name}" and password "${password}".`,
+      });
       setPassword("");
       setSelected(null);
     } catch (e: any) {
@@ -80,6 +83,7 @@ const AdminITAssistant = () => {
       setSaving(false);
     }
   };
+
 
   return (
     <DashboardLayout role="admin">
@@ -140,15 +144,16 @@ const AdminITAssistant = () => {
             <CardContent>
               <form onSubmit={handleReset} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newPassword">New Password (min 4 characters)</Label>
+                  <Label htmlFor="newPassword">New Password (min 6 characters)</Label>
                   <Input
                     id="newPassword"
                     type="text"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    minLength={4}
+                    minLength={6}
                     required
                   />
+
                 </div>
                 <div className="flex gap-2">
                   <Button type="submit" disabled={saving} className="gap-2">
