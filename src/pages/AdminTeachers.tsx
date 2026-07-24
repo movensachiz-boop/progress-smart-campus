@@ -330,7 +330,7 @@ export default function AdminTeachers() {
                 <div>
                   <label className="text-xs text-muted-foreground">Password (leave blank to auto-generate)</label>
                   <Input className="mt-1" type="text" placeholder="Auto-generated if blank" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
-                  <p className="text-[10px] text-muted-foreground mt-1">Min 8 chars, must include uppercase, lowercase, number, and symbol.</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Minimum 6 characters, or leave blank to auto-generate a strong password.</p>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setLoginTarget(null)}>Cancel</Button>
