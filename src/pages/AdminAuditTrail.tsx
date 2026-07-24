@@ -59,8 +59,10 @@ const AdminAuditTrail = () => {
   const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({});
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("all");
+  const [accountFilter, setAccountFilter] = useState<string>("all");
   const [activitySearch, setActivitySearch] = useState("");
   const [activityFilter, setActivityFilter] = useState<string>("all");
+  const [activityAccountFilter, setActivityAccountFilter] = useState<string>("all");
   const [selected, setSelected] = useState<AuditEntry | null>(null);
 
   useEffect(() => {
