@@ -154,6 +154,7 @@ const AdminAuditTrail = () => {
   const filtered = useMemo(() => {
     return entries.filter(e => {
       if (actionFilter !== "all" && e.action !== actionFilter) return false;
+      if (accountFilter !== "all" && (e.actor_email || "") !== accountFilter) return false;
       if (!search.trim()) return true;
       const q = search.trim().toLowerCase();
       const p = e.student_profile_id ? profiles[e.student_profile_id] : null;
@@ -165,7 +166,7 @@ const AdminAuditTrail = () => {
         (e.method || "").toLowerCase().includes(q)
       );
     });
-  }, [entries, profiles, search, actionFilter]);
+  }, [entries, profiles, search, actionFilter, accountFilter]);
 
   const exportCsv = () => {
     const rows = [
