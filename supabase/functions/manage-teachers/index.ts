@@ -73,8 +73,8 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: "Teacher full name required" }, 400);
       }
       const slug = slugifyName(name);
-      if (!slug || !slug.includes(".")) {
-        return jsonResponse({ error: "Please provide first and last name" }, 400);
+      if (!slug) {
+        return jsonResponse({ error: "Teacher name is required" }, 400);
       }
       const email = `${slug}@pcc.local`;
       const password = providedPassword?.trim() || randomPassword();
