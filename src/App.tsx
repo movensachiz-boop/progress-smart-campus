@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TimetableProvider } from "@/context/TimetableContext";
+import { TermProvider } from "@/context/TermContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import SetupAccount from "./pages/SetupAccount";
