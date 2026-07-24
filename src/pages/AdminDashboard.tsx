@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Users, DollarSign, AlertTriangle, TrendingUp, ShoppingBag } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import TermSelector from "@/components/TermSelector";
+import { useTerm } from "@/context/TermContext";
 
 const PIE_COLORS = ["hsl(210,100%,20%)", "hsl(51,100%,50%)", "hsl(142,72%,40%)", "hsl(0,0%,60%)"];
 
