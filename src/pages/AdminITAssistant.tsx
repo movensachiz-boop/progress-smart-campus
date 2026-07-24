@@ -144,15 +144,16 @@ const AdminITAssistant = () => {
             <CardContent>
               <form onSubmit={handleReset} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newPassword">New Password (min 4 characters)</Label>
+                  <Label htmlFor="newPassword">New Password (min 6 characters)</Label>
                   <Input
                     id="newPassword"
                     type="text"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    minLength={4}
+                    minLength={6}
                     required
                   />
+
                 </div>
                 <div className="flex gap-2">
                   <Button type="submit" disabled={saving} className="gap-2">
