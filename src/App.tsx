@@ -128,6 +128,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TimetableProvider>
+      </TermProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
