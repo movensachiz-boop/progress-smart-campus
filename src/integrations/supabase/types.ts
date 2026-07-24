@@ -58,6 +58,7 @@ export type Database = {
           id: string
           priority: string
           target_role: string
+          term_id: string | null
           title: string
           updated_at: string
         }
@@ -68,6 +69,7 @@ export type Database = {
           id?: string
           priority?: string
           target_role?: string
+          term_id?: string | null
           title: string
           updated_at?: string
         }
@@ -78,10 +80,19 @@ export type Database = {
           id?: string
           priority?: string
           target_role?: string
+          term_id?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "announcements_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       attendance: {
         Row: {
@@ -93,6 +104,7 @@ export type Database = {
           notes: string | null
           status: string
           student_profile_id: string
+          term_id: string | null
           updated_at: string
         }
         Insert: {
@@ -104,6 +116,7 @@ export type Database = {
           notes?: string | null
           status?: string
           student_profile_id: string
+          term_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -115,6 +128,7 @@ export type Database = {
           notes?: string | null
           status?: string
           student_profile_id?: string
+          term_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -130,6 +144,13 @@ export type Database = {
             columns: ["student_profile_id"]
             isOneToOne: false
             referencedRelation: "student_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
         ]
@@ -266,6 +287,7 @@ export type Database = {
           student_profile_id: string
           subject_code: string
           subject_name: string | null
+          term_id: string | null
           updated_at: string
         }
         Insert: {
@@ -279,6 +301,7 @@ export type Database = {
           student_profile_id: string
           subject_code: string
           subject_name?: string | null
+          term_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -292,6 +315,7 @@ export type Database = {
           student_profile_id?: string
           subject_code?: string
           subject_name?: string | null
+          term_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -314,6 +338,13 @@ export type Database = {
             columns: ["student_profile_id"]
             isOneToOne: false
             referencedRelation: "student_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_results_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
         ]
@@ -424,6 +455,7 @@ export type Database = {
           fund_id: string
           id: string
           spent_at: string
+          term_id: string | null
           updated_at: string
         }
         Insert: {
@@ -435,6 +467,7 @@ export type Database = {
           fund_id: string
           id?: string
           spent_at?: string
+          term_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -446,6 +479,7 @@ export type Database = {
           fund_id?: string
           id?: string
           spent_at?: string
+          term_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -454,6 +488,13 @@ export type Database = {
             columns: ["fund_id"]
             isOneToOne: false
             referencedRelation: "funds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fund_expenses_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
         ]
@@ -628,6 +669,7 @@ export type Database = {
           receipt_number: string | null
           status: string
           student_profile_id: string | null
+          term_id: string | null
           total_amount: number
           updated_at: string
         }
@@ -642,6 +684,7 @@ export type Database = {
           receipt_number?: string | null
           status?: string
           student_profile_id?: string | null
+          term_id?: string | null
           total_amount?: number
           updated_at?: string
         }
@@ -656,6 +699,7 @@ export type Database = {
           receipt_number?: string | null
           status?: string
           student_profile_id?: string | null
+          term_id?: string | null
           total_amount?: number
           updated_at?: string
         }
@@ -674,6 +718,13 @@ export type Database = {
             referencedRelation: "student_roster"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inventory_sales_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
         ]
       }
       kitchen_issues: {
@@ -687,6 +738,7 @@ export type Database = {
           notes: string | null
           purpose: string | null
           quantity: number
+          term_id: string | null
           updated_at: string
         }
         Insert: {
@@ -699,6 +751,7 @@ export type Database = {
           notes?: string | null
           purpose?: string | null
           quantity: number
+          term_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -711,6 +764,7 @@ export type Database = {
           notes?: string | null
           purpose?: string | null
           quantity?: number
+          term_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -719,6 +773,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "kitchen_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kitchen_issues_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
         ]
@@ -784,6 +845,7 @@ export type Database = {
           notes: string | null
           portions_served: number
           prepared_by: string | null
+          term_id: string | null
           total_cost: number
           updated_at: string
         }
@@ -799,6 +861,7 @@ export type Database = {
           notes?: string | null
           portions_served?: number
           prepared_by?: string | null
+          term_id?: string | null
           total_cost?: number
           updated_at?: string
         }
@@ -814,10 +877,19 @@ export type Database = {
           notes?: string | null
           portions_served?: number
           prepared_by?: string | null
+          term_id?: string | null
           total_cost?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "kitchen_meals_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kitchen_receipts: {
         Row: {
@@ -1031,6 +1103,7 @@ export type Database = {
           status: string
           student_profile_id: string
           swift_code: string | null
+          term_id: string | null
           transaction_id_format: string | null
           updated_at: string
           verification_hash: string | null
@@ -1052,6 +1125,7 @@ export type Database = {
           status?: string
           student_profile_id: string
           swift_code?: string | null
+          term_id?: string | null
           transaction_id_format?: string | null
           updated_at?: string
           verification_hash?: string | null
@@ -1073,6 +1147,7 @@ export type Database = {
           status?: string
           student_profile_id?: string
           swift_code?: string | null
+          term_id?: string | null
           transaction_id_format?: string | null
           updated_at?: string
           verification_hash?: string | null
@@ -1090,6 +1165,13 @@ export type Database = {
             columns: ["student_profile_id"]
             isOneToOne: false
             referencedRelation: "student_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
             referencedColumns: ["id"]
           },
         ]
@@ -1412,6 +1494,7 @@ export type Database = {
           requested_by: string
           requisition_number: string | null
           status: string
+          term_id: string | null
           total_amount: number
           updated_at: string
         }
@@ -1430,6 +1513,7 @@ export type Database = {
           requested_by: string
           requisition_number?: string | null
           status?: string
+          term_id?: string | null
           total_amount?: number
           updated_at?: string
         }
@@ -1448,10 +1532,19 @@ export type Database = {
           requested_by?: string
           requisition_number?: string | null
           status?: string
+          term_id?: string | null
           total_amount?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "requisitions_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {
@@ -1489,6 +1582,36 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      terms: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          is_current: boolean
+          started_at: string
+          term_number: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          is_current?: boolean
+          started_at?: string
+          term_number: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          is_current?: boolean
+          started_at?: string
+          term_number?: number
+          year?: number
         }
         Relationships: []
       }
@@ -1571,6 +1694,7 @@ export type Database = {
       }
     }
     Functions: {
+      current_term_id: { Args: never; Returns: string }
       get_exam_analytics: {
         Args: { p_exam_id: string }
         Returns: {
