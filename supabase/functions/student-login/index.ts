@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       const { data: roleRows } = await adminClient
         .from("user_roles")
         .select("user_id, role")
-        .in("role", ["admin", "cashier", "timetable_manager", "teacher", "kitchen", "it_assistant"]);
+        .in("role", ["admin", "cashier", "timetable_manager", "teacher", "kitchen", "it_assistant", "principal"]);
       const userIds = Array.from(new Set((roleRows || []).map((r: any) => r.user_id)));
       const rolesByUser = new Map<string, string[]>();
       for (const r of (roleRows || [])) {
