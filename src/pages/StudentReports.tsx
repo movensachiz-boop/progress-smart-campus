@@ -232,6 +232,10 @@ const StudentReports = () => {
     ${a?.top_student_name ? `<div class="chip">Top: ${a.top_student_name}</div>` : ""}
   </div>
 
+  ${commentsHtml}
+
+
+
   <div class="signatures">
     <div class="sig"><div class="line">Class Teacher</div></div>
     <div class="sig"><div class="line">Principal</div></div>
