@@ -55,13 +55,27 @@ const AdminITAssistant = () => {
       const { data, error } = await supabase.functions.invoke("manage-students", {
         body: { action: "reset_teacher_password", teacherUserId: selected.user_id, newPassword: password },
       });
-      if (error || data?.error) {
-        toast({ title: "Error", description: data?.error || error?.message || "Reset failed", variant: "destructive" });
+      let errMsg: string | null = null;
+      if (error) {
+        errMsg = error.message || "Reset failed";
+        try {
+          if ((error as any).context?.json) {
+            const body = await (error as any).context.json();
+            if (body?.error) errMsg = body.error;
+          }
+        } catch {}
+      } else if (data?.error) {
+        errMsg = data.error;
+      }
+      if (errMsg) {
+        toast({ title: "Error", description: errMsg, variant: "destructive" });
         return;
       }
       toast({ title: "Password reset", description: `${selected.full_name}'s password has been updated.` });
       setPassword("");
       setSelected(null);
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "Reset failed", variant: "destructive" });
     } finally {
       setSaving(false);
     }
