@@ -273,6 +273,47 @@ const TeacherMarks = () => {
     })();
   }, [examId, activeExam, teacherScope, restrictedMarksMode, roleLoading, ttSubjects]);
 
+  // Load current user id + existing subject-teacher comments for this exam
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || "");
+    })();
+  }, []);
+  useEffect(() => {
+    if (!examId || !currentUserId) { setStudentComments({}); return; }
+    (async () => {
+      const { data } = await (supabase as any).from("exam_comments")
+        .select("student_profile_id, comment")
+        .eq("exam_id", examId)
+        .eq("comment_type", "subject_teacher")
+        .eq("author_user_id", currentUserId);
+      const map: Record<string, string> = {};
+      (data || []).forEach((r: any) => { map[r.student_profile_id] = r.comment || ""; });
+      setStudentComments(map);
+    })();
+  }, [examId, currentUserId]);
+
+  const saveComments = async () => {
+    if (!examId || !currentUserId) return;
+    const rows = orderedStudents;
+    if (!rows.length) return toast({ title: "No students visible", variant: "destructive" });
+    setSavingComments(true);
+    const payload = rows.map(s => ({
+      exam_id: examId,
+      student_profile_id: s.id,
+      comment_type: "subject_teacher",
+      author_user_id: currentUserId,
+      subject_code: restrictedMarksMode ? (activeSubject || null) : null,
+      comment: studentComments[s.id] || "",
+    }));
+    const { error } = await (supabase as any).from("exam_comments")
+      .upsert(payload, { onConflict: "exam_id,student_profile_id,comment_type,author_user_id" });
+    setSavingComments(false);
+    if (error) return toast({ title: "Comment save failed", description: error.message, variant: "destructive" });
+    toast({ title: `Saved ${payload.length} comment(s)` });
+  };
+
 
   const saveAll = async () => {
     if (!activeExam) return;
