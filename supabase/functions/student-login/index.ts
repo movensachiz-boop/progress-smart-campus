@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       const { data: roleRows } = await adminClient
         .from("user_roles")
         .select("user_id, role")
-        .in("role", ["admin", "cashier", "timetable_manager", "teacher", "kitchen", "it_assistant"]);
+        .in("role", ["admin", "cashier", "timetable_manager", "teacher", "kitchen", "it_assistant", "principal"]);
       const userIds = Array.from(new Set((roleRows || []).map((r: any) => r.user_id)));
       const rolesByUser = new Map<string, string[]>();
       for (const r of (roleRows || [])) {
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
           const name = meta.full_name || (u.email || "").split("@")[0];
           if (!name) continue;
           const userRoles = rolesByUser.get(u.id) || [];
-          const sub = userRoles.find(r => r === "cashier" || r === "timetable_manager" || r === "kitchen" || r === "it_assistant" || r === "teacher") || "admin";
+          const sub = userRoles.find(r => r === "principal" || r === "cashier" || r === "timetable_manager" || r === "kitchen" || r === "it_assistant" || r === "teacher") || "admin";
           staff.push({ name, role: sub });
         }
         if (list.users.length < 200) break;
