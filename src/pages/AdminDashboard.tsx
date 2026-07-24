@@ -35,9 +35,13 @@ const AdminDashboard = () => {
   const [pieData, setPieData] = useState<{ name: string; value: number }[]>([]);
   const [recentPayments, setRecentPayments] = useState<RecentPayment[]>([]);
 
+  const { selectedTermId, currentTerm, terms } = useTerm();
+  const selectedTerm = terms.find(t => t.id === selectedTermId) || currentTerm;
+  const isCurrentSelected = !selectedTermId || selectedTermId === currentTerm?.id;
+
   useEffect(() => {
     loadDashboard();
-  }, []);
+  }, [selectedTermId]);
 
   const loadDashboard = async () => {
     setLoading(true);
