@@ -83,7 +83,7 @@ const StudentReports = () => {
     setQr({ url: dataUrl, title: `${exam.name} – Verification QR` });
   };
 
-  const printExam = (exam: Exam) => {
+  const printExam = async (exam: Exam) => {
     if (!profile) return;
     const rs = results[exam.id] || [];
     const level = formToLevel(profile.form);
@@ -116,6 +116,32 @@ const StudentReports = () => {
 
     const ptsHeader = level === "alevel" ? `<th style="text-align:center;padding:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;border-bottom:2px solid #e5e7eb">Points</th>` : "";
     const commentHeader = level !== "alevel" ? `<th style="text-align:left;padding:12px;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;border-bottom:2px solid #e5e7eb">Comment</th>` : "";
+
+    // Fetch three comment streams for this exam & student
+    const { data: cmData } = await (supabase as any).from("exam_comments")
+      .select("comment_type, comment")
+      .eq("exam_id", exam.id)
+      .eq("student_profile_id", profile.id);
+    const cmRows = (cmData || []) as { comment_type: string; comment: string }[];
+    const subjectCms = cmRows.filter(r => r.comment_type === "subject_teacher" && (r.comment || "").trim());
+    const classCms = cmRows.filter(r => r.comment_type === "class_teacher" && (r.comment || "").trim());
+    const principalCms = cmRows.filter(r => r.comment_type === "principal" && (r.comment || "").trim());
+    const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+    const renderCommentBlock = (title: string, items: { comment: string }[]) => {
+      const body = items.length
+        ? items.map(i => `<div style="margin:4px 0 6px;font-size:12px;color:#1a1a1a;font-family:Georgia,serif">"${escapeHtml(i.comment)}"</div>`).join("")
+        : `<div style="margin:4px 0 6px;font-size:12px;color:#9ca3af;font-style:italic">No comment recorded.</div>`;
+      return `
+        <div style="margin-top:14px;position:relative;z-index:2">
+          <div style="font-family:Georgia,serif;font-size:12px;font-weight:700;color:#003366;text-transform:uppercase;letter-spacing:0.08em;border-bottom:1px solid #c9a227;padding-bottom:3px;margin-bottom:6px">${title}</div>
+          ${body}
+        </div>
+      `;
+    };
+    const commentsHtml =
+      renderCommentBlock("Subject Teacher's Comment", subjectCms) +
+      renderCommentBlock("Class Teacher's Comment", classCms) +
+      renderCommentBlock("Principal's Comment", principalCms);
 
     const logoUrl = `${window.location.origin}${pccLogo}`;
     const html = `
