@@ -709,6 +709,9 @@ const TeacherMarks = () => {
             <Button onClick={downloadPdf} variant="outline" className="gap-2" disabled={!activeExam || (restrictedMarksMode && !activeSubject)}>
               <FileDown size={14}/> Download PDF
             </Button>
+            <Button onClick={saveComments} variant="outline" className="gap-2" disabled={!activeExam || savingComments || !currentUserId}>
+              {savingComments ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save Comments
+            </Button>
           </CardContent>
         </Card>
 
