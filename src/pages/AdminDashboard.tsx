@@ -169,7 +169,15 @@ const AdminDashboard = () => {
   return (
     <DashboardLayout role="admin">
       <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-foreground">Admin Dashboard</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Admin Dashboard</h2>
+              <p className="text-sm text-muted-foreground">
+                Showing data for {selectedTerm ? `Term ${selectedTerm.term_number} ${selectedTerm.year}` : "current term"}
+              </p>
+            </div>
+            <TermSelector />
+          </div>
 
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
