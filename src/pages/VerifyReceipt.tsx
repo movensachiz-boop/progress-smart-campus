@@ -302,7 +302,7 @@ const VerifyReceipt = () => {
         )}
 
         <p className="text-xs text-center text-muted-foreground">
-          Progress Christian Centre — Secure Verification System
+          Progress Christian College — Secure Verification System
         </p>
       </div>
     </div>

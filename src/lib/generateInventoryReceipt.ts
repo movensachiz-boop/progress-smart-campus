@@ -70,7 +70,7 @@ export const generateInventoryReceipt = async (data: InventoryReceiptData, mode:
   doc.setFillColor(...blue);
   doc.rect(0, y, pw, 10, "F");
   doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(255, 255, 255);
-  doc.text("PROGRESS CHRISTIAN CENTRE  |  11729 Mkoba 14 Gweru, Zimbabwe  |  +263 77 400 0143", pw / 2, y + 6.5, { align: "center" });
+  doc.text("PROGRESS CHRISTIAN COLLEGE  |  11729 Mkoba 14 Gweru, Zimbabwe  |  +263 77 400 0143", pw / 2, y + 6.5, { align: "center" });
   y += 18;
 
   doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.setTextColor(30, 30, 30);
@@ -170,7 +170,7 @@ export const generateInventoryThermalReceipt = async (data: InventoryReceiptData
       await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(); img.src = m.default; });
       doc.addImage(img, "PNG", cx - 8, y, 16, 16); y += 18;
     } catch {}
-    center("PROGRESS CHRISTIAN CENTRE", 9, "bold", 4);
+    center("PROGRESS CHRISTIAN COLLEGE", 9, "bold", 4);
     center("Mkoba 14 Gweru | +263 77 400 0143", 6, "normal", 3.4);
     y += 1; dashed(y); y += 4;
     center("PURCHASE RECEIPT", 10, "bold", 4.8);

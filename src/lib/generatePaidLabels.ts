@@ -53,7 +53,7 @@ export const generatePaidLabels = (students: PaidStudent[]) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(255, 255, 255);
-    doc.text("PROGRESS CHRISTIAN CENTRE", x + LABEL_W / 2, y + 4.5, { align: "center" });
+    doc.text("PROGRESS CHRISTIAN COLLEGE", x + LABEL_W / 2, y + 4.5, { align: "center" });
 
     // Name
     doc.setTextColor(20, 20, 20);
@@ -108,7 +108,7 @@ export const generatePaidStudentsList = (students: PaidStudent[]) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(255, 255, 255);
-  doc.text("PROGRESS CHRISTIAN CENTRE", pageW / 2, 10, { align: "center" });
+  doc.text("PROGRESS CHRISTIAN COLLEGE", pageW / 2, 10, { align: "center" });
   doc.setFontSize(10);
   doc.setTextColor(...gold);
   doc.text("STUDENTS WHO PAID FEES", pageW / 2, 17, { align: "center" });

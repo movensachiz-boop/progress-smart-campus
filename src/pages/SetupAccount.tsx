@@ -83,7 +83,7 @@ const SetupAccount = () => {
     <div className="min-h-screen flex items-center justify-center gradient-primary px-4">
       <Card className="w-full max-w-md shadow-card-hover border-0">
         <CardHeader className="text-center pb-2 pt-8">
-          <img src={pccLogo} alt="Pioneer Christian College" width={80} height={80} className="mx-auto mb-4" />
+          <img src={pccLogo} alt="Progress Christian College" width={80} height={80} className="mx-auto mb-4" />
           <h1 className="text-xl font-bold text-primary">Set Up Your Account</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {step === "verify"

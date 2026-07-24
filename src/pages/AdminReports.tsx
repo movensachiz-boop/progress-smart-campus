@@ -100,7 +100,7 @@ const generatePdf = (r: ReportDef) => {
   // Header
   doc.setFontSize(18);
   doc.setTextColor(0, 51, 102); // primary blue
-  doc.text("Pioneer Christian College", 105, 20, { align: "center" });
+  doc.text("Progress Christian College", 105, 20, { align: "center" });
 
   doc.setFontSize(12);
   doc.setTextColor(51, 51, 51);
@@ -138,7 +138,7 @@ const generatePdf = (r: ReportDef) => {
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
     doc.text(
-      `Pioneer Christian College · Page ${i} of ${pageCount}`,
+      `Progress Christian College · Page ${i} of ${pageCount}`,
       105,
       doc.internal.pageSize.height - 10,
       { align: "center" }

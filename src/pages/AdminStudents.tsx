@@ -810,7 +810,7 @@ const AdminStudents = () => {
                 th { background: #003366; color: #fff; }
                 tr:nth-child(even) td { background: #f4f4f4; }
               </style></head><body>
-                <h1>Progress Centre College — Student List</h1>
+                <h1>Progress Christian College — Student List</h1>
                 <div class="meta">Total: ${filtered.length} · Printed: ${new Date().toLocaleString()}</div>
                 <table><thead><tr><th>#</th><th>Reg No.</th><th>Name</th><th>Form</th><th>Stream</th><th>Gender</th><th>Guardian Phone</th></tr></thead><tbody>${rows}</tbody></table>
                 <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300);}</script>
@@ -843,7 +843,7 @@ const AdminStudents = () => {
                   `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`)
                 );
                 doc.setFontSize(14);
-                doc.text("Progress Centre College — Student List", 105, 14, { align: "center" });
+                doc.text("Progress Christian College — Student List", 105, 14, { align: "center" });
                 doc.setFontSize(11);
                 doc.text(`Class: ${key}`, 105, 21, { align: "center" });
                 doc.setFontSize(9);

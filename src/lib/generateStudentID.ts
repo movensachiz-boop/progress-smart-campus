@@ -51,7 +51,7 @@ export const generateStudentID = async (student: StudentIDData) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(255, 255, 255);
-  doc.text("PROGRESS CHRISTIAN CENTRE", 50, 6, { align: "center" });
+  doc.text("PROGRESS CHRISTIAN COLLEGE", 50, 6, { align: "center" });
 
   doc.setFontSize(5);
   doc.setTextColor(...gold);
@@ -120,7 +120,7 @@ export const generateStudentID = async (student: StudentIDData) => {
   doc.rect(0, ch - 3.5, cw, 3.5, "F");
   doc.setFontSize(4);
   doc.setTextColor(200, 200, 210);
-  doc.text("Property of Progress Christian Centre", cw / 2, ch - 1, { align: "center" });
+  doc.text("Property of Progress Christian College", cw / 2, ch - 1, { align: "center" });
 
   doc.save(`StudentID_${student.regNumber}.pdf`);
 };
@@ -191,7 +191,7 @@ export const generateBulkStudentIDs = async (students: StudentIDData[]) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(255, 255, 255);
-    doc.text("PROGRESS CHRISTIAN CENTRE", x + cardW / 2 + 5, y + 6, { align: "center" });
+    doc.text("PROGRESS CHRISTIAN COLLEGE", x + cardW / 2 + 5, y + 6, { align: "center" });
     doc.setFontSize(5);
     doc.setTextColor(...gold);
     doc.text("STUDENT IDENTIFICATION CARD", x + cardW / 2 + 5, y + 12, { align: "center" });
@@ -258,7 +258,7 @@ export const generateBulkStudentIDs = async (students: StudentIDData[]) => {
     doc.rect(x, y + cardH - 3.5, cardW, 3.5, "F");
     doc.setFontSize(4);
     doc.setTextColor(200, 200, 210);
-    doc.text("Property of Progress Christian Centre", x + cardW / 2, y + cardH - 1, { align: "center" });
+    doc.text("Property of Progress Christian College", x + cardW / 2, y + cardH - 1, { align: "center" });
   }
 
   doc.save(`Student_IDs_${new Date().getFullYear()}.pdf`);

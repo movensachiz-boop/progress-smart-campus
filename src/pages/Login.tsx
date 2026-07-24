@@ -102,8 +102,8 @@ const Login = () => {
 
       <div className="hidden lg:flex flex-1 flex-col justify-center items-center relative z-10 px-12">
         <div className="max-w-md text-center space-y-6">
-          <img src={pccLogo} alt="Progress Christian Centre" width={120} height={120} className="mx-auto drop-shadow-2xl animate-float" />
-          <h1 className="text-4xl font-bold text-primary-foreground leading-tight">Progress Christian Centre</h1>
+          <img src={pccLogo} alt="Progress Christian College" width={120} height={120} className="mx-auto drop-shadow-2xl animate-float" />
+          <h1 className="text-4xl font-bold text-primary-foreground leading-tight">Progress Christian College</h1>
           <p className="text-lg text-primary-foreground/70">Finance & Student Management Portal</p>
           <div className="flex items-center justify-center gap-8 pt-4">
             <div className="flex items-center gap-2 text-primary-foreground/60">
@@ -121,7 +121,7 @@ const Login = () => {
       <div className="flex-1 flex items-center justify-center relative z-10 px-4 py-8">
         <Card className="w-full max-w-[420px] shadow-glow border-0 animate-fade-in">
           <CardHeader className="text-center pb-2 pt-8">
-            <img src={pccLogo} alt="Progress Christian Centre" width={72} height={72} className="mx-auto mb-3 lg:hidden" />
+            <img src={pccLogo} alt="Progress Christian College" width={72} height={72} className="mx-auto mb-3 lg:hidden" />
             <h2 className="text-2xl font-bold text-foreground">
               {mode === "staff" ? "Admin / Staff Sign In" : "Welcome Back"}
             </h2>
