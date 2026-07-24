@@ -100,28 +100,43 @@ Deno.serve(async (req) => {
       const desiredEmail = slug ? `${slug}@pcc.local` : (targetUserRes.user.email || "");
       const currentEmail = (targetUserRes.user.email || "").toLowerCase();
 
-      const updates: any = { password: String(newPassword) };
-      // If the stored email doesn't match the current display name, sync it so the teacher
-      // can sign in by typing the name shown in the staff list.
-      if (desiredEmail && desiredEmail !== currentEmail) {
-        updates.email = desiredEmail;
-        updates.email_confirm = true;
-      }
-
-      const { error: upErr } = await supabaseAdmin.auth.admin.updateUserById(teacherUserId, updates);
-      if (upErr) {
-        return new Response(JSON.stringify({ error: upErr.message }), {
+      // Always update the password first (this is the primary action)
+      const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(teacherUserId, {
+        password: String(newPassword),
+      });
+      if (pwErr) {
+        return new Response(JSON.stringify({ error: pwErr.message }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // Best-effort: sync the login email to the current display-name slug so the teacher
+      // can log in by typing the name shown in the staff list. Failure here (e.g. email
+      // already taken by another account) MUST NOT fail the password reset.
+      let finalEmail = currentEmail;
+      let emailSyncNote: string | null = null;
+      if (desiredEmail && desiredEmail !== currentEmail) {
+        const { error: emailErr } = await supabaseAdmin.auth.admin.updateUserById(teacherUserId, {
+          email: desiredEmail,
+          email_confirm: true,
+        });
+        if (emailErr) {
+          emailSyncNote = `Password updated. Login name still "${currentEmail.replace("@pcc.local", "").replace(/\./g, " ")}" (email sync skipped: ${emailErr.message}).`;
+        } else {
+          finalEmail = desiredEmail;
+        }
+      }
+
       return new Response(JSON.stringify({
         success: true,
-        loginName: fullName,
-        email: desiredEmail,
+        loginName: emailSyncNote ? currentEmail.replace("@pcc.local", "").replace(/\./g, " ") : fullName,
+        email: finalEmail,
+        note: emailSyncNote,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
 
 

@@ -73,8 +73,10 @@ const AdminITAssistant = () => {
       }
       toast({
         title: "Password reset ✓",
-        description: `Tell ${data?.loginName || selected.full_name} to log in with name "${data?.loginName || selected.full_name}" and password "${password}".`,
+        description: data?.note
+          || `Tell ${data?.loginName || selected.full_name} to log in with name "${data?.loginName || selected.full_name}" and password "${password}".`,
       });
+
       setPassword("");
       setSelected(null);
     } catch (e: any) {
