@@ -379,6 +379,66 @@ const AdminPayments = () => {
       return;
     }
 
+    // Reference number validation (only for non-cash methods)
+    const method = manualMethod || "Bank Deposit";
+    if (method !== "Cash") {
+      const ref = (manualRef || "").trim();
+      if (!ref) {
+        toast({ title: "Reference required", description: "Enter the bank/transaction reference number.", variant: "destructive" });
+        return;
+      }
+      // Try matching against known bank patterns for exact format enforcement
+      try {
+        const { data: patterns } = await supabase
+          .from("bank_document_patterns")
+          .select("bank_name, id_regex, sample_reference");
+        const bankLower = (scannedData?.bank_name || "").toLowerCase();
+        const matched = (patterns || []).find((p: any) =>
+          bankLower && bankLower.includes(String(p.bank_name).toLowerCase().split(" ")[0])
+        );
+        if (matched) {
+          const expectedLen = (matched.sample_reference || "").length;
+          if (expectedLen && ref.length !== expectedLen) {
+            toast({
+              title: "Invalid reference length",
+              description: `${matched.bank_name} references must be exactly ${expectedLen} characters (got ${ref.length}). Example: ${matched.sample_reference}`,
+              variant: "destructive",
+            });
+            return;
+          }
+          if (matched.id_regex) {
+            try {
+              const re = new RegExp(matched.id_regex);
+              if (!re.test(ref)) {
+                toast({
+                  title: "Invalid reference format",
+                  description: `Reference does not match ${matched.bank_name} format. Example: ${matched.sample_reference}`,
+                  variant: "destructive",
+                });
+                return;
+              }
+            } catch { /* bad regex — skip */ }
+          }
+        } else {
+          // Generic bounds when bank pattern is unknown
+          if (ref.length < 6 || ref.length > 30) {
+            toast({
+              title: "Invalid reference length",
+              description: `Reference must be between 6 and 30 characters (got ${ref.length}).`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      } catch {
+        if (ref.length < 6 || ref.length > 30) {
+          toast({ title: "Invalid reference length", description: `Reference must be 6–30 characters (got ${ref.length}).`, variant: "destructive" });
+          return;
+        }
+      }
+    }
+
+
     setSaving(true);
 
     // Auto-register student if none selected

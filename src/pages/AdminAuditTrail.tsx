@@ -59,8 +59,10 @@ const AdminAuditTrail = () => {
   const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({});
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("all");
+  const [accountFilter, setAccountFilter] = useState<string>("all");
   const [activitySearch, setActivitySearch] = useState("");
   const [activityFilter, setActivityFilter] = useState<string>("all");
+  const [activityAccountFilter, setActivityAccountFilter] = useState<string>("all");
   const [selected, setSelected] = useState<AuditEntry | null>(null);
 
   useEffect(() => {
@@ -96,9 +98,28 @@ const AdminAuditTrail = () => {
     setLoading(false);
   };
 
+  const financeAccounts = useMemo(() => {
+    const s = new Set<string>();
+    entries.forEach(e => { if (e.actor_email) s.add(e.actor_email); });
+    return Array.from(s).sort();
+  }, [entries]);
+
+  const activityAccounts = useMemo(() => {
+    const s = new Set<string>();
+    activity.forEach(a => {
+      const key = a.actor_email || a.actor_label;
+      if (key) s.add(key);
+    });
+    return Array.from(s).sort();
+  }, [activity]);
+
   const filteredActivity = useMemo(() => {
     return activity.filter(a => {
       if (activityFilter !== "all" && a.action !== activityFilter) return false;
+      if (activityAccountFilter !== "all") {
+        const key = a.actor_email || a.actor_label || "";
+        if (key !== activityAccountFilter) return false;
+      }
       if (!activitySearch.trim()) return true;
       const q = activitySearch.trim().toLowerCase();
       return (
@@ -108,7 +129,7 @@ const AdminAuditTrail = () => {
         JSON.stringify(a.details || {}).toLowerCase().includes(q)
       );
     });
-  }, [activity, activitySearch, activityFilter]);
+  }, [activity, activitySearch, activityFilter, activityAccountFilter]);
 
   const exportActivityCsv = () => {
     const rows = [
@@ -133,6 +154,7 @@ const AdminAuditTrail = () => {
   const filtered = useMemo(() => {
     return entries.filter(e => {
       if (actionFilter !== "all" && e.action !== actionFilter) return false;
+      if (accountFilter !== "all" && (e.actor_email || "") !== accountFilter) return false;
       if (!search.trim()) return true;
       const q = search.trim().toLowerCase();
       const p = e.student_profile_id ? profiles[e.student_profile_id] : null;
@@ -144,7 +166,7 @@ const AdminAuditTrail = () => {
         (e.method || "").toLowerCase().includes(q)
       );
     });
-  }, [entries, profiles, search, actionFilter]);
+  }, [entries, profiles, search, actionFilter, accountFilter]);
 
   const exportCsv = () => {
     const rows = [
@@ -222,6 +244,15 @@ const AdminAuditTrail = () => {
                         <SelectItem value="status_changed">Status changed</SelectItem>
                         <SelectItem value="voided">Voided</SelectItem>
                         <SelectItem value="refunded">Refunded</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={accountFilter} onValueChange={setAccountFilter}>
+                      <SelectTrigger className="w-[220px]"><SelectValue placeholder="All accounts" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All accounts</SelectItem>
+                        {financeAccounts.map(acc => (
+                          <SelectItem key={acc} value={acc}>{acc}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Badge variant="secondary">{filtered.length} entries</Badge>
@@ -310,6 +341,15 @@ const AdminAuditTrail = () => {
                         <SelectItem value="login">Login</SelectItem>
                         <SelectItem value="logout">Logout</SelectItem>
                         <SelectItem value="login_failed">Failed login</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={activityAccountFilter} onValueChange={setActivityAccountFilter}>
+                      <SelectTrigger className="w-[220px]"><SelectValue placeholder="All accounts" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All accounts</SelectItem>
+                        {activityAccounts.map(acc => (
+                          <SelectItem key={acc} value={acc}>{acc}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Badge variant="secondary">{filteredActivity.length} entries</Badge>
