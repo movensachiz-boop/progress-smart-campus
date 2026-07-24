@@ -31,7 +31,7 @@ const slugifyName = (n: string) =>
 
 const TeacherClassTeacher = () => {
   const { toast } = useToast();
-  const { teachers: ttTeachers } = useTimetable();
+  const { teachers: ttTeachers, classes: ttClasses } = useTimetable();
 
   const [userId, setUserId] = useState<string>("");
   const [teacherAccount, setTeacherAccount] = useState<Teacher | null>(null);
