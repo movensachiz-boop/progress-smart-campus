@@ -195,10 +195,19 @@ const TeacherClassTeacher = () => {
           </div>
           <div className="min-w-[200px]">
             <Label>Class</Label>
-            <Select value={classId} onValueChange={setClassId} disabled={!assignedClasses.length}>
-              <SelectTrigger><SelectValue placeholder={assignedClasses.length ? "Select class" : "No classes assigned"}/></SelectTrigger>
-              <SelectContent>{assignedClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-            </Select>
+            {(() => {
+              const options = Array.from(new Set([
+                ...assignedClasses,
+                ...myClasses,
+                ...ttClasses.map(c => c.id),
+              ])).sort();
+              return (
+                <Select value={classId} onValueChange={setClassId}>
+                  <SelectTrigger><SelectValue placeholder={options.length ? "Select class" : "No classes available"}/></SelectTrigger>
+                  <SelectContent>{options.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+              );
+            })()}
           </div>
           <Button onClick={saveComments} disabled={saving || !students.length} className="gap-2">
             {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save Comments
