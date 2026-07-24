@@ -108,7 +108,7 @@ const AdminSettings = () => {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>School Name</Label>
-              <Input defaultValue="Pioneer Christian College" />
+              <Input defaultValue="Progress Christian College" />
             </div>
             <div className="space-y-2">
               <Label>Term</Label>

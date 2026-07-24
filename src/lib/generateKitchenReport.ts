@@ -58,7 +58,7 @@ export const generateKitchenReport = async (args: GenArgs) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(...primary);
-  doc.text("PROGRESS CHRISTIAN CENTRE", margin + 26, y + 6);
+  doc.text("PROGRESS CHRISTIAN COLLEGE", margin + 26, y + 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(80, 80, 80);
@@ -151,7 +151,7 @@ export const generateKitchenReport = async (args: GenArgs) => {
       const total = (doc as any).internal.getNumberOfPages();
       doc.setFontSize(8); doc.setTextColor(120);
       doc.text(`Page ${(doc as any).internal.getCurrentPageInfo().pageNumber} of ${total}`, pw - margin, ph - 10, { align: "right" });
-      doc.text("Progress Christian Centre — Kitchen Stock Report", margin, ph - 10);
+      doc.text("Progress Christian College — Kitchen Stock Report", margin, ph - 10);
     },
   });
 

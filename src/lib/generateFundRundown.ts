@@ -46,7 +46,7 @@ export const generateFundRundown = async (data: FundRundownData) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(...primary);
-  doc.text("PROGRESS CHRISTIAN CENTRE", margin + 22, y + 7);
+  doc.text("PROGRESS CHRISTIAN COLLEGE", margin + 22, y + 7);
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   doc.text("Fund Rundown — Money Received & How It Was Used", margin + 22, y + 13);

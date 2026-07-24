@@ -57,7 +57,7 @@ export const generatePrepaidReport = async (rows: PrepaidReportRow[]) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(...primary);
-  doc.text("PROGRESS CHRISTIAN CENTRE", margin + 26, y + 6);
+  doc.text("PROGRESS CHRISTIAN COLLEGE", margin + 26, y + 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(80, 80, 80);

@@ -41,7 +41,7 @@ export const generateCombinedRequisitions = async (reqs: CombinedRequisition[]) 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(...primary);
-  doc.text("PROGRESS CHRISTIAN CENTRE", margin + 26, y + 6);
+  doc.text("PROGRESS CHRISTIAN COLLEGE", margin + 26, y + 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(80, 80, 80);
@@ -215,7 +215,7 @@ export const generateCombinedRequisitions = async (reqs: CombinedRequisition[]) 
   doc.setFontSize(7.5);
   doc.setTextColor(120, 120, 120);
   doc.text(
-    "Progress Christian Centre Procurement — Combined Requisitions Report",
+    "Progress Christian College Procurement — Combined Requisitions Report",
     pw / 2,
     ph - 10,
     { align: "center" }

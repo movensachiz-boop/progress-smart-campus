@@ -66,7 +66,7 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(...primary);
-  doc.text("PROGRESS CHRISTIAN CENTRE", margin + 26, y + 6);
+  doc.text("PROGRESS CHRISTIAN COLLEGE", margin + 26, y + 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(80, 80, 80);
@@ -200,7 +200,7 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
   doc.setFontSize(7.5);
   doc.setTextColor(120, 120, 120);
   doc.text(
-    `Generated ${new Date().toLocaleString()} • Progress Christian Centre Procurement`,
+    `Generated ${new Date().toLocaleString()} • Progress Christian College Procurement`,
     pw / 2,
     ph - 10,
     { align: "center" }
@@ -246,7 +246,7 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
     doc.setFontSize(7.5);
     doc.setTextColor(120, 120, 120);
     doc.text(
-      `Generated ${new Date().toLocaleString()} • Progress Christian Centre Procurement`,
+      `Generated ${new Date().toLocaleString()} • Progress Christian College Procurement`,
       pw / 2,
       ph - 10,
       { align: "center" }
