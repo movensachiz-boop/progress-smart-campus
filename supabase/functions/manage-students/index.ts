@@ -66,8 +66,8 @@ Deno.serve(async (req) => {
 
     if (action === "reset_teacher_password") {
       const { teacherUserId, newPassword } = payload;
-      if (!teacherUserId || !newPassword || String(newPassword).length < 4) {
-        return new Response(JSON.stringify({ error: "Teacher and a password of 4+ characters are required" }), {
+      if (!teacherUserId || !newPassword || String(newPassword).length < 6) {
+        return new Response(JSON.stringify({ error: "Teacher and a password of 6+ characters are required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -86,18 +86,43 @@ Deno.serve(async (req) => {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const { error: upErr } = await supabaseAdmin.auth.admin.updateUserById(teacherUserId, {
-        password: String(newPassword),
-      });
+
+      // Fetch existing user so we can (a) confirm slug/email, (b) sync email to current name
+      const { data: targetUserRes, error: getErr } = await supabaseAdmin.auth.admin.getUserById(teacherUserId);
+      if (getErr || !targetUserRes?.user) {
+        return new Response(JSON.stringify({ error: getErr?.message || "Teacher account not found" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const meta: any = targetUserRes.user.user_metadata || {};
+      const fullName: string = (meta.full_name || (targetUserRes.user.email || "").split("@")[0].replace(/\./g, " ")).toString();
+      const slug = fullName.toLowerCase().trim().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
+      const desiredEmail = slug ? `${slug}@pcc.local` : (targetUserRes.user.email || "");
+      const currentEmail = (targetUserRes.user.email || "").toLowerCase();
+
+      const updates: any = { password: String(newPassword) };
+      // If the stored email doesn't match the current display name, sync it so the teacher
+      // can sign in by typing the name shown in the staff list.
+      if (desiredEmail && desiredEmail !== currentEmail) {
+        updates.email = desiredEmail;
+        updates.email_confirm = true;
+      }
+
+      const { error: upErr } = await supabaseAdmin.auth.admin.updateUserById(teacherUserId, updates);
       if (upErr) {
         return new Response(JSON.stringify({ error: upErr.message }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({
+        success: true,
+        loginName: fullName,
+        email: desiredEmail,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
 
     if (action === "create_student") {
