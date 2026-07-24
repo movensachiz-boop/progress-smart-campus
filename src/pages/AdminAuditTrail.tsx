@@ -98,9 +98,28 @@ const AdminAuditTrail = () => {
     setLoading(false);
   };
 
+  const financeAccounts = useMemo(() => {
+    const s = new Set<string>();
+    entries.forEach(e => { if (e.actor_email) s.add(e.actor_email); });
+    return Array.from(s).sort();
+  }, [entries]);
+
+  const activityAccounts = useMemo(() => {
+    const s = new Set<string>();
+    activity.forEach(a => {
+      const key = a.actor_email || a.actor_label;
+      if (key) s.add(key);
+    });
+    return Array.from(s).sort();
+  }, [activity]);
+
   const filteredActivity = useMemo(() => {
     return activity.filter(a => {
       if (activityFilter !== "all" && a.action !== activityFilter) return false;
+      if (activityAccountFilter !== "all") {
+        const key = a.actor_email || a.actor_label || "";
+        if (key !== activityAccountFilter) return false;
+      }
       if (!activitySearch.trim()) return true;
       const q = activitySearch.trim().toLowerCase();
       return (
@@ -110,7 +129,7 @@ const AdminAuditTrail = () => {
         JSON.stringify(a.details || {}).toLowerCase().includes(q)
       );
     });
-  }, [activity, activitySearch, activityFilter]);
+  }, [activity, activitySearch, activityFilter, activityAccountFilter]);
 
   const exportActivityCsv = () => {
     const rows = [
