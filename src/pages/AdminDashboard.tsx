@@ -52,48 +52,75 @@ const AdminDashboard = () => {
         .select("id", { count: "exact", head: true });
       setTotalStudents(studentCount || 0);
 
-      // Fee summary via RPC
-      const { data: feeSummary } = await supabase.rpc("get_student_fee_summary");
-      const summaries = feeSummary || [];
-      const totalPaid = summaries.reduce((s, r) => s + Number(r.total_paid), 0);
-      const totalFees = summaries.reduce((s, r) => s + Number(r.total_fees), 0);
-      const totalOutstanding = Math.max(totalFees - totalPaid, 0);
+      // Term-scoped payments
+      let payQuery = supabase
+        .from("payments")
+        .select("amount, method, status, student_profile_id, term_id")
+        .in("status", ["paid", "completed"]);
+      if (selectedTermId) payQuery = payQuery.eq("term_id", selectedTermId);
+      const { data: termPayments } = await payQuery;
+
+      const collectedByStudent: Record<string, number> = {};
+      let totalPaid = 0;
+      for (const p of termPayments || []) {
+        const amt = Number(p.amount || 0);
+        totalPaid += amt;
+        collectedByStudent[p.student_profile_id] = (collectedByStudent[p.student_profile_id] || 0) + amt;
+      }
       setFeesCollected(totalPaid);
-      setOutstanding(totalOutstanding);
+
+      // Expected: fee requirements only apply to the current/active term.
+      // For historical/other terms, expected = collected (no live outstanding).
+      let totalFees = 0;
+      const summaries = isCurrentSelected
+        ? ((await supabase.rpc("get_student_fee_summary")).data || [])
+        : [];
+      if (isCurrentSelected) {
+        totalFees = summaries.reduce((s: number, r: any) => s + Number(r.total_fees), 0);
+      } else {
+        totalFees = totalPaid;
+      }
       setTotalExpected(totalFees);
+      setOutstanding(Math.max(totalFees - totalPaid, 0));
 
-
-      // Inventory sales (separate from fees)
-      const { data: invSales } = await supabase
+      // Inventory sales (term-scoped)
+      let invQuery = supabase
         .from("inventory_sales")
-        .select("total_amount, status")
+        .select("total_amount, status, term_id")
         .in("status", ["paid", "completed", "confirmed"]);
+      if (selectedTermId) invQuery = invQuery.eq("term_id", selectedTermId);
+      const { data: invSales } = await invQuery;
       const invTotal = (invSales || []).reduce((s, r) => s + Number(r.total_amount || 0), 0);
       setInventoryRevenue(invTotal);
 
       // Bar data per form
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, form");
+      const { data: profiles } = await supabase.from("profiles").select("id, form");
       const formMap: Record<string, { collected: number; outstanding: number }> = {};
-      for (const f of ["1", "2", "3", "4", "5", "6"]) {
-        formMap[f] = { collected: 0, outstanding: 0 };
-      }
-      for (const s of summaries) {
-        const prof = (profiles || []).find(p => p.id === s.profile_id);
-        if (prof?.form && formMap[prof.form]) {
-          formMap[prof.form].collected += Number(s.total_paid);
-          formMap[prof.form].outstanding += Math.max(Number(s.total_fees) - Number(s.total_paid), 0);
+      for (const f of ["1", "2", "3", "4", "5", "6"]) formMap[f] = { collected: 0, outstanding: 0 };
+      if (isCurrentSelected) {
+        for (const s of summaries) {
+          const prof = (profiles || []).find(p => p.id === s.profile_id);
+          if (prof?.form && formMap[prof.form]) {
+            formMap[prof.form].collected += Number(s.total_paid);
+            formMap[prof.form].outstanding += Math.max(Number(s.total_fees) - Number(s.total_paid), 0);
+          }
+        }
+      } else {
+        for (const [pid, amt] of Object.entries(collectedByStudent)) {
+          const prof = (profiles || []).find(p => p.id === pid);
+          if (prof?.form && formMap[prof.form]) formMap[prof.form].collected += amt;
         }
       }
       setBarData(Object.entries(formMap).map(([f, d]) => ({ name: `Form ${f}`, ...d })));
 
-      // Recent payments
-      const { data: payData } = await supabase
+      // Recent payments (term-scoped)
+      let recentQuery = supabase
         .from("payments")
-        .select("amount, created_at, status, method, student_profile_id")
+        .select("amount, created_at, status, method, student_profile_id, term_id")
         .order("created_at", { ascending: false })
         .limit(5);
+      if (selectedTermId) recentQuery = recentQuery.eq("term_id", selectedTermId);
+      const { data: payData } = await recentQuery;
 
       if (payData && payData.length > 0) {
         const ids = payData.map(p => p.student_profile_id);
@@ -101,7 +128,6 @@ const AdminDashboard = () => {
           .from("profiles")
           .select("id, first_name, last_name, registration_number, form")
           .in("id", ids);
-
         const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]));
         setRecentPayments(payData.map(p => {
           const prof = profMap[p.student_profile_id];
@@ -118,33 +144,19 @@ const AdminDashboard = () => {
         setRecentPayments([]);
       }
 
-      // Pie data from payment methods
-      if (payData && payData.length > 0) {
-        const methodCounts: Record<string, number> = {};
-        for (const p of payData) {
-          const m = p.method || "Other";
-          methodCounts[m] = (methodCounts[m] || 0) + 1;
-        }
-        // Use all payments for pie, not just recent 5
-        const { data: allPay } = await supabase
-          .from("payments")
-          .select("method")
-          .eq("status", "paid");
-        const allCounts: Record<string, number> = {};
-        for (const p of allPay || []) {
-          const m = p.method || "Other";
-          allCounts[m] = (allCounts[m] || 0) + 1;
-        }
-        const total = Object.values(allCounts).reduce((a, b) => a + b, 0);
-        setPieData(
-          Object.entries(allCounts).map(([name, count]) => ({
-            name,
-            value: total > 0 ? Math.round((count / total) * 100) : 0,
-          }))
-        );
-      } else {
-        setPieData([]);
+      // Pie data from payment methods (term-scoped, all statuses paid)
+      const allCounts: Record<string, number> = {};
+      for (const p of termPayments || []) {
+        const m = p.method || "Other";
+        allCounts[m] = (allCounts[m] || 0) + 1;
       }
+      const totalMethods = Object.values(allCounts).reduce((a, b) => a + b, 0);
+      setPieData(
+        Object.entries(allCounts).map(([name, count]) => ({
+          name,
+          value: totalMethods > 0 ? Math.round((count / totalMethods) * 100) : 0,
+        }))
+      );
     } finally {
       setLoading(false);
     }
