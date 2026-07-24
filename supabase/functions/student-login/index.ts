@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
           const name = meta.full_name || (u.email || "").split("@")[0];
           if (!name) continue;
           const userRoles = rolesByUser.get(u.id) || [];
-          const sub = userRoles.find(r => r === "cashier" || r === "timetable_manager" || r === "kitchen" || r === "it_assistant" || r === "teacher") || "admin";
+          const sub = userRoles.find(r => r === "principal" || r === "cashier" || r === "timetable_manager" || r === "kitchen" || r === "it_assistant" || r === "teacher") || "admin";
           staff.push({ name, role: sub });
         }
         if (list.users.length < 200) break;
