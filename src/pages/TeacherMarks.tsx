@@ -143,6 +143,10 @@ const TeacherMarks = () => {
   const [activeClass, setActiveClass] = useState<string>("");
   // Subjects unlocked this session after entering the per-subject password
   const [unlockedSubjects, setUnlockedSubjects] = useState<Set<string>>(new Set());
+  // Overall subject-teacher comment per student (this teacher, this exam)
+  const [studentComments, setStudentComments] = useState<Record<string, string>>({});
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [savingComments, setSavingComments] = useState(false);
 
   const pwKey = (code: string) => `mark-pw:${teacherAccount?.id || "anon"}:${code}`;
   const unlockSubject = (code: string): boolean => {
