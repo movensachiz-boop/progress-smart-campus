@@ -143,6 +143,10 @@ const TeacherMarks = () => {
   const [activeClass, setActiveClass] = useState<string>("");
   // Subjects unlocked this session after entering the per-subject password
   const [unlockedSubjects, setUnlockedSubjects] = useState<Set<string>>(new Set());
+  // Overall subject-teacher comment per student (this teacher, this exam)
+  const [studentComments, setStudentComments] = useState<Record<string, string>>({});
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [savingComments, setSavingComments] = useState(false);
 
   const pwKey = (code: string) => `mark-pw:${teacherAccount?.id || "anon"}:${code}`;
   const unlockSubject = (code: string): boolean => {
@@ -268,6 +272,47 @@ const TeacherMarks = () => {
       setLoading(false);
     })();
   }, [examId, activeExam, teacherScope, restrictedMarksMode, roleLoading, ttSubjects]);
+
+  // Load current user id + existing subject-teacher comments for this exam
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || "");
+    })();
+  }, []);
+  useEffect(() => {
+    if (!examId || !currentUserId) { setStudentComments({}); return; }
+    (async () => {
+      const { data } = await (supabase as any).from("exam_comments")
+        .select("student_profile_id, comment")
+        .eq("exam_id", examId)
+        .eq("comment_type", "subject_teacher")
+        .eq("author_user_id", currentUserId);
+      const map: Record<string, string> = {};
+      (data || []).forEach((r: any) => { map[r.student_profile_id] = r.comment || ""; });
+      setStudentComments(map);
+    })();
+  }, [examId, currentUserId]);
+
+  const saveComments = async () => {
+    if (!examId || !currentUserId) return;
+    const rows = orderedStudents;
+    if (!rows.length) return toast({ title: "No students visible", variant: "destructive" });
+    setSavingComments(true);
+    const payload = rows.map(s => ({
+      exam_id: examId,
+      student_profile_id: s.id,
+      comment_type: "subject_teacher",
+      author_user_id: currentUserId,
+      subject_code: restrictedMarksMode ? (activeSubject || null) : null,
+      comment: studentComments[s.id] || "",
+    }));
+    const { error } = await (supabase as any).from("exam_comments")
+      .upsert(payload, { onConflict: "exam_id,student_profile_id,comment_type,author_user_id" });
+    setSavingComments(false);
+    if (error) return toast({ title: "Comment save failed", description: error.message, variant: "destructive" });
+    toast({ title: `Saved ${payload.length} comment(s)` });
+  };
 
 
   const saveAll = async () => {
@@ -664,6 +709,9 @@ const TeacherMarks = () => {
             <Button onClick={downloadPdf} variant="outline" className="gap-2" disabled={!activeExam || (restrictedMarksMode && !activeSubject)}>
               <FileDown size={14}/> Download PDF
             </Button>
+            <Button onClick={saveComments} variant="outline" className="gap-2" disabled={!activeExam || savingComments || !currentUserId}>
+              {savingComments ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save Comments
+            </Button>
           </CardContent>
         </Card>
 
@@ -802,7 +850,37 @@ const TeacherMarks = () => {
             </Card>
           );
         })()}
+
+        {students.length > 0 && activeExam && (
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="font-semibold">Subject Teacher — Overall Comments</h3>
+                  <p className="text-xs text-muted-foreground">One overall comment per student for this exam. Click Save Comments above when done.</p>
+                </div>
+                <span className="text-xs text-muted-foreground">{orderedStudents.length} student(s)</span>
+              </div>
+              <div className="grid gap-2">
+                {orderedStudents.map(s => (
+                  <div key={s.id} className="flex items-start gap-3 border rounded-md p-2">
+                    <div className="min-w-[180px] w-[180px]">
+                      <div className="font-medium text-sm truncate">{s.last_name} {s.first_name}</div>
+                      <div className="text-xs text-muted-foreground">F{s.form} {s.stream}</div>
+                    </div>
+                    <Input
+                      placeholder="Overall comment on this student's performance"
+                      value={studentComments[s.id] || ""}
+                      onChange={(e) => setStudentComments(prev => ({ ...prev, [s.id]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
 
 
       <CameraCaptureDialog open={scanOpen} onOpenChange={setScanOpen} onCapture={handleCapture}

@@ -62,6 +62,7 @@ const teacherLinks = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/teacher" },
   { label: "Timetable", icon: CalendarDays, path: "/teacher/timetable" },
   { label: "Enter Marks", icon: Award, path: "/teacher/marks" },
+  { label: "My Class (Class Teacher)", icon: ClipboardList, path: "/teacher/class-teacher" },
 ];
 
 

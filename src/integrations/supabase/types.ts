@@ -167,6 +167,27 @@ export type Database = {
         }
         Relationships: []
       }
+      class_teacher_assignments: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          teacher_user_id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          teacher_user_id: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          teacher_user_id?: string
+        }
+        Relationships: []
+      }
       device_sessions: {
         Row: {
           created_at: string
@@ -194,6 +215,42 @@ export type Database = {
           last_active_at?: string
           user_agent?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      exam_comments: {
+        Row: {
+          author_user_id: string
+          comment: string
+          comment_type: string
+          created_at: string
+          exam_id: string
+          id: string
+          student_profile_id: string
+          subject_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_user_id: string
+          comment?: string
+          comment_type: string
+          created_at?: string
+          exam_id: string
+          id?: string
+          student_profile_id: string
+          subject_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_user_id?: string
+          comment?: string
+          comment_type?: string
+          created_at?: string
+          exam_id?: string
+          id?: string
+          student_profile_id?: string
+          subject_code?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

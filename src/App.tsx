@@ -44,6 +44,7 @@ import StaffGuard from "./components/StaffGuard";
 import PhoneScan from "./pages/PhoneScan";
 import AdminExams from "./pages/AdminExams";
 import TeacherMarks from "./pages/TeacherMarks";
+import TeacherClassTeacher from "./pages/TeacherClassTeacher";
 import StudentReports from "./pages/StudentReports";
 import VerifyReport from "./pages/VerifyReport";
 import ScanMarks from "./pages/ScanMarks";
@@ -118,6 +119,7 @@ const App = () => (
             <Route path="/admin/it" element={<StaffGuard allow={["it_assistant"]} deny={DENY_TM_AND_CASHIER}><AdminITAssistant /></StaffGuard>} />
 
             <Route path="/teacher/marks" element={<TeacherMarks />} />
+            <Route path="/teacher/class-teacher" element={<TeacherClassTeacher />} />
             <Route path="/student/results" element={<StudentProfileGate><StudentReports /></StudentProfileGate>} />
             <Route path="/phone-scan/:sessionId" element={<PhoneScan />} />
             <Route path="*" element={<NotFound />} />
