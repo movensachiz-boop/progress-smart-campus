@@ -122,7 +122,7 @@ const Login = () => {
         <Card className="w-full max-w-[420px] shadow-glow border-0 animate-fade-in">
           <CardHeader className="text-center pb-2 pt-8">
             <img src={pccLogo} alt="Progress Christian College" width={72} height={72} className="mx-auto mb-3 lg:hidden" />
-            <h2 className="text-2xl font-bold text-foreground">
+            <h2 className="text-2xl font-bold text-primary">
               {mode === "staff" ? "Admin / Staff Sign In" : "Welcome Back"}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
