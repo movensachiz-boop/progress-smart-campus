@@ -246,6 +246,15 @@ const AdminAuditTrail = () => {
                         <SelectItem value="refunded">Refunded</SelectItem>
                       </SelectContent>
                     </Select>
+                    <Select value={accountFilter} onValueChange={setAccountFilter}>
+                      <SelectTrigger className="w-[220px]"><SelectValue placeholder="All accounts" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All accounts</SelectItem>
+                        {financeAccounts.map(acc => (
+                          <SelectItem key={acc} value={acc}>{acc}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Badge variant="secondary">{filtered.length} entries</Badge>
                   </div>
                 </CardHeader>
