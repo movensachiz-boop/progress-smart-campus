@@ -343,6 +343,15 @@ const AdminAuditTrail = () => {
                         <SelectItem value="login_failed">Failed login</SelectItem>
                       </SelectContent>
                     </Select>
+                    <Select value={activityAccountFilter} onValueChange={setActivityAccountFilter}>
+                      <SelectTrigger className="w-[220px]"><SelectValue placeholder="All accounts" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All accounts</SelectItem>
+                        {activityAccounts.map(acc => (
+                          <SelectItem key={acc} value={acc}>{acc}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Badge variant="secondary">{filteredActivity.length} entries</Badge>
                   </div>
                 </CardHeader>
