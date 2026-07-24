@@ -48,7 +48,9 @@ const AdminPrincipalMarks = () => {
       const { data } = await supabase.from("exams")
         .select("id, name, form_levels, published")
         .order("created_at", { ascending: false });
-      setExams((data || []) as Exam[]);
+      const list = (data || []) as Exam[];
+      setExams(list);
+      if (list.length && !examId) setExamId(list[0].id);
     })();
   }, []);
 
