@@ -29,37 +29,11 @@ const AdminITAssistant = () => {
           body: { action: "list_staff" },
         });
         if (error) throw error;
-        const list = (data?.staff || [])
-          .filter((s: any) => s.role === "teacher")
-          .map((s: any) => ({ user_id: s.user_id || s.name, full_name: s.name }));
-        // list_staff returns { name, role } — we need user_id. Fall back to querying user_roles + profiles.
-        const { data: roleRows } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "teacher");
-        const ids = (roleRows || []).map((r: any) => r.user_id);
-        if (ids.length) {
-          const { data: profs } = await supabase
-            .from("profiles")
-            .select("user_id, first_name, last_name")
-            .in("user_id", ids);
-          const merged: Teacher[] = (profs || []).map((p: any) => ({
-            user_id: p.user_id,
-            full_name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || "(no name)",
-          }));
-          // Also include staff-created teachers (no profile row) by matching names from list_staff.
-          const covered = new Set(merged.map(t => t.user_id));
-          for (const id of ids) {
-            if (!covered.has(id)) {
-              const named = list.find((t: any) => t.user_id === id);
-              merged.push({ user_id: id, full_name: named?.full_name || "Teacher" });
-            }
-          }
-          merged.sort((a, b) => a.full_name.localeCompare(b.full_name));
-          setTeachers(merged);
-        } else {
-          setTeachers([]);
-        }
+        const merged: Teacher[] = (data?.staff || [])
+          .filter((s: any) => s.role === "teacher" && s.user_id)
+          .map((s: any) => ({ user_id: s.user_id, full_name: s.name }))
+          .sort((a: Teacher, b: Teacher) => a.full_name.localeCompare(b.full_name));
+        setTeachers(merged);
       } catch (e: any) {
         toast({ title: "Error", description: e.message || "Failed to load teachers", variant: "destructive" });
       } finally {
