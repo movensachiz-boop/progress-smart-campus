@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
           if (!name) continue;
           const userRoles = rolesByUser.get(u.id) || [];
           const sub = userRoles.find(r => r === "principal" || r === "cashier" || r === "timetable_manager" || r === "kitchen" || r === "it_assistant" || r === "teacher") || "admin";
-          staff.push({ name, role: sub });
+          staff.push({ name, role: sub, user_id: u.id });
         }
         if (list.users.length < 200) break;
         page++;
