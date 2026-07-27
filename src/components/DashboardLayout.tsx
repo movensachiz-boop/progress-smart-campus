@@ -194,6 +194,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
             <h1 className="text-lg font-bold text-foreground capitalize">{role} Portal</h1>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <FeedbackDialog compact />
             <Button variant="ghost" size="icon" className="relative rounded-full">
               <Bell size={18} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive ring-2 ring-card" />
