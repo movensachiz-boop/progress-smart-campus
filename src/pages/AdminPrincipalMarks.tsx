@@ -263,6 +263,10 @@ const AdminPrincipalMarks = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex-1 min-w-[200px]">
+              <Label>Search student</Label>
+              <Input placeholder="Type name…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </div>
             <Button onClick={savePrincipalComments} variant="outline" disabled={saving || !classStudents.length} className="gap-2">
               {saving ? <Loader2 className="animate-spin w-4 h-4"/> : <Save className="w-4 h-4"/>} Save Comments
             </Button>
