@@ -33,11 +33,21 @@ export default function AdminClasses() {
   const [viewClass, setViewClass] = useState<SchoolClass | null>(null);
   const [viewStudents, setViewStudents] = useState<Array<{ id: string; registration_number: string; first_name: string; last_name: string; gender: string | null; status: string }>>([]);
   const [viewLoading, setViewLoading] = useState(false);
+  const [verifiedIds, setVerifiedIds] = useState<Set<string>>(new Set());
+  const [showVerified, setShowVerified] = useState(false);
+  const [deleteStudent, setDeleteStudent] = useState<{ id: string; first_name: string; last_name: string; registration_number: string } | null>(null);
+
+  const verifiedKey = (cls: SchoolClass) => `verified_${selectedTermId || 'notrm'}_${cls.id}`;
 
   const openView = async (cls: SchoolClass) => {
     setViewClass(cls);
     setViewStudents([]);
     setViewLoading(true);
+    try {
+      const stored = JSON.parse(localStorage.getItem(verifiedKey(cls)) || '[]');
+      setVerifiedIds(new Set(stored));
+    } catch { setVerifiedIds(new Set()); }
+    setShowVerified(false);
     try {
       const { data } = await supabase
         .from('profiles')
@@ -57,6 +67,46 @@ export default function AdminClasses() {
       setViewLoading(false);
     }
   };
+
+  const toggleVerified = (id: string) => {
+    if (!viewClass) return;
+    setVerifiedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem(verifiedKey(viewClass), JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
+
+  const resetVerified = () => {
+    if (!viewClass) return;
+    setVerifiedIds(new Set());
+    try { localStorage.removeItem(verifiedKey(viewClass)); } catch {}
+    toast.success('Verified list cleared');
+  };
+
+  const confirmDeleteStudent = async () => {
+    if (!deleteStudent) return;
+    const s = deleteStudent;
+    const { data, error } = await supabase.functions.invoke('manage-students', {
+      body: { action: 'delete_student', profileId: s.id },
+    });
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || 'Delete failed');
+      return;
+    }
+    setViewStudents(prev => prev.filter(x => x.id !== s.id));
+    setVerifiedIds(prev => {
+      if (!prev.has(s.id)) return prev;
+      const next = new Set(prev); next.delete(s.id);
+      if (viewClass) { try { localStorage.setItem(verifiedKey(viewClass), JSON.stringify([...next])); } catch {} }
+      return next;
+    });
+    toast.success(`${s.first_name} ${s.last_name} deleted`);
+    setDeleteStudent(null);
+  };
+
+
 
   const getDeletedIds = (): Set<string> => {
     try { return new Set(JSON.parse(localStorage.getItem('tt_deleted_classes') || '[]')); } catch { return new Set(); }
