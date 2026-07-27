@@ -146,7 +146,10 @@ const Login = () => {
                           value={staffSearch}
                           onChange={(e) => setStaffSearch(e.target.value)}
                           onKeyDown={(e) => e.stopPropagation()}
-                          placeholder="Type to search (e.g. zimano)"
+                          onPaste={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          placeholder="Type or paste to search (e.g. zimano)"
                           className="h-9"
                         />
                       </div>
