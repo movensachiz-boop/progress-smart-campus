@@ -145,8 +145,11 @@ const TeacherMarks = () => {
   const [unlockedSubjects, setUnlockedSubjects] = useState<Set<string>>(new Set());
   // Overall subject-teacher comment per student (this teacher, this exam)
   const [studentComments, setStudentComments] = useState<Record<string, string>>({});
+  // Track which student comments the user has hand-edited (so we don't overwrite them on mark change)
+  const [commentEdited, setCommentEdited] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [savingComments, setSavingComments] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const pwKey = (code: string) => `mark-pw:${teacherAccount?.id || "anon"}:${code}`;
   const unlockSubject = (code: string): boolean => {
