@@ -106,12 +106,22 @@ const TeacherClassTeacher = () => {
     if (!activeExam || !classId) { setStudents([]); setResults([]); setComments({}); return; }
     (async () => {
       setLoading(true);
-      const [{ data: profs }, { data: rows }] = await Promise.all([
-        supabase.from("profiles").select("id, first_name, last_name, form, stream")
-          .in("form", activeExam.form_levels.map(String)).order("last_name"),
+      const termId = typeof window !== "undefined" ? localStorage.getItem("pcc.selectedTermId") : null;
+      const [{ data: profs }, { data: snaps }, { data: rows }] = await Promise.all([
+        supabase.from("profiles").select("id, first_name, last_name, form, stream").order("last_name"),
+        termId
+          ? supabase.from("student_class_terms").select("student_profile_id, form, stream").eq("term_id", termId)
+          : Promise.resolve({ data: [] as any[] }) as any,
         supabase.from("exam_results").select("student_profile_id, subject_code, mark").eq("exam_id", examId),
       ]);
-      const filtered = ((profs || []) as Profile[]).filter(p => studentClassId(p) === classId);
+      const snapMap = new Map<string, { form: string | null; stream: string | null }>();
+      (snaps || []).forEach((r: any) => snapMap.set(r.student_profile_id, { form: r.form, stream: r.stream }));
+      const formLevels = activeExam.form_levels.map(String);
+      const overlaid = ((profs || []) as Profile[]).map(p => {
+        const t = snapMap.get(p.id);
+        return t ? { ...p, form: t.form ?? p.form, stream: t.stream ?? p.stream } : p;
+      }).filter(p => p.form && formLevels.includes(String(p.form)));
+      const filtered = overlaid.filter(p => studentClassId(p) === classId);
       setStudents(filtered);
       setResults((rows || []) as Result[]);
       const sids = filtered.map(s => s.id);
