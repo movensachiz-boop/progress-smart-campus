@@ -699,6 +699,37 @@ export default function AdminClasses() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={!!transferStudent} onOpenChange={open => !open && setTransferStudent(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Transfer Student</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Move <span className="font-semibold text-foreground">{transferStudent?.first_name} {transferStudent?.last_name}</span> ({transferStudent?.registration_number}) from <span className="font-mono font-semibold text-foreground">{viewClass?.id}</span> to:
+              </p>
+              <Select value={transferTargetId} onValueChange={setTransferTargetId}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Select target class..." /></SelectTrigger>
+                <SelectContent>
+                  {classes
+                    .filter(c => c.id !== viewClass?.id)
+                    .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream))
+                    .map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.id}{c.learningArea ? ` · ${c.learningArea}` : ''}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Updates the student's class for the selected term and their profile.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setTransferStudent(null)} disabled={transferring}>Cancel</Button>
+              <Button onClick={confirmTransfer} disabled={!transferTargetId || transferring}>
+                <ArrowRightLeft className="w-4 h-4 mr-1" />{transferring ? 'Transferring…' : 'Transfer'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
