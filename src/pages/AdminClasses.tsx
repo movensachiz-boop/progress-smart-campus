@@ -47,13 +47,22 @@ export default function AdminClasses() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('form, stream, gender')
-        .not('form', 'is', null)
-        .not('stream', 'is', null);
+        .select('id, form, stream, gender');
       if (error) throw error;
+      // Overlay each profile with the selected term's snapshot so past terms
+      // keep their historical class assignments.
+      const rows = (data || []).map((r: any) => {
+        const t = termClassMap.get(r.id);
+        return {
+          form: t?.form ?? r.form,
+          stream: t?.stream ?? r.stream,
+          gender: r.gender,
+        };
+      }).filter(r => r.form && r.stream);
+
       const counts: Record<string, { total: number; male: number; female: number }> = {};
       const missing: Record<string, { form: FormLevel; stream: string; learningArea?: LearningArea }> = {};
-      for (const row of data || []) {
+      for (const row of rows) {
         const formNum = parseInt(row.form!, 10);
         if (isNaN(formNum) || formNum < 1 || formNum > 6) continue;
         const matched = classes.find(c =>
@@ -107,7 +116,7 @@ export default function AdminClasses() {
     } catch (e) { /* ignore */ }
   };
 
-  useEffect(() => { loadCounts(); }, [classes]);
+  useEffect(() => { loadCounts(); }, [classes, termClassMap]);
 
   // Valid class definitions matching the timetable defaults exactly
   const VALID_LOWER_STREAMS = ['G1', 'G2', 'G22', 'Blue']; // Forms 1-4
