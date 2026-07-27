@@ -30,6 +30,33 @@ export default function AdminClasses() {
   const [deleteTarget, setDeleteTarget] = useState<SchoolClass | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [studentCounts, setStudentCounts] = useState<Record<string, { total: number; male: number; female: number }>>({});
+  const [viewClass, setViewClass] = useState<SchoolClass | null>(null);
+  const [viewStudents, setViewStudents] = useState<Array<{ id: string; registration_number: string; first_name: string; last_name: string; gender: string | null; status: string }>>([]);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  const openView = async (cls: SchoolClass) => {
+    setViewClass(cls);
+    setViewStudents([]);
+    setViewLoading(true);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, registration_number, first_name, last_name, gender, form, stream, status')
+        .order('last_name');
+      const streamMatch = cls.learningArea || cls.stream;
+      const rows = (data || []).map((r: any) => {
+        const t = termClassMap.get(r.id);
+        return { ...r, form: t?.form ?? r.form, stream: t?.stream ?? r.stream };
+      }).filter((r: any) => {
+        const f = parseInt(r.form || '', 10);
+        if (f !== cls.form) return false;
+        return r.stream === cls.stream || r.stream === streamMatch || (cls.learningArea && r.stream === cls.learningArea);
+      });
+      setViewStudents(rows);
+    } finally {
+      setViewLoading(false);
+    }
+  };
 
   const getDeletedIds = (): Set<string> => {
     try { return new Set(JSON.parse(localStorage.getItem('tt_deleted_classes') || '[]')); } catch { return new Set(); }
@@ -320,8 +347,12 @@ export default function AdminClasses() {
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                   {group.classes.map(cls => (
-                    <div key={cls.id} className="bg-card rounded-xl border p-4 group relative">
-                      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div
+                      key={cls.id}
+                      onClick={() => openView(cls)}
+                      className="bg-card rounded-xl border p-4 group relative cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all"
+                    >
+                      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                         <button onClick={() => openEdit(cls)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
                         <button onClick={() => setDeleteTarget(cls)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
@@ -458,6 +489,53 @@ export default function AdminClasses() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
               <Button variant="destructive" onClick={handleDelete}><Trash2 className="w-4 h-4 mr-1" /> Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!viewClass} onOpenChange={open => !open && setViewClass(null)}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <School className="w-4 h-4 text-primary" />
+                Class {viewClass?.id} {viewClass?.learningArea && <span className="text-sm text-muted-foreground font-normal">· {viewClass.learningArea}</span>}
+              </DialogTitle>
+            </DialogHeader>
+            {viewLoading ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Loading students…</p>
+            ) : viewStudents.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No students registered in this class for the selected term.</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">{viewStudents.length} student(s)</p>
+                <div className="overflow-x-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-2 font-medium">#</th>
+                        <th className="text-left p-2 font-medium">Reg No.</th>
+                        <th className="text-left p-2 font-medium">Name</th>
+                        <th className="text-left p-2 font-medium">Gender</th>
+                        <th className="text-left p-2 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewStudents.map((s, i) => (
+                        <tr key={s.id} className="border-t hover:bg-muted/30">
+                          <td className="p-2 text-muted-foreground">{i + 1}</td>
+                          <td className="p-2 font-mono text-xs">{s.registration_number}</td>
+                          <td className="p-2 font-medium">{s.first_name} {s.last_name}</td>
+                          <td className="p-2 capitalize">{s.gender || '—'}</td>
+                          <td className="p-2"><span className="text-xs">{s.status}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewClass(null)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
