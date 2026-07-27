@@ -200,7 +200,7 @@ const AdminPrincipalMarks = () => {
           SUBJECT_CODES[c] || c,
           mk == null ? "—" : String(mk),
           mk == null ? "" : computeGrade(mk, level, c),
-          mk == null ? "" : getMarkComment(mk),
+          mk == null ? "" : getMarkComment(mk, c),
         ];
       });
       autoTable(doc, {
