@@ -859,8 +859,33 @@ const TeacherMarks = () => {
             <Button onClick={saveComments} variant="outline" className="gap-2" disabled={!activeExam || savingComments || !currentUserId}>
               {savingComments ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save Comments
             </Button>
+            {activeExam && (
+              <div
+                className={`ml-auto inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border ${
+                  !isOnline
+                    ? "bg-amber-50 border-amber-300 text-amber-800"
+                    : syncStatus === "saving"
+                      ? "bg-blue-50 border-blue-300 text-blue-800"
+                      : syncStatus === "pending"
+                        ? "bg-amber-50 border-amber-300 text-amber-800"
+                        : "bg-emerald-50 border-emerald-300 text-emerald-800"
+                }`}
+                title="Marks are auto-saved locally and synced to the cloud when Wi-Fi is available."
+              >
+                {!isOnline ? (
+                  <><CloudOff size={12}/> Offline — saved on this device</>
+                ) : syncStatus === "saving" ? (
+                  <><Loader2 className="animate-spin" size={12}/> Auto-saving…</>
+                ) : syncStatus === "pending" ? (
+                  <><Cloud size={12}/> Will sync shortly</>
+                ) : (
+                  <><CheckCheck size={12}/> Auto-saved</>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
+
 
         {restrictedMarksMode && teacherScope && teacherScope.allowedCodes.size > 0 && !activeSubject && (
           <Card><CardContent className="p-4 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded">
