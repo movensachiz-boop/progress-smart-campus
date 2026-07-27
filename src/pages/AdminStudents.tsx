@@ -415,6 +415,14 @@ const AdminStudents = () => {
       .from("profiles")
       .update({ form: reassignToForm, stream: reassignToStream })
       .in("id", ids);
+    // Also snapshot into the currently selected term so its rosters update
+    // without touching past terms.
+    if (!error) {
+      await upsertStudentClassesForTerm(
+        ids.map(id => ({ studentProfileId: id, form: reassignToForm, stream: reassignToStream })),
+        selectedTermId
+      );
+    }
     setReassignSubmitting(false);
 
     if (error) {
