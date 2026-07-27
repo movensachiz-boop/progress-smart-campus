@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Pencil, Trash2, School, Check, RefreshCw, Users, CheckCircle2, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, School, Check, RefreshCw, Users, CheckCircle2, RotateCcw, Eye, EyeOff, ArrowRightLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useTermClassMap, upsertStudentClassesForTerm } from '@/hooks/useTermClassMap';
@@ -36,6 +36,9 @@ export default function AdminClasses() {
   const [verifiedIds, setVerifiedIds] = useState<Set<string>>(new Set());
   const [showVerified, setShowVerified] = useState(false);
   const [deleteStudent, setDeleteStudent] = useState<{ id: string; first_name: string; last_name: string; registration_number: string } | null>(null);
+  const [transferStudent, setTransferStudent] = useState<{ id: string; first_name: string; last_name: string; registration_number: string } | null>(null);
+  const [transferTargetId, setTransferTargetId] = useState<string>('');
+  const [transferring, setTransferring] = useState(false);
 
   const verifiedKey = (cls: SchoolClass) => `verified_${selectedTermId || 'notrm'}_${cls.id}`;
 
@@ -104,6 +107,43 @@ export default function AdminClasses() {
     });
     toast.success(`${s.first_name} ${s.last_name} deleted`);
     setDeleteStudent(null);
+  };
+
+  const openTransfer = (s: { id: string; first_name: string; last_name: string; registration_number: string }) => {
+    setTransferStudent(s);
+    setTransferTargetId('');
+  };
+
+  const confirmTransfer = async () => {
+    if (!transferStudent || !transferTargetId || !viewClass) return;
+    const target = classes.find(c => c.id === transferTargetId);
+    if (!target) { toast.error('Select a target class'); return; }
+    setTransferring(true);
+    try {
+      const newForm = String(target.form);
+      const newStream = target.stream;
+      // Update global profile
+      const { error: profErr } = await supabase
+        .from('profiles')
+        .update({ form: newForm, stream: newStream })
+        .eq('id', transferStudent.id);
+      if (profErr) throw profErr;
+      // Snapshot into the selected term (or current)
+      const { error: termErr } = await upsertStudentClassesForTerm(
+        [{ studentProfileId: transferStudent.id, form: newForm, stream: newStream }],
+        selectedTermId,
+      );
+      if (termErr) throw termErr;
+      setViewStudents(prev => prev.filter(x => x.id !== transferStudent.id));
+      toast.success(`${transferStudent.first_name} ${transferStudent.last_name} transferred to ${target.id}`);
+      setTransferStudent(null);
+      reloadTermMap();
+      loadCounts();
+    } catch (e: any) {
+      toast.error('Transfer failed: ' + (e.message || 'unknown error'));
+    } finally {
+      setTransferring(false);
+    }
   };
 
 
@@ -611,6 +651,16 @@ export default function AdminClasses() {
                                   <Button
                                     size="sm"
                                     variant="outline"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() => openTransfer(s)}
+                                    title="Transfer to another class"
+                                  >
+                                    <ArrowRightLeft className="w-3.5 h-3.5 mr-1" />
+                                    Transfer
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
                                     className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                                     onClick={() => setDeleteStudent(s)}
                                   >
@@ -646,6 +696,37 @@ export default function AdminClasses() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeleteStudent(null)}>Cancel</Button>
               <Button variant="destructive" onClick={confirmDeleteStudent}><Trash2 className="w-4 h-4 mr-1" />Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!transferStudent} onOpenChange={open => !open && setTransferStudent(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Transfer Student</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Move <span className="font-semibold text-foreground">{transferStudent?.first_name} {transferStudent?.last_name}</span> ({transferStudent?.registration_number}) from <span className="font-mono font-semibold text-foreground">{viewClass?.id}</span> to:
+              </p>
+              <Select value={transferTargetId} onValueChange={setTransferTargetId}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Select target class..." /></SelectTrigger>
+                <SelectContent>
+                  {classes
+                    .filter(c => c.id !== viewClass?.id)
+                    .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream))
+                    .map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.id}{c.learningArea ? ` · ${c.learningArea}` : ''}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Updates the student's class for the selected term and their profile.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setTransferStudent(null)} disabled={transferring}>Cancel</Button>
+              <Button onClick={confirmTransfer} disabled={!transferTargetId || transferring}>
+                <ArrowRightLeft className="w-4 h-4 mr-1" />{transferring ? 'Transferring…' : 'Transfer'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
