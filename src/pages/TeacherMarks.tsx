@@ -868,6 +868,18 @@ const TeacherMarks = () => {
                                 </td>
                               );
                             })}
+                            <td className="border-b p-1 min-w-[280px] w-[280px]">
+                              <Input
+                                placeholder="Auto from mark — edit if needed"
+                                className="h-8 text-sm"
+                                value={studentComments[s.id] || ""}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setCommentEdited(prev => { const n = new Set(prev); n.add(s.id); return n; });
+                                  setStudentComments(prev => ({ ...prev, [s.id]: v }));
+                                }}
+                              />
+                            </td>
                           </tr>
                         );
                       })}
