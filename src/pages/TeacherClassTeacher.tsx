@@ -211,6 +211,10 @@ const TeacherClassTeacher = () => {
               );
             })()}
           </div>
+          <div className="min-w-[200px]">
+            <Label>Search student</Label>
+            <Input placeholder="Type name…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          </div>
           <Button onClick={saveComments} disabled={saving || !students.length} className="gap-2">
             {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save Comments
           </Button>
