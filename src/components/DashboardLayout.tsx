@@ -44,6 +44,7 @@ const adminLinks = [
   { label: "Goods Received", icon: Package, path: "/admin/procurement?tab=grn" },
   { label: "Kitchen Stock", icon: ChefHat, path: "/admin/kitchen" },
   { label: "Fund Tracker", icon: Wallet, path: "/admin/funds" },
+  { label: "App Feedback", icon: MessageSquare, path: "/admin/feedback" },
   { label: "Settings", icon: Settings, path: "/admin/settings" },
 ];
 
