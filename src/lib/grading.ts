@@ -78,10 +78,35 @@ export const isPass = (
 
 
 
-// IGCSE / O-level performance comments per mark band
-export const getMarkComment = (mark: number | null | undefined): string => {
+// IGCSE / O-level performance comments per mark band.
+// Shona (SHO) uses custom Shona-language remarks; Heritage (HERI) keeps
+// Cambridge-style English comments but aligned to its own grading scale.
+export const getMarkComment = (
+  mark: number | null | undefined,
+  subjectCode?: string | null,
+): string => {
   if (mark == null || isNaN(mark as number)) return "";
   const m = Number(mark);
+  const code = (subjectCode || "").toUpperCase();
+
+  if (code === "SHO") {
+    if (m >= 70) return "Wabaya";
+    if (m >= 60) return "Wagona chose";
+    if (m >= 50) return "Waedza chose";
+    if (m >= 45) return "Pfuura apa";
+    if (m >= 40) return "Wedzera kushanda";
+    return "Shanda nesimba";
+  }
+
+  if (code === "HERI") {
+    if (m >= 70) return "Excellent Performance";
+    if (m >= 60) return "Good Performance";
+    if (m >= 50) return "Satisfactory Performance";
+    if (m >= 45) return "Sufficient Performance";
+    if (m >= 40) return "Poor Performance";
+    return "Ungraded";
+  }
+
   if (m >= 90) return "Exceptional Performance";
   if (m >= 80) return "Excellent Performance";
   if (m >= 70) return "Good Performance";
