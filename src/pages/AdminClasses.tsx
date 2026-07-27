@@ -138,12 +138,16 @@ export default function AdminClasses() {
   const syncFromRegistrations = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase
+      const { data: raw, error } = await supabase
         .from('profiles')
-        .select('form, stream, gender')
-        .not('form', 'is', null)
-        .not('stream', 'is', null);
+        .select('id, form, stream, gender');
       if (error) throw error;
+
+      // Overlay each profile with the selected term's snapshot.
+      const data = (raw || []).map((r: any) => {
+        const t = termClassMap.get(r.id);
+        return { form: t?.form ?? r.form, stream: t?.stream ?? r.stream, gender: r.gender };
+      }).filter(r => r.form && r.stream);
 
       // Count students per valid class only
       const counts: Record<string, { form: number; stream: string; count: number }> = {};
