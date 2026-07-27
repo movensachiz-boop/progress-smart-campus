@@ -555,37 +555,97 @@ export default function AdminClasses() {
               <p className="text-sm text-muted-foreground py-6 text-center">Loading students…</p>
             ) : viewStudents.length === 0 ? (
               <p className="text-sm text-muted-foreground py-6 text-center">No students registered in this class for the selected term.</p>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{viewStudents.length} student(s)</p>
-                <div className="overflow-x-auto rounded-md border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-2 font-medium">#</th>
-                        <th className="text-left p-2 font-medium">Reg No.</th>
-                        <th className="text-left p-2 font-medium">Name</th>
-                        <th className="text-left p-2 font-medium">Gender</th>
-                        <th className="text-left p-2 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {viewStudents.map((s, i) => (
-                        <tr key={s.id} className="border-t hover:bg-muted/30">
-                          <td className="p-2 text-muted-foreground">{i + 1}</td>
-                          <td className="p-2 font-mono text-xs">{s.registration_number}</td>
-                          <td className="p-2 font-medium">{s.first_name} {s.last_name}</td>
-                          <td className="p-2 capitalize">{s.gender || '—'}</td>
-                          <td className="p-2"><span className="text-xs">{s.status}</span></td>
+            ) : (() => {
+              const visible = showVerified ? viewStudents : viewStudents.filter(s => !verifiedIds.has(s.id));
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {visible.length} remaining · <span className="text-green-600 font-medium">{verifiedIds.size} verified</span> · {viewStudents.length} total
+                    </p>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => setShowVerified(v => !v)}>
+                        {showVerified ? <><EyeOff className="w-3.5 h-3.5 mr-1" />Hide verified</> : <><Eye className="w-3.5 h-3.5 mr-1" />Show verified</>}
+                      </Button>
+                      {verifiedIds.size > 0 && (
+                        <Button size="sm" variant="ghost" onClick={resetVerified}>
+                          <RotateCcw className="w-3.5 h-3.5 mr-1" />Reset
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-2 font-medium">#</th>
+                          <th className="text-left p-2 font-medium">Reg No.</th>
+                          <th className="text-left p-2 font-medium">Name</th>
+                          <th className="text-left p-2 font-medium">Gender</th>
+                          <th className="text-right p-2 font-medium">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {visible.map((s, i) => {
+                          const isVerified = verifiedIds.has(s.id);
+                          return (
+                            <tr key={s.id} className={`border-t hover:bg-muted/30 ${isVerified ? 'opacity-60' : ''}`}>
+                              <td className="p-2 text-muted-foreground">{i + 1}</td>
+                              <td className="p-2 font-mono text-xs">{s.registration_number}</td>
+                              <td className="p-2 font-medium">
+                                {s.first_name} {s.last_name}
+                                {isVerified && <span className="ml-2 text-[10px] text-green-600 font-semibold">✓ VERIFIED</span>}
+                              </td>
+                              <td className="p-2 capitalize">{s.gender || '—'}</td>
+                              <td className="p-2 text-right">
+                                <div className="inline-flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant={isVerified ? 'secondary' : 'outline'}
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() => toggleVerified(s.id)}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                                    {isVerified ? 'Unverify' : 'Verify'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={() => setDeleteStudent(s)}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {visible.length === 0 && (
+                          <tr><td colSpan={5} className="p-6 text-center text-sm text-muted-foreground">All students verified 🎉</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             <DialogFooter>
               <Button variant="outline" onClick={() => setViewClass(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!deleteStudent} onOpenChange={open => !open && setDeleteStudent(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Permanently Delete Student</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Delete <span className="font-semibold text-foreground">{deleteStudent?.first_name} {deleteStudent?.last_name}</span> ({deleteStudent?.registration_number})?
+              This removes their profile, login and all related records. This cannot be undone.
+            </p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteStudent(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmDeleteStudent}><Trash2 className="w-4 h-4 mr-1" />Delete</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
