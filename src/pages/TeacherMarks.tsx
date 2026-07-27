@@ -636,6 +636,14 @@ const TeacherMarks = () => {
   const orderedStudents = useMemo(() => {
     let base = students;
     if (activeClass) base = base.filter(s => studentClassId(s) === activeClass);
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      base = base.filter(s => {
+        const full = `${s.last_name} ${s.first_name}`.toLowerCase();
+        const rev = `${s.first_name} ${s.last_name}`.toLowerCase();
+        return full.includes(q) || rev.includes(q);
+      });
+    }
     if (!scanStudentOrder.length) return base;
     const rank = new Map(scanStudentOrder.map((id, i) => [id, i]));
     const originalIndex = new Map(base.map((s, i) => [s.id, i]));
@@ -645,7 +653,7 @@ const TeacherMarks = () => {
       if (ra !== rb) return ra - rb;
       return (originalIndex.get(a.id) ?? 0) - (originalIndex.get(b.id) ?? 0);
     });
-  }, [students, scanStudentOrder, activeClass]);
+  }, [students, scanStudentOrder, activeClass, searchQuery]);
 
   return (
     <DashboardLayout role="teacher">
