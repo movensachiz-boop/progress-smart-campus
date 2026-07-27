@@ -891,34 +891,6 @@ const TeacherMarks = () => {
           );
         })()}
 
-        {students.length > 0 && activeExam && (
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h3 className="font-semibold">Subject Teacher — Overall Comments</h3>
-                  <p className="text-xs text-muted-foreground">One overall comment per student for this exam. Click Save Comments above when done.</p>
-                </div>
-                <span className="text-xs text-muted-foreground">{orderedStudents.length} student(s)</span>
-              </div>
-              <div className="grid gap-2">
-                {orderedStudents.map(s => (
-                  <div key={s.id} className="flex items-start gap-3 border rounded-md p-2">
-                    <div className="min-w-[180px] w-[180px]">
-                      <div className="font-medium text-sm truncate">{s.last_name} {s.first_name}</div>
-                      <div className="text-xs text-muted-foreground">F{s.form} {s.stream}</div>
-                    </div>
-                    <Input
-                      placeholder="Overall comment on this student's performance"
-                      value={studentComments[s.id] || ""}
-                      onChange={(e) => setStudentComments(prev => ({ ...prev, [s.id]: e.target.value }))}
-                    />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
 
