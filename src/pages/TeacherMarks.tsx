@@ -150,6 +150,13 @@ const TeacherMarks = () => {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [savingComments, setSavingComments] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Offline resilience — persist every keystroke locally and background-sync when online.
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "saved" | "offline" | "pending">("idle");
+  const offlineKey = useMemo(
+    () => (examId ? `pcc.marks.offline:${examId}` : ""),
+    [examId]
+  );
 
   const pwKey = (code: string) => `mark-pw:${teacherAccount?.id || "anon"}:${code}`;
   const unlockSubject = (code: string): boolean => {
