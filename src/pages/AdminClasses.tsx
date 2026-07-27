@@ -492,6 +492,53 @@ export default function AdminClasses() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={!!viewClass} onOpenChange={open => !open && setViewClass(null)}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <School className="w-4 h-4 text-primary" />
+                Class {viewClass?.id} {viewClass?.learningArea && <span className="text-sm text-muted-foreground font-normal">· {viewClass.learningArea}</span>}
+              </DialogTitle>
+            </DialogHeader>
+            {viewLoading ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Loading students…</p>
+            ) : viewStudents.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No students registered in this class for the selected term.</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">{viewStudents.length} student(s)</p>
+                <div className="overflow-x-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-2 font-medium">#</th>
+                        <th className="text-left p-2 font-medium">Reg No.</th>
+                        <th className="text-left p-2 font-medium">Name</th>
+                        <th className="text-left p-2 font-medium">Gender</th>
+                        <th className="text-left p-2 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewStudents.map((s, i) => (
+                        <tr key={s.id} className="border-t hover:bg-muted/30">
+                          <td className="p-2 text-muted-foreground">{i + 1}</td>
+                          <td className="p-2 font-mono text-xs">{s.registration_number}</td>
+                          <td className="p-2 font-medium">{s.first_name} {s.last_name}</td>
+                          <td className="p-2 capitalize">{s.gender || '—'}</td>
+                          <td className="p-2"><span className="text-xs">{s.status}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewClass(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
