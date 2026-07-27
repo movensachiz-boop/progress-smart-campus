@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Pencil, Trash2, School, Check, RefreshCw, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, School, Check, RefreshCw, Users, CheckCircle2, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useTermClassMap, upsertStudentClassesForTerm } from '@/hooks/useTermClassMap';
@@ -33,11 +33,21 @@ export default function AdminClasses() {
   const [viewClass, setViewClass] = useState<SchoolClass | null>(null);
   const [viewStudents, setViewStudents] = useState<Array<{ id: string; registration_number: string; first_name: string; last_name: string; gender: string | null; status: string }>>([]);
   const [viewLoading, setViewLoading] = useState(false);
+  const [verifiedIds, setVerifiedIds] = useState<Set<string>>(new Set());
+  const [showVerified, setShowVerified] = useState(false);
+  const [deleteStudent, setDeleteStudent] = useState<{ id: string; first_name: string; last_name: string; registration_number: string } | null>(null);
+
+  const verifiedKey = (cls: SchoolClass) => `verified_${selectedTermId || 'notrm'}_${cls.id}`;
 
   const openView = async (cls: SchoolClass) => {
     setViewClass(cls);
     setViewStudents([]);
     setViewLoading(true);
+    try {
+      const stored = JSON.parse(localStorage.getItem(verifiedKey(cls)) || '[]');
+      setVerifiedIds(new Set(stored));
+    } catch { setVerifiedIds(new Set()); }
+    setShowVerified(false);
     try {
       const { data } = await supabase
         .from('profiles')
@@ -57,6 +67,46 @@ export default function AdminClasses() {
       setViewLoading(false);
     }
   };
+
+  const toggleVerified = (id: string) => {
+    if (!viewClass) return;
+    setVerifiedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem(verifiedKey(viewClass), JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
+
+  const resetVerified = () => {
+    if (!viewClass) return;
+    setVerifiedIds(new Set());
+    try { localStorage.removeItem(verifiedKey(viewClass)); } catch {}
+    toast.success('Verified list cleared');
+  };
+
+  const confirmDeleteStudent = async () => {
+    if (!deleteStudent) return;
+    const s = deleteStudent;
+    const { data, error } = await supabase.functions.invoke('manage-students', {
+      body: { action: 'delete_student', profileId: s.id },
+    });
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || 'Delete failed');
+      return;
+    }
+    setViewStudents(prev => prev.filter(x => x.id !== s.id));
+    setVerifiedIds(prev => {
+      if (!prev.has(s.id)) return prev;
+      const next = new Set(prev); next.delete(s.id);
+      if (viewClass) { try { localStorage.setItem(verifiedKey(viewClass), JSON.stringify([...next])); } catch {} }
+      return next;
+    });
+    toast.success(`${s.first_name} ${s.last_name} deleted`);
+    setDeleteStudent(null);
+  };
+
+
 
   const getDeletedIds = (): Set<string> => {
     try { return new Set(JSON.parse(localStorage.getItem('tt_deleted_classes') || '[]')); } catch { return new Set(); }
@@ -505,37 +555,97 @@ export default function AdminClasses() {
               <p className="text-sm text-muted-foreground py-6 text-center">Loading students…</p>
             ) : viewStudents.length === 0 ? (
               <p className="text-sm text-muted-foreground py-6 text-center">No students registered in this class for the selected term.</p>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{viewStudents.length} student(s)</p>
-                <div className="overflow-x-auto rounded-md border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-2 font-medium">#</th>
-                        <th className="text-left p-2 font-medium">Reg No.</th>
-                        <th className="text-left p-2 font-medium">Name</th>
-                        <th className="text-left p-2 font-medium">Gender</th>
-                        <th className="text-left p-2 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {viewStudents.map((s, i) => (
-                        <tr key={s.id} className="border-t hover:bg-muted/30">
-                          <td className="p-2 text-muted-foreground">{i + 1}</td>
-                          <td className="p-2 font-mono text-xs">{s.registration_number}</td>
-                          <td className="p-2 font-medium">{s.first_name} {s.last_name}</td>
-                          <td className="p-2 capitalize">{s.gender || '—'}</td>
-                          <td className="p-2"><span className="text-xs">{s.status}</span></td>
+            ) : (() => {
+              const visible = showVerified ? viewStudents : viewStudents.filter(s => !verifiedIds.has(s.id));
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {visible.length} remaining · <span className="text-green-600 font-medium">{verifiedIds.size} verified</span> · {viewStudents.length} total
+                    </p>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => setShowVerified(v => !v)}>
+                        {showVerified ? <><EyeOff className="w-3.5 h-3.5 mr-1" />Hide verified</> : <><Eye className="w-3.5 h-3.5 mr-1" />Show verified</>}
+                      </Button>
+                      {verifiedIds.size > 0 && (
+                        <Button size="sm" variant="ghost" onClick={resetVerified}>
+                          <RotateCcw className="w-3.5 h-3.5 mr-1" />Reset
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-2 font-medium">#</th>
+                          <th className="text-left p-2 font-medium">Reg No.</th>
+                          <th className="text-left p-2 font-medium">Name</th>
+                          <th className="text-left p-2 font-medium">Gender</th>
+                          <th className="text-right p-2 font-medium">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {visible.map((s, i) => {
+                          const isVerified = verifiedIds.has(s.id);
+                          return (
+                            <tr key={s.id} className={`border-t hover:bg-muted/30 ${isVerified ? 'opacity-60' : ''}`}>
+                              <td className="p-2 text-muted-foreground">{i + 1}</td>
+                              <td className="p-2 font-mono text-xs">{s.registration_number}</td>
+                              <td className="p-2 font-medium">
+                                {s.first_name} {s.last_name}
+                                {isVerified && <span className="ml-2 text-[10px] text-green-600 font-semibold">✓ VERIFIED</span>}
+                              </td>
+                              <td className="p-2 capitalize">{s.gender || '—'}</td>
+                              <td className="p-2 text-right">
+                                <div className="inline-flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant={isVerified ? 'secondary' : 'outline'}
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() => toggleVerified(s.id)}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                                    {isVerified ? 'Unverify' : 'Verify'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={() => setDeleteStudent(s)}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {visible.length === 0 && (
+                          <tr><td colSpan={5} className="p-6 text-center text-sm text-muted-foreground">All students verified 🎉</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             <DialogFooter>
               <Button variant="outline" onClick={() => setViewClass(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!deleteStudent} onOpenChange={open => !open && setDeleteStudent(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Permanently Delete Student</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Delete <span className="font-semibold text-foreground">{deleteStudent?.first_name} {deleteStudent?.last_name}</span> ({deleteStudent?.registration_number})?
+              This removes their profile, login and all related records. This cannot be undone.
+            </p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteStudent(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmDeleteStudent}><Trash2 className="w-4 h-4 mr-1" />Delete</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
