@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableHeader, TableBody, TableCell, TableHead, TableRow, Table } from "@/components/ui/table";
-import { Loader2, FileDown, Save } from "lucide-react";
+import { Loader2, FileDown, Save, CheckCircle2, EyeOff } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
