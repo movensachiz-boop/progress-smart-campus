@@ -651,6 +651,16 @@ export default function AdminClasses() {
                                   <Button
                                     size="sm"
                                     variant="outline"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() => openTransfer(s)}
+                                    title="Transfer to another class"
+                                  >
+                                    <ArrowRightLeft className="w-3.5 h-3.5 mr-1" />
+                                    Transfer
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
                                     className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                                     onClick={() => setDeleteStudent(s)}
                                   >
