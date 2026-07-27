@@ -292,8 +292,13 @@ const TeacherMarks = () => {
         .eq("comment_type", "subject_teacher")
         .eq("author_user_id", currentUserId);
       const map: Record<string, string> = {};
-      (data || []).forEach((r: any) => { map[r.student_profile_id] = r.comment || ""; });
+      const edited = new Set<string>();
+      (data || []).forEach((r: any) => {
+        map[r.student_profile_id] = r.comment || "";
+        if ((r.comment || "").trim()) edited.add(r.student_profile_id);
+      });
       setStudentComments(map);
+      setCommentEdited(edited);
     })();
   }, [examId, currentUserId]);
 
