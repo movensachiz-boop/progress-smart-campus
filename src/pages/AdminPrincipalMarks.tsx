@@ -105,8 +105,15 @@ const AdminPrincipalMarks = () => {
 
   const classList = useMemo(() => Object.keys(subjectsByClass), [subjectsByClass]);
   const classStudents = useMemo(
-    () => students.filter(s => studentClassId(s) === activeClass),
-    [students, activeClass],
+    () => {
+      const base = students.filter(s => studentClassId(s) === activeClass);
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return base;
+      return base.filter(s =>
+        `${s.last_name} ${s.first_name}`.toLowerCase().includes(q) ||
+        `${s.first_name} ${s.last_name}`.toLowerCase().includes(q));
+    },
+    [students, activeClass, searchQuery],
   );
   const classSubjects = subjectsByClass[activeClass] || [];
 
