@@ -581,7 +581,7 @@ const TeacherMarks = () => {
     // Auto-fill the subject-teacher comment based on the mark band, unless the
     // teacher has already hand-edited that student's comment.
     if (numeric != null && !isNaN(numeric) && !commentEdited.has(sid)) {
-      const auto = getMarkComment(numeric);
+      const auto = getMarkComment(numeric, code);
       if (auto) setStudentComments(prev => ({ ...prev, [sid]: auto }));
     }
   };
