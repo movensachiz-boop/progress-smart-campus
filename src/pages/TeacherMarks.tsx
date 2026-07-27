@@ -825,6 +825,7 @@ const TeacherMarks = () => {
                             {col.code}
                           </th>
                         ))}
+                        <th className="sticky top-0 z-50 bg-background border-b h-12 px-2 text-left align-middle font-semibold text-muted-foreground min-w-[280px] w-[280px] shadow-sm">Comment (auto — editable)</th>
                       </tr>
                     </thead>
                     <tbody>
