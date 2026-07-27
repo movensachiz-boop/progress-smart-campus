@@ -48,6 +48,7 @@ const TeacherClassTeacher = () => {
   const [results, setResults] = useState<Result[]>([]);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // identify signed-in teacher
   useEffect(() => {
