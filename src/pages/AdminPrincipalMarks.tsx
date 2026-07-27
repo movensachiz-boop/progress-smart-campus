@@ -279,6 +279,21 @@ const AdminPrincipalMarks = () => {
             <Button onClick={savePrincipalComments} variant="outline" disabled={saving || !classStudents.length} className="gap-2">
               {saving ? <Loader2 className="animate-spin w-4 h-4"/> : <Save className="w-4 h-4"/>} Save Comments
             </Button>
+            {activeExam && (
+              <Button
+                onClick={async () => {
+                  const next = !activeExam.published;
+                  const { error } = await supabase.from("exams").update({ published: next }).eq("id", activeExam.id);
+                  if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
+                  setExams(prev => prev.map(e => e.id === activeExam.id ? { ...e, published: next } : e));
+                  toast({ title: next ? "Approved — results now visible to students" : "Unapproved — results hidden from students" });
+                }}
+                variant={activeExam.published ? "secondary" : "default"}
+                className="gap-2"
+              >
+                {activeExam.published ? <><EyeOff className="w-4 h-4"/> Unapprove</> : <><CheckCircle2 className="w-4 h-4"/> Approve & Release</>}
+              </Button>
+            )}
             <Button onClick={downloadPdf} disabled={!activeClass}>
               <FileDown className="w-4 h-4 mr-2" /> Download PDF
             </Button>
