@@ -528,7 +528,7 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
 
                         {orderedCodes.map(c => {
                           const m = row[c];
-                          const g = m != null && !isNaN(m as number) ? computeGrade(m, level) : "";
+                          const g = m != null && !isNaN(m as number) ? computeGrade(m, level, c) : "";
                           return (
                             <TableCell key={c} className="p-1">
                               <div className="flex flex-col items-center gap-0.5">
