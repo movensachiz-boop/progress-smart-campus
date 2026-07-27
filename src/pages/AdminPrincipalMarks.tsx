@@ -41,6 +41,7 @@ const AdminPrincipalMarks = () => {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     (async () => {
