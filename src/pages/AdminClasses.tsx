@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Pencil, Trash2, School, Check, RefreshCw, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, School, Check, RefreshCw, Users, CheckCircle2, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useTermClassMap, upsertStudentClassesForTerm } from '@/hooks/useTermClassMap';
