@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableHeader, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
-import { Loader2, Save, Camera, CheckCircle2, FileDown } from "lucide-react";
+import { Loader2, Save, Camera, CheckCircle2, FileDown, Cloud, CloudOff, CheckCheck } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
@@ -150,6 +150,13 @@ const TeacherMarks = () => {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [savingComments, setSavingComments] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Offline resilience — persist every keystroke locally and background-sync when online.
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "saved" | "offline" | "pending">("idle");
+  const offlineKey = useMemo(
+    () => (examId ? `pcc.marks.offline:${examId}` : ""),
+    [examId]
+  );
 
   const pwKey = (code: string) => `mark-pw:${teacherAccount?.id || "anon"}:${code}`;
   const unlockSubject = (code: string): boolean => {
@@ -278,6 +285,26 @@ const TeacherMarks = () => {
         m[sid][code] = r.mark != null ? Number(r.mark) : null;
         subjSet.add(code);
       }
+      // Merge any unsynced marks/comments the teacher typed while offline.
+      try {
+        const raw = localStorage.getItem(`pcc.marks.offline:${examId}`);
+        if (raw) {
+          const cached = JSON.parse(raw) as { marks?: MarksMap; studentComments?: Record<string, string> };
+          for (const [sid, row] of Object.entries(cached.marks || {})) {
+            if (!m[sid]) m[sid] = {};
+            for (const [code, val] of Object.entries(row || {})) {
+              if (val != null && !isNaN(val as number)) {
+                m[sid][code] = val as number;
+                subjSet.add(code);
+              }
+            }
+          }
+          if (cached.studentComments) {
+            setStudentComments(prev => ({ ...cached.studentComments, ...prev }));
+          }
+          setSyncStatus("pending");
+        }
+      } catch {}
       setMarks(m);
       setSubjects([...subjSet].sort());
       setLastMatched(new Set());
@@ -312,6 +339,88 @@ const TeacherMarks = () => {
       setCommentEdited(edited);
     })();
   }, [examId, currentUserId]);
+
+  // Track online/offline so we can retry syncing the moment Wi-Fi returns.
+  useEffect(() => {
+    const on = () => { setIsOnline(true); };
+    const off = () => { setIsOnline(false); setSyncStatus("offline"); };
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  // Persist marks + comments to localStorage on every change so Wi-Fi loss can't lose work.
+  useEffect(() => {
+    if (!offlineKey) return;
+    try {
+      localStorage.setItem(offlineKey, JSON.stringify({ marks, studentComments, savedAt: Date.now() }));
+    } catch {}
+  }, [marks, studentComments, offlineKey]);
+
+  // Debounced background auto-save. Uploads whenever entries change, skips silently
+  // if teacher hasn't unlocked the subject yet or the browser is offline.
+  useEffect(() => {
+    if (!examId || !activeExam) return;
+    if (!isOnline) { setSyncStatus("offline"); return; }
+    if (restrictedMarksMode && (!activeSubject || !unlockedSubjects.has(activeSubject))) return;
+    const t = setTimeout(async () => {
+      // Build mark payload from current entries.
+      const studentIndex = new Map(students.map(s => [s.id, s]));
+      const nameForCode = (code: string): string => {
+        const match = ttSubjects.find((sb: any) => normalizeSubjectCode(sb.code || sb.name) === code);
+        return (match && (match.name || match.code)) || SUBJECT_CODES[code] || code;
+      };
+      const payload: any[] = [];
+      for (const [sid, row] of Object.entries(marks)) {
+        const s = studentIndex.get(sid);
+        if (!s) continue;
+        const level = formToLevel(s.form);
+        for (const [rawCode, mark] of Object.entries(row || {})) {
+          if (mark == null || isNaN(mark as number)) continue;
+          const code = normalizeSubjectCode(rawCode);
+          if (!code) continue;
+          if (restrictedMarksMode) {
+            if (code !== activeSubject || !canTeacherEnterSubjectForStudent(s, code)) continue;
+          }
+          const clean = Math.max(0, Math.min(100, Math.round(Number(mark))));
+          payload.push({
+            exam_id: examId, student_profile_id: s.id,
+            subject_code: code, subject_name: nameForCode(code),
+            mark: clean, grade: computeGrade(clean, level, code), points: computePoints(clean, level, code),
+          });
+        }
+      }
+      if (!payload.length) { setSyncStatus("saved"); return; }
+      setSyncStatus("saving");
+      const { error } = await supabase.from("exam_results")
+        .upsert(payload, { onConflict: "exam_id,student_profile_id,subject_code" });
+      if (error) { setSyncStatus("pending"); return; }
+      // Also autosave any comments the teacher has typed.
+      if (currentUserId) {
+        const commentPayload = Object.entries(studentComments)
+          .filter(([, c]) => (c || "").trim().length > 0)
+          .map(([sid, c]) => ({
+            exam_id: examId, student_profile_id: sid, comment_type: "subject_teacher",
+            author_user_id: currentUserId,
+            subject_code: restrictedMarksMode ? (activeSubject || null) : null,
+            comment: c,
+          }));
+        if (commentPayload.length) {
+          await (supabase as any).from("exam_comments")
+            .upsert(commentPayload, { onConflict: "exam_id,student_profile_id,comment_type,author_user_id" });
+        }
+      }
+      setSyncStatus("saved");
+      // Successful sync — the DB now matches, so clear the local backup for this exam.
+      try { localStorage.removeItem(`pcc.marks.offline:${examId}`); } catch {}
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marks, studentComments, isOnline, examId, activeSubject, unlockedSubjects, restrictedMarksMode, currentUserId]);
+
 
   const saveComments = async () => {
     if (!examId || !currentUserId) return;
@@ -750,8 +859,33 @@ const TeacherMarks = () => {
             <Button onClick={saveComments} variant="outline" className="gap-2" disabled={!activeExam || savingComments || !currentUserId}>
               {savingComments ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save Comments
             </Button>
+            {activeExam && (
+              <div
+                className={`ml-auto inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border ${
+                  !isOnline
+                    ? "bg-amber-50 border-amber-300 text-amber-800"
+                    : syncStatus === "saving"
+                      ? "bg-blue-50 border-blue-300 text-blue-800"
+                      : syncStatus === "pending"
+                        ? "bg-amber-50 border-amber-300 text-amber-800"
+                        : "bg-emerald-50 border-emerald-300 text-emerald-800"
+                }`}
+                title="Marks are auto-saved locally and synced to the cloud when Wi-Fi is available."
+              >
+                {!isOnline ? (
+                  <><CloudOff size={12}/> Offline — saved on this device</>
+                ) : syncStatus === "saving" ? (
+                  <><Loader2 className="animate-spin" size={12}/> Auto-saving…</>
+                ) : syncStatus === "pending" ? (
+                  <><Cloud size={12}/> Will sync shortly</>
+                ) : (
+                  <><CheckCheck size={12}/> Auto-saved</>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
+
 
         {restrictedMarksMode && teacherScope && teacherScope.allowedCodes.size > 0 && !activeSubject && (
           <Card><CardContent className="p-4 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded">
