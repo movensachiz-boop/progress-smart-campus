@@ -56,6 +56,7 @@ import StudentCompleteProfile from "./pages/StudentCompleteProfile";
 import StudentProfile from "./pages/StudentProfile";
 import StudentProfileGate from "./components/StudentProfileGate";
 import AdminITAssistant from "./pages/AdminITAssistant";
+import InstallPrompt from "./components/InstallPrompt";
 
 
 // Sub-roles
@@ -69,6 +70,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <InstallPrompt />
       <TermProvider>
       <TimetableProvider>
         <BrowserRouter>
