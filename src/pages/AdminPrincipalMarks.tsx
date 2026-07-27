@@ -255,11 +255,15 @@ const AdminPrincipalMarks = () => {
         <Card>
           <CardContent className="p-4 flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[220px]">
-              <Label>Exam</Label>
+              <Label>Exam {activeExam && (
+                <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${activeExam.published ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                  {activeExam.published ? "APPROVED" : "PENDING APPROVAL"}
+                </span>
+              )}</Label>
               <Select value={examId} onValueChange={setExamId}>
                 <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
                 <SelectContent>
-                  {exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                  {exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}{e.published ? "" : " (pending)"}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
