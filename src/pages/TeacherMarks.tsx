@@ -562,10 +562,17 @@ const TeacherMarks = () => {
         if (!unlockSubject(code)) return;
       }
     }
+    const numeric = val === "" ? null : Number(val);
     setMarks(prev => ({
       ...prev,
-      [sid]: { ...(prev[sid] || {}), [code]: val === "" ? null : Number(val) },
+      [sid]: { ...(prev[sid] || {}), [code]: numeric },
     }));
+    // Auto-fill the subject-teacher comment based on the mark band, unless the
+    // teacher has already hand-edited that student's comment.
+    if (numeric != null && !isNaN(numeric) && !commentEdited.has(sid)) {
+      const auto = getMarkComment(numeric);
+      if (auto) setStudentComments(prev => ({ ...prev, [sid]: auto }));
+    }
   };
 
   // Per-student subjects derived from the Subjects module (form + learning area/stream)
