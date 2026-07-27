@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import {
-  SUBJECT_CODES, normalizeSubjectCode, formToLevel, computeGrade, computePoints,
+  SUBJECT_CODES, normalizeSubjectCode, formToLevel, computeGrade, computePoints, getMarkComment,
 } from "@/lib/grading";
 import { useTimetable } from "@/context/TimetableContext";
 import { bestFuzzyMatch, nameKey } from "@/lib/normalize";
