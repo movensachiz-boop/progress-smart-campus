@@ -58,6 +58,7 @@ interface ExtractedStudent {
 
 const AdminStudents = () => {
   const { toast } = useToast();
+  const { selectedTermId } = useTerm();
   const [students, setStudents] = useState<Student[]>([]);
   const [profileDrawerId, setProfileDrawerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
