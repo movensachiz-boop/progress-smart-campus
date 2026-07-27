@@ -49,7 +49,8 @@ const StudentReports = () => {
 
       const { data: rs } = await supabase.from("exam_results")
         .select("*, exams!inner(id, name, exam_type, term, year, published)")
-        .eq("student_profile_id", p.id);
+        .eq("student_profile_id", p.id)
+        .eq("exams.published", true);
       const examMap: Record<string, Exam> = {};
       const resMap: Record<string, Result[]> = {};
       for (const r of (rs || []) as any[]) {

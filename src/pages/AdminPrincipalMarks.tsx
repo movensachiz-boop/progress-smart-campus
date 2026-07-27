@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableHeader, TableBody, TableCell, TableHead, TableRow, Table } from "@/components/ui/table";
-import { Loader2, FileDown, Save } from "lucide-react";
+import { Loader2, FileDown, Save, CheckCircle2, EyeOff } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
@@ -255,11 +255,15 @@ const AdminPrincipalMarks = () => {
         <Card>
           <CardContent className="p-4 flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[220px]">
-              <Label>Exam</Label>
+              <Label>Exam {activeExam && (
+                <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${activeExam.published ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                  {activeExam.published ? "APPROVED" : "PENDING APPROVAL"}
+                </span>
+              )}</Label>
               <Select value={examId} onValueChange={setExamId}>
                 <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
                 <SelectContent>
-                  {exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                  {exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}{e.published ? "" : " (pending)"}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -279,6 +283,21 @@ const AdminPrincipalMarks = () => {
             <Button onClick={savePrincipalComments} variant="outline" disabled={saving || !classStudents.length} className="gap-2">
               {saving ? <Loader2 className="animate-spin w-4 h-4"/> : <Save className="w-4 h-4"/>} Save Comments
             </Button>
+            {activeExam && (
+              <Button
+                onClick={async () => {
+                  const next = !activeExam.published;
+                  const { error } = await supabase.from("exams").update({ published: next }).eq("id", activeExam.id);
+                  if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
+                  setExams(prev => prev.map(e => e.id === activeExam.id ? { ...e, published: next } : e));
+                  toast({ title: next ? "Approved — results now visible to students" : "Unapproved — results hidden from students" });
+                }}
+                variant={activeExam.published ? "secondary" : "default"}
+                className="gap-2"
+              >
+                {activeExam.published ? <><EyeOff className="w-4 h-4"/> Unapprove</> : <><CheckCircle2 className="w-4 h-4"/> Approve & Release</>}
+              </Button>
+            )}
             <Button onClick={downloadPdf} disabled={!activeClass}>
               <FileDown className="w-4 h-4 mr-2" /> Download PDF
             </Button>
