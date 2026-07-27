@@ -720,6 +720,10 @@ const TeacherMarks = () => {
                 </Select>
               </div>
             )}
+            <div className="min-w-[200px]">
+              <Label>Search student</Label>
+              <Input placeholder="Type name…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </div>
             <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (restrictedMarksMode && !activeSubject)}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
