@@ -57,6 +57,7 @@ import StudentProfile from "./pages/StudentProfile";
 import StudentProfileGate from "./components/StudentProfileGate";
 import AdminITAssistant from "./pages/AdminITAssistant";
 import InstallPrompt from "./components/InstallPrompt";
+import AdminFeedback from "./pages/AdminFeedback";
 
 
 // Sub-roles
