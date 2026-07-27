@@ -16,13 +16,26 @@ export const formToLevel = (form: number | string | null | undefined): Level => 
   return f >= 5 ? "alevel" : "olevel";
 };
 
+// Subjects that use a distinct grading scale (Shona & Heritage):
+//   A 70-100, B 60-69, C 50-59, D 45-49, E 40-44, U 0-39
+const CUSTOM_SCALE_CODES = new Set(["SHO", "HERI"]);
+
 export const computeGrade = (
   mark: number | null | undefined,
   _level?: Level,
-  _subjectCode?: string | null,
+  subjectCode?: string | null,
 ): string => {
   if (mark == null || isNaN(mark as number)) return "";
   const m = Number(mark);
+  const code = (subjectCode || "").toUpperCase();
+  if (CUSTOM_SCALE_CODES.has(code)) {
+    if (m >= 70) return "A";
+    if (m >= 60) return "B";
+    if (m >= 50) return "C";
+    if (m >= 45) return "D";
+    if (m >= 40) return "E";
+    return "U";
+  }
   if (m >= 90) return "A+";
   if (m >= 80) return "A";
   if (m >= 70) return "B";
@@ -31,6 +44,7 @@ export const computeGrade = (
   if (m >= 40) return "E";
   return "U";
 };
+
 
 export const gradeToPoints = (grade: string, _level?: Level): number => {
   switch (grade) {
