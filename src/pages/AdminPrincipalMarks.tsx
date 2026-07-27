@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,6 +41,7 @@ const AdminPrincipalMarks = () => {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -103,8 +105,15 @@ const AdminPrincipalMarks = () => {
 
   const classList = useMemo(() => Object.keys(subjectsByClass), [subjectsByClass]);
   const classStudents = useMemo(
-    () => students.filter(s => studentClassId(s) === activeClass),
-    [students, activeClass],
+    () => {
+      const base = students.filter(s => studentClassId(s) === activeClass);
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return base;
+      return base.filter(s =>
+        `${s.last_name} ${s.first_name}`.toLowerCase().includes(q) ||
+        `${s.first_name} ${s.last_name}`.toLowerCase().includes(q));
+    },
+    [students, activeClass, searchQuery],
   );
   const classSubjects = subjectsByClass[activeClass] || [];
 
@@ -254,6 +263,10 @@ const AdminPrincipalMarks = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex-1 min-w-[200px]">
+              <Label>Search student</Label>
+              <Input placeholder="Type name…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </div>
             <Button onClick={savePrincipalComments} variant="outline" disabled={saving || !classStudents.length} className="gap-2">
               {saving ? <Loader2 className="animate-spin w-4 h-4"/> : <Save className="w-4 h-4"/>} Save Comments
             </Button>
@@ -322,20 +335,37 @@ const AdminPrincipalMarks = () => {
                 <h3 className="font-semibold">Principal's Comments</h3>
                 <p className="text-xs text-muted-foreground">One overall comment per student. Included on the downloaded PDF report.</p>
                 <div className="grid gap-2">
-                  {classStudents.map(s => (
-                    <div key={s.id} className="flex items-start gap-3 border rounded-md p-2">
-                      <div className="min-w-[200px] w-[200px]">
-                        <div className="font-medium text-sm">{s.last_name} {s.first_name}</div>
-                        <div className="text-xs text-muted-foreground">F{s.form} {s.stream}</div>
+                  {classStudents.map(s => {
+                    const buckets = commentsByStudent[s.id] || { subject: [], classTeacher: [], principal: [] };
+                    return (
+                      <div key={s.id} className="flex items-start gap-3 border rounded-md p-2">
+                        <div className="min-w-[200px] w-[200px]">
+                          <div className="font-medium text-sm">{s.last_name} {s.first_name}</div>
+                          <div className="text-xs text-muted-foreground">F{s.form} {s.stream}</div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          {buckets.classTeacher.length > 0 && (
+                            <div className="text-xs bg-blue-50 border border-blue-200 rounded p-2">
+                              <span className="font-semibold text-blue-900">Class teacher: </span>
+                              <span className="text-blue-900">{buckets.classTeacher.join(" • ")}</span>
+                            </div>
+                          )}
+                          {buckets.subject.length > 0 && (
+                            <div className="text-xs bg-slate-50 border rounded p-2">
+                              <span className="font-semibold">Subject teachers: </span>
+                              <span>{buckets.subject.join(" • ")}</span>
+                            </div>
+                          )}
+                          <Textarea
+                            rows={2}
+                            placeholder="Overall principal's comment for this student…"
+                            value={principalComments[s.id] || ""}
+                            onChange={(e) => setPrincipalComments(prev => ({ ...prev, [s.id]: e.target.value }))}
+                          />
+                        </div>
                       </div>
-                      <Textarea
-                        rows={2}
-                        placeholder="Overall principal's comment for this student…"
-                        value={principalComments[s.id] || ""}
-                        onChange={(e) => setPrincipalComments(prev => ({ ...prev, [s.id]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

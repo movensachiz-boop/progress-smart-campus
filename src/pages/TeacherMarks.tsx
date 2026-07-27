@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import {
-  SUBJECT_CODES, normalizeSubjectCode, formToLevel, computeGrade, computePoints,
+  SUBJECT_CODES, normalizeSubjectCode, formToLevel, computeGrade, computePoints, getMarkComment,
 } from "@/lib/grading";
 import { useTimetable } from "@/context/TimetableContext";
 import { bestFuzzyMatch, nameKey } from "@/lib/normalize";
@@ -145,8 +145,11 @@ const TeacherMarks = () => {
   const [unlockedSubjects, setUnlockedSubjects] = useState<Set<string>>(new Set());
   // Overall subject-teacher comment per student (this teacher, this exam)
   const [studentComments, setStudentComments] = useState<Record<string, string>>({});
+  // Track which student comments the user has hand-edited (so we don't overwrite them on mark change)
+  const [commentEdited, setCommentEdited] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [savingComments, setSavingComments] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const pwKey = (code: string) => `mark-pw:${teacherAccount?.id || "anon"}:${code}`;
   const unlockSubject = (code: string): boolean => {
@@ -289,8 +292,13 @@ const TeacherMarks = () => {
         .eq("comment_type", "subject_teacher")
         .eq("author_user_id", currentUserId);
       const map: Record<string, string> = {};
-      (data || []).forEach((r: any) => { map[r.student_profile_id] = r.comment || ""; });
+      const edited = new Set<string>();
+      (data || []).forEach((r: any) => {
+        map[r.student_profile_id] = r.comment || "";
+        if ((r.comment || "").trim()) edited.add(r.student_profile_id);
+      });
       setStudentComments(map);
+      setCommentEdited(edited);
     })();
   }, [examId, currentUserId]);
 
@@ -554,10 +562,17 @@ const TeacherMarks = () => {
         if (!unlockSubject(code)) return;
       }
     }
+    const numeric = val === "" ? null : Number(val);
     setMarks(prev => ({
       ...prev,
-      [sid]: { ...(prev[sid] || {}), [code]: val === "" ? null : Number(val) },
+      [sid]: { ...(prev[sid] || {}), [code]: numeric },
     }));
+    // Auto-fill the subject-teacher comment based on the mark band, unless the
+    // teacher has already hand-edited that student's comment.
+    if (numeric != null && !isNaN(numeric) && !commentEdited.has(sid)) {
+      const auto = getMarkComment(numeric);
+      if (auto) setStudentComments(prev => ({ ...prev, [sid]: auto }));
+    }
   };
 
   // Per-student subjects derived from the Subjects module (form + learning area/stream)
@@ -621,6 +636,14 @@ const TeacherMarks = () => {
   const orderedStudents = useMemo(() => {
     let base = students;
     if (activeClass) base = base.filter(s => studentClassId(s) === activeClass);
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      base = base.filter(s => {
+        const full = `${s.last_name} ${s.first_name}`.toLowerCase();
+        const rev = `${s.first_name} ${s.last_name}`.toLowerCase();
+        return full.includes(q) || rev.includes(q);
+      });
+    }
     if (!scanStudentOrder.length) return base;
     const rank = new Map(scanStudentOrder.map((id, i) => [id, i]));
     const originalIndex = new Map(base.map((s, i) => [s.id, i]));
@@ -630,7 +653,7 @@ const TeacherMarks = () => {
       if (ra !== rb) return ra - rb;
       return (originalIndex.get(a.id) ?? 0) - (originalIndex.get(b.id) ?? 0);
     });
-  }, [students, scanStudentOrder, activeClass]);
+  }, [students, scanStudentOrder, activeClass, searchQuery]);
 
   return (
     <DashboardLayout role="teacher">
@@ -697,6 +720,10 @@ const TeacherMarks = () => {
                 </Select>
               </div>
             )}
+            <div className="min-w-[200px]">
+              <Label>Search student</Label>
+              <Input placeholder="Type name…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </div>
             <Button onClick={() => setScanOpen(true)} variant="outline" className="gap-2" disabled={!activeExam || ocrLoading || (restrictedMarksMode && !activeSubject)}>
               {ocrLoading ? <Loader2 className="animate-spin" size={14}/> : <Camera size={14}/>} Scan Mark Sheet
             </Button>
@@ -798,6 +825,7 @@ const TeacherMarks = () => {
                             {col.code}
                           </th>
                         ))}
+                        <th className="sticky top-0 z-50 bg-background border-b h-12 px-2 text-left align-middle font-semibold text-muted-foreground min-w-[280px] w-[280px] shadow-sm">Comment (auto — editable)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -840,6 +868,18 @@ const TeacherMarks = () => {
                                 </td>
                               );
                             })}
+                            <td className="border-b p-1 min-w-[280px] w-[280px]">
+                              <Input
+                                placeholder="Auto from mark — edit if needed"
+                                className="h-8 text-sm"
+                                value={studentComments[s.id] || ""}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setCommentEdited(prev => { const n = new Set(prev); n.add(s.id); return n; });
+                                  setStudentComments(prev => ({ ...prev, [s.id]: v }));
+                                }}
+                              />
+                            </td>
                           </tr>
                         );
                       })}
@@ -851,34 +891,6 @@ const TeacherMarks = () => {
           );
         })()}
 
-        {students.length > 0 && activeExam && (
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h3 className="font-semibold">Subject Teacher — Overall Comments</h3>
-                  <p className="text-xs text-muted-foreground">One overall comment per student for this exam. Click Save Comments above when done.</p>
-                </div>
-                <span className="text-xs text-muted-foreground">{orderedStudents.length} student(s)</span>
-              </div>
-              <div className="grid gap-2">
-                {orderedStudents.map(s => (
-                  <div key={s.id} className="flex items-start gap-3 border rounded-md p-2">
-                    <div className="min-w-[180px] w-[180px]">
-                      <div className="font-medium text-sm truncate">{s.last_name} {s.first_name}</div>
-                      <div className="text-xs text-muted-foreground">F{s.form} {s.stream}</div>
-                    </div>
-                    <Input
-                      placeholder="Overall comment on this student's performance"
-                      value={studentComments[s.id] || ""}
-                      onChange={(e) => setStudentComments(prev => ({ ...prev, [s.id]: e.target.value }))}
-                    />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
 

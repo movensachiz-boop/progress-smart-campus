@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,7 @@ const TeacherClassTeacher = () => {
   const [results, setResults] = useState<Result[]>([]);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // identify signed-in teacher
   useEffect(() => {
@@ -209,6 +211,10 @@ const TeacherClassTeacher = () => {
               );
             })()}
           </div>
+          <div className="min-w-[200px]">
+            <Label>Search student</Label>
+            <Input placeholder="Type name…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          </div>
           <Button onClick={saveComments} disabled={saving || !students.length} className="gap-2">
             {saving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>} Save Comments
           </Button>
@@ -222,7 +228,11 @@ const TeacherClassTeacher = () => {
           </CardContent></Card>
         ) : (
           <div className="space-y-3">
-            {students.map(s => {
+            {students.filter(s => {
+              const q = searchQuery.trim().toLowerCase();
+              if (!q) return true;
+              return `${s.last_name} ${s.first_name}`.toLowerCase().includes(q) || `${s.first_name} ${s.last_name}`.toLowerCase().includes(q);
+            }).map(s => {
               const level = formToLevel(s.form);
               const rs = resultsByStudent[s.id] || [];
               return (
