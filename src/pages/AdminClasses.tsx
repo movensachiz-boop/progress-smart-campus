@@ -109,6 +109,43 @@ export default function AdminClasses() {
     setDeleteStudent(null);
   };
 
+  const openTransfer = (s: { id: string; first_name: string; last_name: string; registration_number: string }) => {
+    setTransferStudent(s);
+    setTransferTargetId('');
+  };
+
+  const confirmTransfer = async () => {
+    if (!transferStudent || !transferTargetId || !viewClass) return;
+    const target = classes.find(c => c.id === transferTargetId);
+    if (!target) { toast.error('Select a target class'); return; }
+    setTransferring(true);
+    try {
+      const newForm = String(target.form);
+      const newStream = target.stream;
+      // Update global profile
+      const { error: profErr } = await supabase
+        .from('profiles')
+        .update({ form: newForm, stream: newStream })
+        .eq('id', transferStudent.id);
+      if (profErr) throw profErr;
+      // Snapshot into the selected term (or current)
+      const { error: termErr } = await upsertStudentClassesForTerm(
+        [{ studentProfileId: transferStudent.id, form: newForm, stream: newStream }],
+        selectedTermId,
+      );
+      if (termErr) throw termErr;
+      setViewStudents(prev => prev.filter(x => x.id !== transferStudent.id));
+      toast.success(`${transferStudent.first_name} ${transferStudent.last_name} transferred to ${target.id}`);
+      setTransferStudent(null);
+      reloadTermMap();
+      loadCounts();
+    } catch (e: any) {
+      toast.error('Transfer failed: ' + (e.message || 'unknown error'));
+    } finally {
+      setTransferring(false);
+    }
+  };
+
 
 
   const getDeletedIds = (): Set<string> => {
