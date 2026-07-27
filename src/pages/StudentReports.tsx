@@ -412,7 +412,7 @@ const StudentReports = () => {
                         const mark = Number(r.mark) || 0;
                         const liveGrade = r.mark != null ? computeGrade(mark, level, r.subject_code) : (r.grade || "");
                         const livePts = r.mark != null ? computePoints(mark, level, r.subject_code) : (r.points ?? 0);
-                        const comment = r.mark != null ? getMarkComment(mark) : "";
+                        const comment = r.mark != null ? getMarkComment(mark, r.subject_code) : "";
                         return (
                           <TableRow key={r.id} className="hover:bg-secondary/30">
                             <TableCell>
