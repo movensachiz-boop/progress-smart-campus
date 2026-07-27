@@ -210,6 +210,20 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Snapshot the class into the current term so this student appears in
+      // the current term's rosters and stays there when future terms roll over.
+      if (profile && form && stream) {
+        try {
+          const { data: curTerm } = await supabaseAdmin
+            .from("terms").select("id").eq("is_current", true).maybeSingle();
+          if (curTerm?.id) {
+            await supabaseAdmin.from("student_class_terms").upsert({
+              term_id: curTerm.id, student_profile_id: profile.id, form, stream,
+            }, { onConflict: "term_id,student_profile_id" });
+          }
+        } catch (_) { /* non-fatal */ }
+      }
+
       return new Response(JSON.stringify({
         success: true,
         student: {

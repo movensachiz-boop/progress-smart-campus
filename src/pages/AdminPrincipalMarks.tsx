@@ -62,15 +62,24 @@ const AdminPrincipalMarks = () => {
     if (!activeExam) { setStudents([]); setMarks({}); setSubjectsByClass({}); setActiveClass(""); setComments([]); setPrincipalComments({}); return; }
     (async () => {
       setLoading(true);
-      const [{ data: profs }, { data: rows }, { data: cm }] = await Promise.all([
-        supabase.from("profiles").select("id, first_name, last_name, form, stream")
-          .in("form", activeExam.form_levels.map(String)).order("last_name"),
+      const termId = typeof window !== "undefined" ? localStorage.getItem("pcc.selectedTermId") : null;
+      const [{ data: profs }, { data: snaps }, { data: rows }, { data: cm }] = await Promise.all([
+        supabase.from("profiles").select("id, first_name, last_name, form, stream").order("last_name"),
+        termId
+          ? supabase.from("student_class_terms").select("student_profile_id, form, stream").eq("term_id", termId)
+          : Promise.resolve({ data: [] as any[] }) as any,
         supabase.from("exam_results").select("student_profile_id, subject_code, mark").eq("exam_id", examId),
         (supabase as any).from("exam_comments")
           .select("student_profile_id, comment_type, author_user_id, comment")
           .eq("exam_id", examId),
       ]);
-      const profList = (profs || []) as Profile[];
+      const snapMap = new Map<string, { form: string | null; stream: string | null }>();
+      (snaps || []).forEach((r: any) => snapMap.set(r.student_profile_id, { form: r.form, stream: r.stream }));
+      const formLevels = activeExam.form_levels.map(String);
+      const profList = ((profs || []) as Profile[]).map(p => {
+        const t = snapMap.get(p.id);
+        return t ? { ...p, form: t.form ?? p.form, stream: t.stream ?? p.stream } : p;
+      }).filter(p => p.form && formLevels.includes(String(p.form)));
       setStudents(profList);
       const m: MarksMap = {};
       const byClass: Record<string, Set<string>> = {};

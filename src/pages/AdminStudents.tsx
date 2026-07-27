@@ -18,6 +18,8 @@ import { generateStudentReport } from "@/lib/generateStudentReport";
 import { FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { upsertStudentClassForTerm, upsertStudentClassesForTerm } from "@/hooks/useTermClassMap";
+import { useTerm } from "@/context/TermContext";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import { Smartphone } from "lucide-react";
@@ -56,6 +58,7 @@ interface ExtractedStudent {
 
 const AdminStudents = () => {
   const { toast } = useToast();
+  const { selectedTermId } = useTerm();
   const [students, setStudents] = useState<Student[]>([]);
   const [profileDrawerId, setProfileDrawerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -412,6 +415,14 @@ const AdminStudents = () => {
       .from("profiles")
       .update({ form: reassignToForm, stream: reassignToStream })
       .in("id", ids);
+    // Also snapshot into the currently selected term so its rosters update
+    // without touching past terms.
+    if (!error) {
+      await upsertStudentClassesForTerm(
+        ids.map(id => ({ studentProfileId: id, form: reassignToForm, stream: reassignToStream })),
+        selectedTermId
+      );
+    }
     setReassignSubmitting(false);
 
     if (error) {
@@ -547,6 +558,8 @@ const AdminStudents = () => {
         toast({ title: "Update Failed", description: error.message, variant: "destructive" });
         return;
       }
+      // Also snapshot into the currently selected term so past terms are untouched.
+      await upsertStudentClassForTerm(editStudent.id, editForm || null, editStream || null, selectedTermId);
       toast({ title: "Student Updated", description: `${fn} ${ln} saved.` });
       setEditOpen(false);
       setEditStudent(null);

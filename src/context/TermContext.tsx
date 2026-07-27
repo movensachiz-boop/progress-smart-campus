@@ -53,7 +53,10 @@ export const TermProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => { reload(); }, []);
 
   const startNewTerm = async (term_number: number, year: number) => {
-    // Unset previous current
+    // Capture the term we're rolling over from so we can copy its class rosters.
+    const { data: prevTerm } = await supabase
+      .from("terms").select("id").eq("is_current", true).maybeSingle();
+
     await supabase.from("terms").update({ is_current: false, ended_at: new Date().toISOString() }).eq("is_current", true);
     const { data, error } = await supabase
       .from("terms")
@@ -61,6 +64,35 @@ export const TermProvider = ({ children }: { children: ReactNode }) => {
       .select()
       .single();
     if (error) throw error;
+
+    // Seed the new term's class rosters. Prefer copying from the previous term,
+    // fall back to whatever is currently on each profile.
+    if (data) {
+      try {
+        let seeded = false;
+        if (prevTerm?.id) {
+          const { data: prevRows } = await supabase
+            .from("student_class_terms")
+            .select("student_profile_id, form, stream")
+            .eq("term_id", prevTerm.id);
+          if (prevRows && prevRows.length > 0) {
+            const rows = prevRows.map(r => ({ term_id: data.id, student_profile_id: r.student_profile_id, form: r.form, stream: r.stream }));
+            await supabase.from("student_class_terms").upsert(rows, { onConflict: "term_id,student_profile_id" });
+            seeded = true;
+          }
+        }
+        if (!seeded) {
+          const { data: profs } = await supabase
+            .from("profiles").select("id, form, stream")
+            .not("form", "is", null).not("stream", "is", null);
+          if (profs && profs.length > 0) {
+            const rows = profs.map((p: any) => ({ term_id: data.id, student_profile_id: p.id, form: p.form, stream: p.stream }));
+            await supabase.from("student_class_terms").upsert(rows, { onConflict: "term_id,student_profile_id" });
+          }
+        }
+      } catch { /* non-fatal: readers fall back to profile.form/stream */ }
+    }
+
     await reload();
     if (data) setSelectedTermId(data.id);
     return data as Term;
