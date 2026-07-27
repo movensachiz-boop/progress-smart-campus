@@ -36,6 +36,9 @@ export default function AdminClasses() {
   const [verifiedIds, setVerifiedIds] = useState<Set<string>>(new Set());
   const [showVerified, setShowVerified] = useState(false);
   const [deleteStudent, setDeleteStudent] = useState<{ id: string; first_name: string; last_name: string; registration_number: string } | null>(null);
+  const [transferStudent, setTransferStudent] = useState<{ id: string; first_name: string; last_name: string; registration_number: string } | null>(null);
+  const [transferTargetId, setTransferTargetId] = useState<string>('');
+  const [transferring, setTransferring] = useState(false);
 
   const verifiedKey = (cls: SchoolClass) => `verified_${selectedTermId || 'notrm'}_${cls.id}`;
 
