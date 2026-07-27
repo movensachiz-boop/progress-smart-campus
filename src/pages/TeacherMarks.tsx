@@ -236,8 +236,8 @@ const TeacherMarks = () => {
     (async () => {
       setLoading(true);
       // Fetch profiles, per-term class snapshots, and existing marks together.
-      const { selectedTermId } = (await import("@/context/TermContext")).useTerm ? { selectedTermId: null } : { selectedTermId: null };
-      const termId = (typeof window !== "undefined") ? localStorage.getItem("pcc.selectedTermId") : null;
+      // Apply the currently selected term's class snapshot so past terms stay accurate.
+      const termId = typeof window !== "undefined" ? localStorage.getItem("pcc.selectedTermId") : null;
       const [{ data: profs }, { data: snaps }, { data: rows }] = await Promise.all([
         supabase.from("profiles").select("id, first_name, last_name, form, stream").order("last_name"),
         termId
