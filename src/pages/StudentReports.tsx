@@ -95,7 +95,7 @@ const StudentReports = () => {
       const mark = Number(r.mark) || 0;
       const grade = r.mark != null ? computeGrade(mark, level, r.subject_code) : (r.grade || "");
       const pts = r.mark != null ? computePoints(mark, level, r.subject_code) : (r.points ?? 0);
-      const comment = r.mark != null ? getMarkComment(mark) : "";
+      const comment = r.mark != null ? getMarkComment(mark, r.subject_code) : "";
       const ptsCell = level === "alevel" ? `<td style="text-align:center;font-weight:700">${pts}</td>` : "";
       const commentCell = level !== "alevel" ? `<td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;font-style:italic;color:#374151">${comment}</td>` : "";
       return `
