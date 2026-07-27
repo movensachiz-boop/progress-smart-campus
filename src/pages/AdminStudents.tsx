@@ -18,6 +18,8 @@ import { generateStudentReport } from "@/lib/generateStudentReport";
 import { FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { upsertStudentClassForTerm, upsertStudentClassesForTerm } from "@/hooks/useTermClassMap";
+import { useTerm } from "@/context/TermContext";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import { Smartphone } from "lucide-react";
