@@ -235,12 +235,23 @@ const TeacherMarks = () => {
     }
     (async () => {
       setLoading(true);
-      const [{ data: profs }, { data: rows }] = await Promise.all([
-        supabase.from("profiles").select("id, first_name, last_name, form, stream")
-          .in("form", activeExam.form_levels.map(String)).order("last_name"),
+      // Fetch profiles, per-term class snapshots, and existing marks together.
+      const { selectedTermId } = (await import("@/context/TermContext")).useTerm ? { selectedTermId: null } : { selectedTermId: null };
+      const termId = (typeof window !== "undefined") ? localStorage.getItem("pcc.selectedTermId") : null;
+      const [{ data: profs }, { data: snaps }, { data: rows }] = await Promise.all([
+        supabase.from("profiles").select("id, first_name, last_name, form, stream").order("last_name"),
+        termId
+          ? supabase.from("student_class_terms").select("student_profile_id, form, stream").eq("term_id", termId)
+          : Promise.resolve({ data: [] as any[] }) as any,
         supabase.from("exam_results").select("student_profile_id, subject_code, mark").eq("exam_id", examId),
       ]);
-      let profList = (profs || []) as Profile[];
+      const snapMap = new Map<string, { form: string | null; stream: string | null }>();
+      (snaps || []).forEach((r: any) => snapMap.set(r.student_profile_id, { form: r.form, stream: r.stream }));
+      const formLevels = activeExam.form_levels.map(String);
+      let profList = ((profs || []) as Profile[]).map(p => {
+        const t = snapMap.get(p.id);
+        return t ? { ...p, form: t.form ?? p.form, stream: t.stream ?? p.stream } : p;
+      }).filter(p => p.form && formLevels.includes(String(p.form)));
       // If a teacher is signed in, restrict to students in classes they teach.
       if (teacherScope && teacherScope.allClasses.size > 0) {
         profList = profList.filter(p => {
