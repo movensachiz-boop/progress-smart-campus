@@ -381,7 +381,7 @@ export default function AdminClasses() {
     if (editing.id) {
       const original = classes.find(c => c.id === editing.id);
       setClasses(classes.map(c => c.id === editing.id ? updated : c));
-      // Propagate rename to student registrations
+      // Propagate rename to student registrations + term snapshots
       if (original && (original.stream !== newStream || original.form !== editing.form)) {
         try {
           const { error, count } = await supabase
@@ -390,6 +390,15 @@ export default function AdminClasses() {
             .eq('form', String(original.form))
             .eq('stream', original.stream);
           if (error) throw error;
+          // Also update every term snapshot referencing the old class so historical rosters follow the rename
+          const { error: sctErr } = await supabase
+            .from('student_class_terms')
+            .update({ form: String(editing.form), stream: newStream })
+            .eq('form', String(original.form))
+            .eq('stream', original.stream);
+          if (sctErr) throw sctErr;
+          reloadTermMap();
+          loadCounts();
           toast.success(`Class updated · ${count ?? 0} student(s) re-assigned`);
         } catch (e: any) {
           toast.error('Class saved, but failed to update students: ' + e.message);
