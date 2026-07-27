@@ -1546,6 +1546,55 @@ export type Database = {
           },
         ]
       }
+      student_class_terms: {
+        Row: {
+          created_at: string
+          form: string | null
+          stream: string | null
+          student_profile_id: string
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          form?: string | null
+          stream?: string | null
+          student_profile_id: string
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          form?: string | null
+          stream?: string | null
+          student_profile_id?: string
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_class_terms_student_profile_id_fkey"
+            columns: ["student_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_class_terms_student_profile_id_fkey"
+            columns: ["student_profile_id"]
+            isOneToOne: false
+            referencedRelation: "student_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_class_terms_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null
