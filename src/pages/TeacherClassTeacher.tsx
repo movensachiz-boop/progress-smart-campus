@@ -228,7 +228,11 @@ const TeacherClassTeacher = () => {
           </CardContent></Card>
         ) : (
           <div className="space-y-3">
-            {students.map(s => {
+            {students.filter(s => {
+              const q = searchQuery.trim().toLowerCase();
+              if (!q) return true;
+              return `${s.last_name} ${s.first_name}`.toLowerCase().includes(q) || `${s.first_name} ${s.last_name}`.toLowerCase().includes(q);
+            }).map(s => {
               const level = formToLevel(s.form);
               const rs = resultsByStudent[s.id] || [];
               return (
