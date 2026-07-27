@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableHeader, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
-import { Loader2, Save, Camera, CheckCircle2, FileDown } from "lucide-react";
+import { Loader2, Save, Camera, CheckCircle2, FileDown, Cloud, CloudOff, CheckCheck } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
