@@ -558,6 +558,8 @@ const AdminStudents = () => {
         toast({ title: "Update Failed", description: error.message, variant: "destructive" });
         return;
       }
+      // Also snapshot into the currently selected term so past terms are untouched.
+      await upsertStudentClassForTerm(editStudent.id, editForm || null, editStream || null, selectedTermId);
       toast({ title: "Student Updated", description: `${fn} ${ln} saved.` });
       setEditOpen(false);
       setEditStudent(null);
