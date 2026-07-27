@@ -15,7 +15,8 @@ const Login = () => {
   const [mode, setMode] = useState<"student" | "staff">("student");
   const [regNumber, setRegNumber] = useState("");
   const [staffName, setStaffName] = useState("");
-  const [staffList, setStaffList] = useState<{ name: string; role: string }[]>([]);
+  const [staffSearch, setStaffSearch] = useState("");
+  const [staffList, setStaffList] = useState<{ name: string; role: string; user_id?: string }[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
