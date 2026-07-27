@@ -285,6 +285,26 @@ const TeacherMarks = () => {
         m[sid][code] = r.mark != null ? Number(r.mark) : null;
         subjSet.add(code);
       }
+      // Merge any unsynced marks/comments the teacher typed while offline.
+      try {
+        const raw = localStorage.getItem(`pcc.marks.offline:${examId}`);
+        if (raw) {
+          const cached = JSON.parse(raw) as { marks?: MarksMap; studentComments?: Record<string, string> };
+          for (const [sid, row] of Object.entries(cached.marks || {})) {
+            if (!m[sid]) m[sid] = {};
+            for (const [code, val] of Object.entries(row || {})) {
+              if (val != null && !isNaN(val as number)) {
+                m[sid][code] = val as number;
+                subjSet.add(code);
+              }
+            }
+          }
+          if (cached.studentComments) {
+            setStudentComments(prev => ({ ...cached.studentComments, ...prev }));
+          }
+          setSyncStatus("pending");
+        }
+      } catch {}
       setMarks(m);
       setSubjects([...subjSet].sort());
       setLastMatched(new Set());
