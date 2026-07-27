@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, School, Check, RefreshCw, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useTermClassMap, upsertStudentClassesForTerm } from '@/hooks/useTermClassMap';
 
 const FORMS: FormLevel[] = [1, 2, 3, 4, 5, 6];
 const LEARNING_AREAS: LearningArea[] = ['Sciences', 'Commercials', 'Arts'];
