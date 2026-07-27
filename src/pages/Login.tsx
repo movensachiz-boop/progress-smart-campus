@@ -140,11 +140,26 @@ const Login = () => {
                       <SelectValue placeholder={loadingStaff ? "Loading staff..." : "Select your name"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {staffList.map((s) => (
-                        <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>
-                      ))}
+                      <div className="p-2 sticky top-0 bg-popover z-10 border-b">
+                        <Input
+                          autoFocus
+                          value={staffSearch}
+                          onChange={(e) => setStaffSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          placeholder="Type to search (e.g. zimano)"
+                          className="h-9"
+                        />
+                      </div>
+                      {staffList
+                        .filter((s) => s.name.toLowerCase().includes(staffSearch.toLowerCase()))
+                        .map((s) => (
+                          <SelectItem key={s.user_id || s.name} value={s.name}>{s.name}</SelectItem>
+                        ))}
                       {staffList.length === 0 && !loadingStaff && (
                         <div className="px-3 py-2 text-sm text-muted-foreground">No staff accounts found</div>
+                      )}
+                      {staffList.length > 0 && staffList.filter((s) => s.name.toLowerCase().includes(staffSearch.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">No matches — try a different spelling</div>
                       )}
                     </SelectContent>
                   </Select>
