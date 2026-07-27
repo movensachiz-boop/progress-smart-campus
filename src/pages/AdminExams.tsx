@@ -514,11 +514,11 @@ const ExamEditor = ({ exam, open, onOpenChange }: { exam: Exam; open: boolean; o
                     for (const c of orderedCodes) {
                       const m = row[c];
                       if (m == null || isNaN(m as number)) continue;
-                      const g = computeGrade(m, level);
+                      const g = computeGrade(m, level, c);
                       if (!g) continue;
                       if (g === "U") failed.push(c); else passed.push(c);
                     }
-                    const totalPts = orderedCodes.reduce((acc, c) => acc + computePoints(row[c] ?? null, level), 0);
+                    const totalPts = orderedCodes.reduce((acc, c) => acc + computePoints(row[c] ?? null, level, c), 0);
                     return (
                       <TableRow key={s.id}>
                         <TableCell className="font-medium sticky left-0 bg-card z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
