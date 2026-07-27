@@ -320,7 +320,7 @@ const ScanMarks = () => {
                     {orderedCodes.map((c) => {
                       const m = grid[s.id]?.[c];
                       const level = formToLevel(s.form);
-                      const grade = m != null && !isNaN(m) ? computeGrade(m, level) : "";
+                      const grade = m != null && !isNaN(m) ? computeGrade(m, level, c) : "";
                       return (
                         <td key={c} className="p-1">
                           <div className="flex flex-col items-center gap-0.5">
