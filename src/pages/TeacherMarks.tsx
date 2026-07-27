@@ -868,8 +868,8 @@ const TeacherMarks = () => {
                                         value={m ?? ""}
                                         onChange={(e) => updateMark(s.id, col.code, e.target.value)}/>
                                       {m != null && (
-                                        <span className={`text-xs font-bold min-w-[18px] ${computeGrade(m, level) === "U" ? "text-red-600" : "text-blue-600"}`}>
-                                          {computeGrade(m, level)}
+                                        <span className={`text-xs font-bold min-w-[18px] ${computeGrade(m, level, col.code) === "U" ? "text-red-600" : "text-blue-600"}`}>
+                                          {computeGrade(m, level, col.code)}
                                         </span>
                                       )}
                                     </div>
