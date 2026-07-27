@@ -30,6 +30,33 @@ export default function AdminClasses() {
   const [deleteTarget, setDeleteTarget] = useState<SchoolClass | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [studentCounts, setStudentCounts] = useState<Record<string, { total: number; male: number; female: number }>>({});
+  const [viewClass, setViewClass] = useState<SchoolClass | null>(null);
+  const [viewStudents, setViewStudents] = useState<Array<{ id: string; registration_number: string; first_name: string; last_name: string; gender: string | null; status: string }>>([]);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  const openView = async (cls: SchoolClass) => {
+    setViewClass(cls);
+    setViewStudents([]);
+    setViewLoading(true);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, registration_number, first_name, last_name, gender, form, stream, status')
+        .order('last_name');
+      const streamMatch = cls.learningArea || cls.stream;
+      const rows = (data || []).map((r: any) => {
+        const t = termClassMap.get(r.id);
+        return { ...r, form: t?.form ?? r.form, stream: t?.stream ?? r.stream };
+      }).filter((r: any) => {
+        const f = parseInt(r.form || '', 10);
+        if (f !== cls.form) return false;
+        return r.stream === cls.stream || r.stream === streamMatch || (cls.learningArea && r.stream === cls.learningArea);
+      });
+      setViewStudents(rows);
+    } finally {
+      setViewLoading(false);
+    }
+  };
 
   const getDeletedIds = (): Set<string> => {
     try { return new Set(JSON.parse(localStorage.getItem('tt_deleted_classes') || '[]')); } catch { return new Set(); }
