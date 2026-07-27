@@ -7,9 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activityLog";
 import {
   LayoutDashboard, Users, Receipt, Bell, FileText, Settings,
-  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart, ChefHat, Wallet, Award, Target, Trophy, User
+  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart, ChefHat, Wallet, Award, Target, Trophy, User, MessageSquare
 } from "lucide-react";
 import pccLogo from "@/assets/pcc-logo.png";
+import FeedbackDialog from "@/components/FeedbackDialog";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -43,6 +44,7 @@ const adminLinks = [
   { label: "Goods Received", icon: Package, path: "/admin/procurement?tab=grn" },
   { label: "Kitchen Stock", icon: ChefHat, path: "/admin/kitchen" },
   { label: "Fund Tracker", icon: Wallet, path: "/admin/funds" },
+  { label: "App Feedback", icon: MessageSquare, path: "/admin/feedback" },
   { label: "Settings", icon: Settings, path: "/admin/settings" },
 ];
 
@@ -193,6 +195,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
             <h1 className="text-lg font-bold text-foreground capitalize">{role} Portal</h1>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <FeedbackDialog compact />
             <Button variant="ghost" size="icon" className="relative rounded-full">
               <Bell size={18} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive ring-2 ring-card" />

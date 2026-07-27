@@ -57,6 +57,7 @@ import StudentProfile from "./pages/StudentProfile";
 import StudentProfileGate from "./components/StudentProfileGate";
 import AdminITAssistant from "./pages/AdminITAssistant";
 import InstallPrompt from "./components/InstallPrompt";
+import AdminFeedback from "./pages/AdminFeedback";
 
 
 // Sub-roles
@@ -121,6 +122,7 @@ const App = () => (
             <Route path="/admin/principal-docs" element={<StaffGuard allow={["principal"]} deny={DENY_TM_AND_CASHIER}><AdminPrincipalDocs /></StaffGuard>} />
             <Route path="/admin/principal-marks" element={<StaffGuard allow={["principal"]} deny={DENY_TM_AND_CASHIER}><AdminPrincipalMarks /></StaffGuard>} />
             <Route path="/admin/it" element={<StaffGuard allow={["it_assistant"]} deny={DENY_TM_AND_CASHIER}><AdminITAssistant /></StaffGuard>} />
+            <Route path="/admin/feedback" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminFeedback /></StaffGuard>} />
 
             <Route path="/teacher/marks" element={<TeacherMarks />} />
             <Route path="/teacher/class-teacher" element={<TeacherClassTeacher />} />
