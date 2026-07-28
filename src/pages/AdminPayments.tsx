@@ -1091,9 +1091,13 @@ const AdminPayments = () => {
                       ref={studentSearchRef}
                       placeholder="Search student..."
                       value={studentSearch}
-                      onChange={(e) => setStudentSearch(e.target.value)}
+                      onChange={(e) => {
+                        setStudentSearch(e.target.value);
+                        if (selectedStudentId) setSelectedStudentId("");
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && filteredStudents.length > 0) {
+                          e.preventDefault();
                           const first = filteredStudents[0];
                           setSelectedStudentId(first.id);
                           setNewFirstName(first.first_name);
@@ -1105,20 +1109,31 @@ const AdminPayments = () => {
                       className="pl-9 h-8 text-xs"
                     />
                   </div>
-                  <Select value={selectedStudentId} onValueChange={(v) => {
-                    setSelectedStudentId(v);
-                    const s = students.find(x => x.id === v);
-                    if (s) { setNewFirstName(s.first_name); setNewLastName(s.last_name); }
-                  }}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choose existing (optional)" /></SelectTrigger>
-                    <SelectContent>
-                      {filteredStudents.map(s => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.first_name} {s.last_name} ({s.registration_number}){s.form || s.stream ? ` — ${formatClass(s)}` : ""}
-                        </SelectItem>
+                  {studentSearch.trim() && !selectedStudentId && filteredStudents.length > 0 && (
+                    <div className="max-h-44 overflow-y-auto rounded-md border bg-popover shadow-sm">
+                      {filteredStudents.slice(0, 8).map((s, idx) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedStudentId(s.id);
+                            setNewFirstName(s.first_name);
+                            setNewLastName(s.last_name);
+                            setStudentSearch(`${s.first_name} ${s.last_name}`);
+                            setTimeout(() => amountRef.current?.focus(), 50);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors ${idx === 0 ? "bg-muted/40" : ""}`}
+                        >
+                          <span className="font-medium">{s.first_name} {s.last_name}</span>
+                          <span className="text-muted-foreground"> ({s.registration_number})</span>
+                          {(s.form || s.stream) && <span className="text-muted-foreground"> — {formatClass(s)}</span>}
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
+                  {studentSearch.trim() && !selectedStudentId && filteredStudents.length === 0 && (
+                    <p className="text-[11px] text-muted-foreground italic px-1">No match — will auto-register on save.</p>
+                  )}
                 </div>
               </div>
 
