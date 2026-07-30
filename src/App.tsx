@@ -58,6 +58,8 @@ import StudentProfileGate from "./components/StudentProfileGate";
 import AdminITAssistant from "./pages/AdminITAssistant";
 import InstallPrompt from "./components/InstallPrompt";
 import AdminFeedback from "./pages/AdminFeedback";
+import AdminPositions from "./pages/AdminPositions";
+import TeacherPositions from "./pages/TeacherPositions";
 
 
 // Sub-roles
@@ -126,6 +128,8 @@ const App = () => (
 
             <Route path="/teacher/marks" element={<TeacherMarks />} />
             <Route path="/teacher/class-teacher" element={<TeacherClassTeacher />} />
+            <Route path="/teacher/positions" element={<TeacherPositions />} />
+            <Route path="/admin/positions" element={<StaffGuard deny={DENY_TM_AND_CASHIER}><AdminPositions /></StaffGuard>} />
             <Route path="/student/results" element={<StudentProfileGate><StudentReports /></StudentProfileGate>} />
             <Route path="/phone-scan/:sessionId" element={<PhoneScan />} />
             <Route path="*" element={<NotFound />} />

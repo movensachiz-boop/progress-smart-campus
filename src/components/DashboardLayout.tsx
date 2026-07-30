@@ -34,6 +34,7 @@ const adminLinks = [
   { label: "Reports", icon: FileText, path: "/admin/reports" },
   { label: "Exam Results", icon: Award, path: "/admin/exams" },
   { label: "Student Performance", icon: Trophy, path: "/admin/performance" },
+  { label: "Positions & Analytics", icon: Medal, path: "/admin/positions" },
   { label: "Principal's Documents", icon: Target, path: "/admin/principal-docs" },
   { label: "Principal — Mark Schedules", icon: ClipboardList, path: "/admin/principal-marks" },
   { label: "Audit Trail", icon: ShieldCheck, path: "/admin/audit" },
@@ -65,6 +66,7 @@ const teacherLinks = [
   { label: "Timetable", icon: CalendarDays, path: "/teacher/timetable" },
   { label: "Enter Marks", icon: Award, path: "/teacher/marks" },
   { label: "My Class (Class Teacher)", icon: ClipboardList, path: "/teacher/class-teacher" },
+  { label: "Positions & Analytics", icon: Medal, path: "/teacher/positions" },
 ];
 
 
