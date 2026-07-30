@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activityLog";
 import {
   LayoutDashboard, Users, Receipt, Bell, FileText, Settings,
-  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart, ChefHat, Wallet, Award, Target, Trophy, User, MessageSquare
+  LogOut, Menu, X, BookOpen, CalendarDays, ChevronRight, GraduationCap, School, Calendar, ClipboardList, HelpCircle, ShieldCheck, Package, ShoppingBag, ShoppingCart, ChefHat, Wallet, Award, Target, Trophy, User, MessageSquare, Medal
 } from "lucide-react";
 import pccLogo from "@/assets/pcc-logo.png";
 import FeedbackDialog from "@/components/FeedbackDialog";
@@ -34,6 +34,7 @@ const adminLinks = [
   { label: "Reports", icon: FileText, path: "/admin/reports" },
   { label: "Exam Results", icon: Award, path: "/admin/exams" },
   { label: "Student Performance", icon: Trophy, path: "/admin/performance" },
+  { label: "Positions & Analytics", icon: Medal, path: "/admin/positions" },
   { label: "Principal's Documents", icon: Target, path: "/admin/principal-docs" },
   { label: "Principal — Mark Schedules", icon: ClipboardList, path: "/admin/principal-marks" },
   { label: "Audit Trail", icon: ShieldCheck, path: "/admin/audit" },
@@ -65,6 +66,7 @@ const teacherLinks = [
   { label: "Timetable", icon: CalendarDays, path: "/teacher/timetable" },
   { label: "Enter Marks", icon: Award, path: "/teacher/marks" },
   { label: "My Class (Class Teacher)", icon: ClipboardList, path: "/teacher/class-teacher" },
+  { label: "Positions & Analytics", icon: Medal, path: "/teacher/positions" },
 ];
 
 
@@ -90,7 +92,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
     } else if (actualRole === "kitchen") {
       links = adminLinks.filter(l => l.path === "/admin/kitchen");
     } else if (actualRole === "principal") {
-      links = adminLinks.filter(l => l.path === "/admin/principal-marks" || l.path === "/admin/principal-docs");
+      links = adminLinks.filter(l => l.path === "/admin/principal-marks" || l.path === "/admin/principal-docs" || l.path === "/admin/positions");
     } else if (actualRole === "it_assistant") {
       links = [{ label: "Reset Teacher Passwords", icon: ShieldCheck, path: "/admin/it" }];
     }

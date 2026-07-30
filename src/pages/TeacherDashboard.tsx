@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { CalendarDays, Award } from "lucide-react";
+import { CalendarDays, Award, Medal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function TeacherDashboard() {
@@ -9,6 +9,7 @@ export default function TeacherDashboard() {
   const cards = [
     { label: "Enter Marks", icon: Award, path: "/teacher/marks", color: "bg-primary/10 text-primary" },
     { label: "View Timetable", icon: CalendarDays, path: "/teacher/timetable", color: "bg-primary/10 text-primary" },
+    { label: "Positions & Analytics", icon: Medal, path: "/teacher/positions", color: "bg-primary/10 text-primary" },
   ];
 
   return (
