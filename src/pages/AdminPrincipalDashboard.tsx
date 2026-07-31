@@ -165,7 +165,7 @@ const AdminPrincipalDashboard = () => {
           subjects: e.marks.length,
           average,
           passRate: Math.round((e.pass / e.marks.length) * 1000) / 10,
-          grade: computeGrade(average, formToLevel(p?.form ?? null)).grade,
+          grade: computeGrade(average, formToLevel(p?.form ?? null)),
         };
       })
       .sort((a, b) => b.average - a.average);
