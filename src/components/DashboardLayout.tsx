@@ -35,6 +35,7 @@ const adminLinks = [
   { label: "Exam Results", icon: Award, path: "/admin/exams" },
   { label: "Student Performance", icon: Trophy, path: "/admin/performance" },
   { label: "Positions & Analytics", icon: Medal, path: "/admin/positions" },
+  { label: "Principal's Dashboard", icon: LayoutDashboard, path: "/admin/principal-dashboard" },
   { label: "Principal's Documents", icon: Target, path: "/admin/principal-docs" },
   { label: "Principal — Mark Schedules", icon: ClipboardList, path: "/admin/principal-marks" },
   { label: "Audit Trail", icon: ShieldCheck, path: "/admin/audit" },
@@ -92,7 +93,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
     } else if (actualRole === "kitchen") {
       links = adminLinks.filter(l => l.path === "/admin/kitchen");
     } else if (actualRole === "principal") {
-      links = adminLinks.filter(l => l.path === "/admin/principal-marks" || l.path === "/admin/principal-docs" || l.path === "/admin/positions");
+      links = adminLinks.filter(l => l.path === "/admin/principal-dashboard" || l.path === "/admin/principal-marks" || l.path === "/admin/principal-docs" || l.path === "/admin/positions");
     } else if (actualRole === "it_assistant") {
       links = [{ label: "Reset Teacher Passwords", icon: ShieldCheck, path: "/admin/it" }];
     }
