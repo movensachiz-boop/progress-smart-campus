@@ -50,6 +50,7 @@ import StudentReports from "./pages/StudentReports";
 import VerifyReport from "./pages/VerifyReport";
 import ScanMarks from "./pages/ScanMarks";
 import AdminPrincipalDocs from "./pages/AdminPrincipalDocs";
+import AdminPrincipalDashboard from "./pages/AdminPrincipalDashboard";
 import AdminPrincipalMarks from "./pages/AdminPrincipalMarks";
 import AdminPerformance from "./pages/AdminPerformance";
 import StudentCompleteProfile from "./pages/StudentCompleteProfile";
@@ -121,6 +122,7 @@ const App = () => (
             <Route path="/scan-marks/:examId" element={<ScanMarks />} />
             <Route path="/admin/exams" element={<StaffGuard deny={DENY_TM}><AdminExams /></StaffGuard>} />
             <Route path="/admin/performance" element={<StaffGuard deny={DENY_TM}><AdminPerformance /></StaffGuard>} />
+            <Route path="/admin/principal-dashboard" element={<StaffGuard allow={["principal"]} deny={DENY_TM_AND_CASHIER}><AdminPrincipalDashboard /></StaffGuard>} />
             <Route path="/admin/principal-docs" element={<StaffGuard allow={["principal"]} deny={DENY_TM_AND_CASHIER}><AdminPrincipalDocs /></StaffGuard>} />
             <Route path="/admin/principal-marks" element={<StaffGuard allow={["principal"]} deny={DENY_TM_AND_CASHIER}><AdminPrincipalMarks /></StaffGuard>} />
             <Route path="/admin/it" element={<StaffGuard allow={["it_assistant"]} deny={DENY_TM_AND_CASHIER}><AdminITAssistant /></StaffGuard>} />

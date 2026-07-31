@@ -84,7 +84,7 @@ const Login = () => {
       if (data.role === "cashier") navigate("/admin/students");
       else if (data.role === "timetable_manager") navigate("/admin/timetable");
       else if (data.role === "kitchen") navigate("/admin/kitchen");
-      else if (data.role === "principal") navigate("/admin/principal-marks");
+      else if (data.role === "principal") navigate("/admin/principal-dashboard");
       else if (data.role === "it_assistant") navigate("/admin/it");
       else if (data.role === "admin") navigate("/admin");
       else if (data.role === "teacher") navigate("/teacher");
