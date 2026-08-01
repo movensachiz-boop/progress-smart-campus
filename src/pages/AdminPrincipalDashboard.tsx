@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -35,7 +36,8 @@ const studentClassId = (s: { form: string | null; stream: string | null }): stri
 const avg = (nums: number[]) => (nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0);
 
 const AdminPrincipalDashboard = () => {
-  const { teachers: ttTeachers } = useTimetable();
+  const { teachers: ttTeachers, subjects: ttSubjects } = useTimetable();
+  const [staffOpen, setStaffOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [teacherAccounts, setTeacherAccounts] = useState(0);
@@ -209,7 +211,9 @@ const AdminPrincipalDashboard = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            <StatCard title="Teaching Staff" value={String(ttTeachers.length)} subtitle="On staff register" icon={GraduationCap} variant="primary" />
+            <button type="button" onClick={() => setStaffOpen(true)} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg">
+              <StatCard title="Teaching Staff" value={String(ttTeachers.length)} subtitle="Click to view list" icon={GraduationCap} variant="primary" />
+            </button>
             <StatCard title="Teacher Accounts" value={String(teacherAccounts)} subtitle="With portal logins" icon={Users} variant="accent" />
             <StatCard title="Students Assessed" value={String(overall.studentsAssessed)} subtitle="In selected exam" icon={Users} variant="primary" />
             <StatCard title="School Average" value={`${overall.average.toFixed(1)}%`} subtitle={`${overall.entries} marks recorded`} icon={TrendingUp} variant="success" />
@@ -395,6 +399,39 @@ const AdminPrincipalDashboard = () => {
             </Card>
           </>
         )}
+
+        <Dialog open={staffOpen} onOpenChange={setStaffOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Teaching Staff ({ttTeachers.length})</DialogTitle>
+              <DialogDescription>All teachers currently registered in the system</DialogDescription>
+            </DialogHeader>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary">
+                  <TableHead>#</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Subjects</TableHead>
+                  <TableHead>Forms</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ttTeachers.map((t, i) => (
+                  <TableRow key={t.id}>
+                    <TableCell>{i + 1}</TableCell>
+                    <TableCell className="font-medium">{t.title} {t.name}</TableCell>
+                    <TableCell className="text-sm">
+                      {(t.subjectIds || [])
+                        .map(id => ttSubjects.find(s => s.id === id)?.name || id)
+                        .join(", ") || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">{(t.forms || []).join(", ") || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

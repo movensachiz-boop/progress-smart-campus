@@ -1,0 +1,1 @@
+CREATE POLICY "Principals and owners can view all roles" ON public.user_roles FOR SELECT TO authenticated USING (public.has_role(auth.uid(),'principal') OR public.has_role(auth.uid(),'owner'));
