@@ -36,7 +36,8 @@ const studentClassId = (s: { form: string | null; stream: string | null }): stri
 const avg = (nums: number[]) => (nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0);
 
 const AdminPrincipalDashboard = () => {
-  const { teachers: ttTeachers } = useTimetable();
+  const { teachers: ttTeachers, subjects: ttSubjects } = useTimetable();
+  const [staffOpen, setStaffOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [teacherAccounts, setTeacherAccounts] = useState(0);
