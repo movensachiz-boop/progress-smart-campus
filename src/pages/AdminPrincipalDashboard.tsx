@@ -399,6 +399,39 @@ const AdminPrincipalDashboard = () => {
             </Card>
           </>
         )}
+
+        <Dialog open={staffOpen} onOpenChange={setStaffOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Teaching Staff ({ttTeachers.length})</DialogTitle>
+              <DialogDescription>All teachers currently registered in the system</DialogDescription>
+            </DialogHeader>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary">
+                  <TableHead>#</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Subjects</TableHead>
+                  <TableHead>Forms</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ttTeachers.map((t, i) => (
+                  <TableRow key={t.id}>
+                    <TableCell>{i + 1}</TableCell>
+                    <TableCell className="font-medium">{t.title} {t.name}</TableCell>
+                    <TableCell className="text-sm">
+                      {(t.subjectIds || [])
+                        .map(id => ttSubjects.find(s => s.id === id)?.name || id)
+                        .join(", ") || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">{(t.forms || []).join(", ") || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
