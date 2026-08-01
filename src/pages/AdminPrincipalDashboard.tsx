@@ -211,7 +211,9 @@ const AdminPrincipalDashboard = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            <StatCard title="Teaching Staff" value={String(ttTeachers.length)} subtitle="On staff register" icon={GraduationCap} variant="primary" />
+            <button type="button" onClick={() => setStaffOpen(true)} className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg">
+              <StatCard title="Teaching Staff" value={String(ttTeachers.length)} subtitle="Click to view list" icon={GraduationCap} variant="primary" />
+            </button>
             <StatCard title="Teacher Accounts" value={String(teacherAccounts)} subtitle="With portal logins" icon={Users} variant="accent" />
             <StatCard title="Students Assessed" value={String(overall.studentsAssessed)} subtitle="In selected exam" icon={Users} variant="primary" />
             <StatCard title="School Average" value={`${overall.average.toFixed(1)}%`} subtitle={`${overall.entries} marks recorded`} icon={TrendingUp} variant="success" />
