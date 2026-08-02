@@ -20,6 +20,36 @@ export interface InvoiceOptions {
 const NAVY: [number, number, number] = [0, 51, 102];
 const GOLD: [number, number, number] = [255, 215, 0];
 
+const TRANSPORT = 100;
+
+interface FeePackage { label: string; day: number; boarding: number }
+
+const PACKAGES: FeePackage[] = [
+  { label: "Form 1 – 4 (General)", day: 770, boarding: 1300 },
+  { label: "Form 3 & 4 Science Classes", day: 820, boarding: 1350 },
+  { label: "A' Level Commercials & Arts", day: 800, boarding: 1350 },
+  { label: "A' Level Sciences", day: 850, boarding: 1400 },
+];
+
+/** Pick the packages relevant to a student's class; fall back to showing all. */
+const packagesFor = (className: string): FeePackage[] => {
+  const c = (className || "").toLowerCase();
+  const isALevel = /form\s*[56]|\b[56]\b|lower\s*6|upper\s*6/.test(c);
+  const science = /scien/.test(c);
+  if (isALevel) {
+    return science
+      ? [PACKAGES[3]]
+      : /commerc|art/.test(c)
+        ? [PACKAGES[2]]
+        : [PACKAGES[2], PACKAGES[3]];
+  }
+  if (/form\s*[34]|\b[34]\b/.test(c)) {
+    return science ? [PACKAGES[1]] : [PACKAGES[0], PACKAGES[1]];
+  }
+  if (/form\s*[12]|\b[12]\b/.test(c)) return [PACKAGES[0]];
+  return PACKAGES;
+};
+
 const BANK_ROWS: [string, string][] = [
   ["Account Name", "PROGRESS CHRISTIAN COLLEGE – FEES ACCOUNT"],
   ["Fees Account No.", "5722100005910"],
