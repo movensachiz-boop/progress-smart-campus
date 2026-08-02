@@ -132,6 +132,39 @@ const renderInvoice = (
   });
   y = (doc as any).lastAutoTable.finalY + 8;
 
+  // Fee package options (returning students — admission fee not applicable)
+  const pkgs = packagesFor(s.className);
+  autoTable(doc, {
+    startY: y,
+    theme: "grid",
+    styles: { fontSize: 8.5, cellPadding: 2.2 },
+    headStyles: { fillColor: NAVY, textColor: 255, fontSize: 8.5 },
+    head: [["Fee Package (choose one)", "Day Scholar", "Day + Transport", "Boarding"]],
+    body: pkgs.map(p => [
+      p.label,
+      `$${p.day.toFixed(2)}`,
+      `$${(p.day + TRANSPORT).toFixed(2)}`,
+      `$${p.boarding.toFixed(2)}`,
+    ]) as any,
+    columnStyles: {
+      1: { halign: "right", cellWidth: 30 },
+      2: { halign: "right", cellWidth: 32 },
+      3: { halign: "right", cellWidth: 30 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+  y = (doc as any).lastAutoTable.finalY + 4;
+
+  doc.setFontSize(7.5);
+  doc.setTextColor(90, 90, 90);
+  doc.text(
+    `Transport is optional for day scholars at $${TRANSPORT.toFixed(2)} per term. Boarding fees are inclusive of accommodation and meals. No admission fee is charged for continuing students.`,
+    14, y, { maxWidth: pw - 28 }
+  );
+  y += 8;
+  doc.setTextColor(0, 0, 0);
+
+
   // Banking details
   autoTable(doc, {
     startY: y,
