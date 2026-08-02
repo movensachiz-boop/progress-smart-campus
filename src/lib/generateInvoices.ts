@@ -20,6 +20,36 @@ export interface InvoiceOptions {
 const NAVY: [number, number, number] = [0, 51, 102];
 const GOLD: [number, number, number] = [255, 215, 0];
 
+const TRANSPORT = 100;
+
+interface FeePackage { label: string; day: number; boarding: number }
+
+const PACKAGES: FeePackage[] = [
+  { label: "Form 1 – 4 (General)", day: 770, boarding: 1300 },
+  { label: "Form 3 & 4 Science Classes", day: 820, boarding: 1350 },
+  { label: "A' Level Commercials & Arts", day: 800, boarding: 1350 },
+  { label: "A' Level Sciences", day: 850, boarding: 1400 },
+];
+
+/** Pick the packages relevant to a student's class; fall back to showing all. */
+const packagesFor = (className: string): FeePackage[] => {
+  const c = (className || "").toLowerCase();
+  const isALevel = /form\s*[56]|\b[56]\b|lower\s*6|upper\s*6/.test(c);
+  const science = /scien/.test(c);
+  if (isALevel) {
+    return science
+      ? [PACKAGES[3]]
+      : /commerc|art/.test(c)
+        ? [PACKAGES[2]]
+        : [PACKAGES[2], PACKAGES[3]];
+  }
+  if (/form\s*[34]|\b[34]\b/.test(c)) {
+    return science ? [PACKAGES[1]] : [PACKAGES[0], PACKAGES[1]];
+  }
+  if (/form\s*[12]|\b[12]\b/.test(c)) return [PACKAGES[0]];
+  return PACKAGES;
+};
+
 const BANK_ROWS: [string, string][] = [
   ["Account Name", "PROGRESS CHRISTIAN COLLEGE – FEES ACCOUNT"],
   ["Fees Account No.", "5722100005910"],
@@ -131,6 +161,39 @@ const renderInvoice = (
     margin: { left: 14, right: 14 },
   });
   y = (doc as any).lastAutoTable.finalY + 8;
+
+  // Fee package options (returning students — admission fee not applicable)
+  const pkgs = packagesFor(s.className);
+  autoTable(doc, {
+    startY: y,
+    theme: "grid",
+    styles: { fontSize: 8.5, cellPadding: 2.2 },
+    headStyles: { fillColor: NAVY, textColor: 255, fontSize: 8.5 },
+    head: [["Fee Package (choose one)", "Day Scholar", "Day + Transport", "Boarding"]],
+    body: pkgs.map(p => [
+      p.label,
+      `$${p.day.toFixed(2)}`,
+      `$${(p.day + TRANSPORT).toFixed(2)}`,
+      `$${p.boarding.toFixed(2)}`,
+    ]) as any,
+    columnStyles: {
+      1: { halign: "right", cellWidth: 30 },
+      2: { halign: "right", cellWidth: 32 },
+      3: { halign: "right", cellWidth: 30 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+  y = (doc as any).lastAutoTable.finalY + 4;
+
+  doc.setFontSize(7.5);
+  doc.setTextColor(90, 90, 90);
+  doc.text(
+    `Transport is optional for day scholars at $${TRANSPORT.toFixed(2)} per term. Boarding fees are inclusive of accommodation and meals. No admission fee is charged for continuing students.`,
+    14, y, { maxWidth: pw - 28 }
+  );
+  y += 8;
+  doc.setTextColor(0, 0, 0);
+
 
   // Banking details
   autoTable(doc, {
