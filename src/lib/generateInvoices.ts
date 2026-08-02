@@ -90,13 +90,17 @@ const renderInvoice = (
   logo: HTMLImageElement | null
 ) => {
   const pw = doc.internal.pageSize.getWidth();
-  const balance = (s.totalFees || 0) - (s.totalPaid || 0);
+  
 
   // Header band
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, pw, 30, "F");
   if (logo) {
-    try { doc.addImage(logo, "PNG", 12, 5, 20, 20); } catch { /* ignore */ }
+    try {
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(10, 3.5, 23, 23, 3, 3, "F");
+      doc.addImage(logo, "PNG", 12, 5, 20, 20);
+    } catch { /* ignore */ }
   }
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
@@ -139,7 +143,7 @@ const renderInvoice = (
   });
   y = (doc as any).lastAutoTable.finalY + 8;
 
-  // Charges
+  // Charges (quotation of fees required for the term)
   const items = s.items && s.items.length
     ? s.items.map(i => [i.label, `$${i.amount.toFixed(2)}`])
     : [["Term Fees & Requirements", `$${(s.totalFees || 0).toFixed(2)}`]];
@@ -151,11 +155,7 @@ const renderInvoice = (
     headStyles: { fillColor: NAVY, textColor: 255 },
     head: [["Description", "Amount (USD)"]],
     body: items as any,
-    foot: [
-      ["Total Billed", `$${(s.totalFees || 0).toFixed(2)}`],
-      ["Less: Payments Received", `-$${(s.totalPaid || 0).toFixed(2)}`],
-      [balance > 0 ? "BALANCE DUE" : "CREDIT / PAID IN FULL", `$${Math.abs(balance).toFixed(2)}`],
-    ],
+    foot: [["TOTAL PAYABLE", `$${(s.totalFees || 0).toFixed(2)}`]],
     footStyles: { fillColor: [240, 240, 245], textColor: 0, fontStyle: "bold" },
     columnStyles: { 1: { halign: "right", cellWidth: 45 } },
     margin: { left: 14, right: 14 },
