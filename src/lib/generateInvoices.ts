@@ -96,7 +96,11 @@ const renderInvoice = (
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, pw, 30, "F");
   if (logo) {
-    try { doc.addImage(logo, "PNG", 12, 5, 20, 20); } catch { /* ignore */ }
+    try {
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(10, 3.5, 23, 23, 3, 3, "F");
+      doc.addImage(logo, "PNG", 12, 5, 20, 20);
+    } catch { /* ignore */ }
   }
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
