@@ -15,6 +15,8 @@ import { Download, Camera, Upload, Loader2, CheckCircle, Search, Eye, Printer, M
 import { generateReceipt, generateThermalReceipt, printReceipt } from "@/lib/generateReceipt";
 import { generatePaidLabels, generatePaidStudentsList, PaidStudent } from "@/lib/generatePaidLabels";
 import { generateFeesByClassPDF } from "@/lib/generateFeesByClass";
+import { generateBulkInvoices, generateStudentInvoice, generateSeparateInvoices, InvoiceStudent } from "@/lib/generateInvoices";
+import { useTerm, termLabel } from "@/context/TermContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import BulkPaymentDialog from "@/components/BulkPaymentDialog";
@@ -114,6 +116,7 @@ interface FeeSummary {
 
 const AdminPayments = () => {
   const { toast } = useToast();
+  const { terms, currentTerm, selectedTermId } = useTerm();
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [slipDialogOpen, setSlipDialogOpen] = useState(false);
@@ -664,6 +667,37 @@ const AdminPayments = () => {
   };
 
 
+  const activeTerm = terms.find(t => t.id === selectedTermId) || currentTerm || null;
+  const activeTermLabel = termLabel(activeTerm);
+
+  const toInvoiceStudent = (s: StudentProfile): InvoiceStudent => {
+    const summary = feeSummary.get(s.id);
+    return {
+      name: titleCaseName(`${s.first_name} ${s.last_name}`),
+      regNo: s.registration_number,
+      className: formatClass(s) || "Unassigned",
+      totalFees: summary?.total_fees || 0,
+      totalPaid: summary?.total_paid || 0,
+    };
+  };
+
+  const handleBulkInvoices = async (separate: boolean) => {
+    const list = students.map(toInvoiceStudent).sort((a, b) =>
+      a.className.localeCompare(b.className) || a.name.localeCompare(b.name));
+    if (!list.length) { toast({ title: "No students found", variant: "destructive" }); return; }
+    toast({ title: "Generating invoices...", description: `${list.length} student(s).` });
+    if (separate) await generateSeparateInvoices(list, { termLabel: activeTermLabel });
+    else await generateBulkInvoices(list, { termLabel: activeTermLabel });
+    toast({ title: "Invoices ready", description: `${list.length} invoice(s) for ${activeTermLabel}.` });
+  };
+
+  const handleSingleInvoice = async (studentProfileId: string) => {
+    const s = students.find(x => x.id === studentProfileId);
+    if (!s) { toast({ title: "Student not found", variant: "destructive" }); return; }
+    await generateStudentInvoice(toInvoiceStudent(s), { termLabel: activeTermLabel });
+  };
+
+
   return (
     <DashboardLayout role="admin">
       <div className="space-y-6">
@@ -708,6 +742,12 @@ const AdminPayments = () => {
               toast({ title: "PDF generated", description: `${groups.length} class(es).` });
             }} className="gap-2">
               <FileText size={16} /> Fees by Class PDF
+            </Button>
+            <Button variant="outline" onClick={() => handleBulkInvoices(false)} className="gap-2">
+              <FileText size={16} /> Bulk Invoices PDF
+            </Button>
+            <Button variant="outline" onClick={() => handleBulkInvoices(true)} className="gap-2">
+              <Download size={16} /> Invoices (one file each)
             </Button>
             <Button onClick={() => setSlipDialogOpen(true)} className="gap-2">
               <Camera size={16} /> Scan Deposit Slip
@@ -792,6 +832,9 @@ const AdminPayments = () => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openEditPayment(p)}>
                                 <Pencil size={14} className="mr-2" /> Edit Payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSingleInvoice(p.student_profile_id)}>
+                                <FileText size={14} className="mr-2" /> Invoice PDF
                               </DropdownMenuItem>
                               {(p.status === "paid" || p.status === "completed" || p.status === "confirmed") && (
                                 <>
