@@ -503,6 +503,70 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Reset ANY staff/admin/principal password (no current password needed) ──
+    if (action === "reset_staff_password") {
+      if (!callerRoles.has("admin")) {
+        return new Response(JSON.stringify({ error: "Only admins can reset staff passwords" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { userId, newPassword } = payload;
+      if (!userId || !newPassword || String(newPassword).length < 4) {
+        return new Response(JSON.stringify({ error: "Account and a password of 4+ characters are required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: targetUserRes, error: getErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (getErr || !targetUserRes?.user) {
+        return new Response(JSON.stringify({ error: getErr?.message || "Account not found" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: String(newPassword),
+      });
+      if (pwErr) {
+        return new Response(JSON.stringify({ error: pwErr.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const meta: any = targetUserRes.user.user_metadata || {};
+      const loginName = meta.full_name || (targetUserRes.user.email || "").split("@")[0].replace(/\./g, " ");
+      return new Response(JSON.stringify({ success: true, loginName }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Delete a staff/admin/principal account entirely ──
+    if (action === "delete_staff_account") {
+      if (!callerRoles.has("admin")) {
+        return new Response(JSON.stringify({ error: "Only admins can delete accounts" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { userId } = payload;
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "Account is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (userId === caller.id) {
+        return new Response(JSON.stringify({ error: "You cannot delete your own account" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
+      const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (delErr) {
+        return new Response(JSON.stringify({ error: delErr.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
