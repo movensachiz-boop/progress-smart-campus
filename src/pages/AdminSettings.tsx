@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Crown, UserPlus } from "lucide-react";
+import { Loader2, Crown, UserPlus, KeyRound, Trash2, Search } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STAFF_ROLES = [
   { value: "admin", label: "Full Admin (Mrs Sibanda / Mr Cal / Developer)" },
@@ -31,6 +35,89 @@ const AdminSettings = () => {
   const [staffPassword, setStaffPassword] = useState("");
   const [staffRole, setStaffRole] = useState("cashier");
   const [creatingStaff, setCreatingStaff] = useState(false);
+
+  // Existing accounts management
+  interface StaffAccount { user_id: string; name: string; role: string }
+  const [accounts, setAccounts] = useState<StaffAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [accountSearch, setAccountSearch] = useState("");
+  const [resetTarget, setResetTarget] = useState<StaffAccount | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<StaffAccount | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const loadAccounts = async () => {
+    setLoadingAccounts(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("student-login", { body: { action: "list_staff" } });
+      if (error) throw error;
+      setAccounts(((data?.staff || []) as any[]).filter(s => s.user_id));
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "Failed to load accounts", variant: "destructive" });
+    } finally {
+      setLoadingAccounts(false);
+    }
+  };
+
+  useEffect(() => { loadAccounts(); /* eslint-disable-next-line */ }, []);
+
+  const filteredAccounts = useMemo(
+    () => accounts.filter(a => a.name.toLowerCase().includes(accountSearch.toLowerCase())),
+    [accounts, accountSearch]
+  );
+
+  const invokeErr = async (error: any, data: any, fallback: string) => {
+    let msg = data?.error || error?.message || fallback;
+    try {
+      if (error?.context?.json) {
+        const body = await error.context.json();
+        if (body?.error) msg = body.error;
+      }
+    } catch {}
+    return msg;
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget || resetPassword.length < 4) return;
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-students", {
+        body: { action: "reset_staff_password", userId: resetTarget.user_id, newPassword: resetPassword },
+      });
+      if (error || data?.error) {
+        toast({ title: "Error", description: await invokeErr(error, data, "Reset failed"), variant: "destructive" });
+        return;
+      }
+      toast({ title: "Password reset ✓", description: `${resetTarget.name} can now sign in with the new password.` });
+      setResetTarget(null);
+      setResetPassword("");
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-students", {
+        body: { action: "delete_staff_account", userId: deleteTarget.user_id },
+      });
+      if (error || data?.error) {
+        toast({ title: "Error", description: await invokeErr(error, data, "Delete failed"), variant: "destructive" });
+        return;
+      }
+      toast({ title: "Account deleted", description: `${deleteTarget.name} no longer has access.` });
+      setAccounts(prev => prev.filter(a => a.user_id !== deleteTarget.user_id));
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+
 
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +144,7 @@ const AdminSettings = () => {
       });
       setStaffName("");
       setStaffPassword("");
+      loadAccounts();
     } finally {
       setCreatingStaff(false);
     }
@@ -175,6 +263,112 @@ const AdminSettings = () => {
             </form>
           </CardContent>
         </Card>
+
+        <Card className="shadow-card max-w-2xl border-l-4 border-l-destructive">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <KeyRound size={18} className="text-primary" />
+              Manage Existing Accounts
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Reset the password of any staff account — admins, principal, cashier, teachers — without needing their
+              current password. You can also permanently delete an account.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                placeholder="Search account by name"
+                className="pl-9"
+              />
+            </div>
+
+            {loadingAccounts ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="animate-spin" size={16} /> Loading accounts…
+              </div>
+            ) : filteredAccounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No accounts found.</p>
+            ) : (
+              <div className="max-h-96 overflow-auto divide-y rounded border">
+                {filteredAccounts.map(a => (
+                  <div key={a.user_id} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{a.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{a.role.replace(/_/g, " ")}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        onClick={() => { setResetTarget(a); setResetPassword(""); }}
+                      >
+                        <KeyRound size={14} /> Reset
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="gap-1"
+                        onClick={() => setDeleteTarget(a)}
+                      >
+                        <Trash2 size={14} /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {resetTarget && (
+              <form onSubmit={handleResetPassword} className="space-y-3 rounded-lg border p-4 bg-muted/30">
+                <Label htmlFor="resetPw">New password for {resetTarget.name} (min 4 characters)</Label>
+                <Input
+                  id="resetPw"
+                  type="text"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  minLength={4}
+                  required
+                />
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={resetting} className="gap-2">
+                    {resetting && <Loader2 size={16} className="animate-spin" />}
+                    Update Password
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => { setResetTarget(null); setResetPassword(""); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+
+        <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently removes the account and all its access. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); handleDeleteAccount(); }}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting…" : "Delete account"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+
 
         <Card className="shadow-card max-w-lg border-l-4 border-l-accent">
           <CardHeader>
