@@ -108,7 +108,7 @@ const renderInvoice = (
   doc.text("PROGRESS CHRISTIAN COLLEGE", logo ? 36 : 14, 13);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  doc.text("11729 Mkoba 14, Gweru, Zimbabwe  |  +263 77 400 0143", logo ? 36 : 14, 19);
+  doc.text("Lot E Bonnyvale, Shurugwi Road  |  0773 107 774", logo ? 36 : 14, 19);
   doc.setTextColor(...GOLD);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
@@ -143,32 +143,13 @@ const renderInvoice = (
   });
   y = (doc as any).lastAutoTable.finalY + 8;
 
-  // Charges (quotation of fees required for the term)
-  const items = s.items && s.items.length
-    ? s.items.map(i => [i.label, `$${i.amount.toFixed(2)}`])
-    : [["Term Fees & Requirements", `$${(s.totalFees || 0).toFixed(2)}`]];
-
-  autoTable(doc, {
-    startY: y,
-    theme: "striped",
-    styles: { fontSize: 9, cellPadding: 2.4 },
-    headStyles: { fillColor: NAVY, textColor: 255 },
-    head: [["Description", "Amount (USD)"]],
-    body: items as any,
-    foot: [["TOTAL PAYABLE", `$${(s.totalFees || 0).toFixed(2)}`]],
-    footStyles: { fillColor: [240, 240, 245], textColor: 0, fontStyle: "bold" },
-    columnStyles: { 1: { halign: "right", cellWidth: 45 } },
-    margin: { left: 14, right: 14 },
-  });
-  y = (doc as any).lastAutoTable.finalY + 8;
-
   // Fee package options (returning students — admission fee not applicable)
   const pkgs = packagesFor(s.className);
   autoTable(doc, {
     startY: y,
     theme: "grid",
-    styles: { fontSize: 8.5, cellPadding: 2.2 },
-    headStyles: { fillColor: NAVY, textColor: 255, fontSize: 8.5 },
+    styles: { fontSize: 9, cellPadding: 2.6, fontStyle: "bold" },
+    headStyles: { fillColor: NAVY, textColor: 255, fontSize: 9 },
     head: [["Fee Package (choose one)", "Day Scholar", "Day + Transport", "Boarding"]],
     body: pkgs.map(p => [
       p.label,
@@ -177,14 +158,25 @@ const renderInvoice = (
       `$${p.boarding.toFixed(2)}`,
     ]) as any,
     columnStyles: {
+      0: { fontStyle: "bold" },
       1: { halign: "right", cellWidth: 30 },
       2: { halign: "right", cellWidth: 32 },
       3: { halign: "right", cellWidth: 30 },
     },
     margin: { left: 14, right: 14 },
   });
-  y = (doc as any).lastAutoTable.finalY + 4;
+  y = (doc as any).lastAutoTable.finalY + 6;
 
+  doc.setFillColor(...GOLD);
+  doc.setTextColor(...NAVY);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  const noticeY = y;
+  doc.roundedRect(14, noticeY, pw - 28, 10, 2, 2, "F");
+  doc.text("NO CASH PAYMENTS ACCEPTED. BANK DEPOSITS & SWIPE ONLY.", pw / 2, noticeY + 6.5, { align: "center" });
+  y = noticeY + 14;
+
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(90, 90, 90);
   doc.text(
