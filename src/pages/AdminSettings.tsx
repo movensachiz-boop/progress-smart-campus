@@ -144,6 +144,7 @@ const AdminSettings = () => {
       });
       setStaffName("");
       setStaffPassword("");
+      loadAccounts();
     } finally {
       setCreatingStaff(false);
     }
