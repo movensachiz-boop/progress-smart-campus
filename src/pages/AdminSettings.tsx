@@ -36,6 +36,89 @@ const AdminSettings = () => {
   const [staffRole, setStaffRole] = useState("cashier");
   const [creatingStaff, setCreatingStaff] = useState(false);
 
+  // Existing accounts management
+  interface StaffAccount { user_id: string; name: string; role: string }
+  const [accounts, setAccounts] = useState<StaffAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [accountSearch, setAccountSearch] = useState("");
+  const [resetTarget, setResetTarget] = useState<StaffAccount | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<StaffAccount | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const loadAccounts = async () => {
+    setLoadingAccounts(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("student-login", { body: { action: "list_staff" } });
+      if (error) throw error;
+      setAccounts(((data?.staff || []) as any[]).filter(s => s.user_id));
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "Failed to load accounts", variant: "destructive" });
+    } finally {
+      setLoadingAccounts(false);
+    }
+  };
+
+  useEffect(() => { loadAccounts(); /* eslint-disable-next-line */ }, []);
+
+  const filteredAccounts = useMemo(
+    () => accounts.filter(a => a.name.toLowerCase().includes(accountSearch.toLowerCase())),
+    [accounts, accountSearch]
+  );
+
+  const invokeErr = async (error: any, data: any, fallback: string) => {
+    let msg = data?.error || error?.message || fallback;
+    try {
+      if (error?.context?.json) {
+        const body = await error.context.json();
+        if (body?.error) msg = body.error;
+      }
+    } catch {}
+    return msg;
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget || resetPassword.length < 4) return;
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-students", {
+        body: { action: "reset_staff_password", userId: resetTarget.user_id, newPassword: resetPassword },
+      });
+      if (error || data?.error) {
+        toast({ title: "Error", description: await invokeErr(error, data, "Reset failed"), variant: "destructive" });
+        return;
+      }
+      toast({ title: "Password reset ✓", description: `${resetTarget.name} can now sign in with the new password.` });
+      setResetTarget(null);
+      setResetPassword("");
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-students", {
+        body: { action: "delete_staff_account", userId: deleteTarget.user_id },
+      });
+      if (error || data?.error) {
+        toast({ title: "Error", description: await invokeErr(error, data, "Delete failed"), variant: "destructive" });
+        return;
+      }
+      toast({ title: "Account deleted", description: `${deleteTarget.name} no longer has access.` });
+      setAccounts(prev => prev.filter(a => a.user_id !== deleteTarget.user_id));
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+
+
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffName.trim() || !staffPassword.trim() || !staffRole) return;
