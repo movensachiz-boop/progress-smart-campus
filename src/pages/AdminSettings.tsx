@@ -264,6 +264,112 @@ const AdminSettings = () => {
           </CardContent>
         </Card>
 
+        <Card className="shadow-card max-w-2xl border-l-4 border-l-destructive">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <KeyRound size={18} className="text-primary" />
+              Manage Existing Accounts
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Reset the password of any staff account — admins, principal, cashier, teachers — without needing their
+              current password. You can also permanently delete an account.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+                placeholder="Search account by name"
+                className="pl-9"
+              />
+            </div>
+
+            {loadingAccounts ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="animate-spin" size={16} /> Loading accounts…
+              </div>
+            ) : filteredAccounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No accounts found.</p>
+            ) : (
+              <div className="max-h-96 overflow-auto divide-y rounded border">
+                {filteredAccounts.map(a => (
+                  <div key={a.user_id} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{a.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{a.role.replace(/_/g, " ")}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        onClick={() => { setResetTarget(a); setResetPassword(""); }}
+                      >
+                        <KeyRound size={14} /> Reset
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="gap-1"
+                        onClick={() => setDeleteTarget(a)}
+                      >
+                        <Trash2 size={14} /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {resetTarget && (
+              <form onSubmit={handleResetPassword} className="space-y-3 rounded-lg border p-4 bg-muted/30">
+                <Label htmlFor="resetPw">New password for {resetTarget.name} (min 4 characters)</Label>
+                <Input
+                  id="resetPw"
+                  type="text"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  minLength={4}
+                  required
+                />
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={resetting} className="gap-2">
+                    {resetting && <Loader2 size={16} className="animate-spin" />}
+                    Update Password
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => { setResetTarget(null); setResetPassword(""); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+
+        <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently removes the account and all its access. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); handleDeleteAccount(); }}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting…" : "Delete account"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+
+
         <Card className="shadow-card max-w-lg border-l-4 border-l-accent">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
