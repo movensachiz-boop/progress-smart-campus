@@ -4,6 +4,7 @@ import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefault
 import { v4 } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
+import { loadDoubleSettings } from '@/lib/doubleSettings';
 
 
 interface TimetableContextType {
