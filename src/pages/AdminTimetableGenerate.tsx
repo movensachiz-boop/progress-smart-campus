@@ -348,7 +348,11 @@ export default function AdminTimetableGenerate() {
 
               <div className="pt-4 border-t">
                 <h4 className="text-sm font-semibold mb-1">Double Periods</h4>
-                <p className="text-[10px] text-muted-foreground mb-3">Control which levels get double (back-to-back) lessons and how many days per week each subject may be doubled. Maximum periods per subject are never exceeded.</p>
+                <p className="text-[10px] text-muted-foreground mb-3">
+                  A “double” is a back-to-back block of the same subject. Two numbers control each level:
+                  <strong> Max doubles per week</strong> (how many times a subject may be doubled) and
+                  <strong> periods per double block</strong> (how long each block lasts). The subject’s total weekly periods are never exceeded.
+                </p>
                 <div className="space-y-3">
                   <label className="flex items-center justify-between gap-3 text-xs">
                     <span>Force A-Level subjects to be doubles</span>
@@ -357,14 +361,16 @@ export default function AdminTimetableGenerate() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-muted-foreground">A-Level double days per week (0 = every day)</label>
+                      <label className="text-xs text-muted-foreground">Max A-Level doubles per week</label>
                       <Input type="number" min={0} max={6} className="mt-1" value={doubles.aLevelDoubleDays}
                         onChange={e => setDoubles({ ...doubles, aLevelDoubleDays: Math.max(0, Math.min(6, Number(e.target.value) || 0)) })} />
+                      <p className="text-[10px] text-muted-foreground mt-1">0 = unlimited doubles per week</p>
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Periods per A-Level double block (2–4)</label>
+                      <label className="text-xs text-muted-foreground">Periods per A-Level double block</label>
                       <Input type="number" min={2} max={4} className="mt-1" value={doubles.aLevelDoubleLength ?? 2}
                         onChange={e => setDoubles({ ...doubles, aLevelDoubleLength: Math.max(2, Math.min(4, Number(e.target.value) || 2)) })} />
+                      <p className="text-[10px] text-muted-foreground mt-1">2 = normal double, 3–4 = triple/quad</p>
                     </div>
                   </div>
                   <label className="flex items-center justify-between gap-3 text-xs">
@@ -374,24 +380,28 @@ export default function AdminTimetableGenerate() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-muted-foreground">O-Level double days per week (0 = every day)</label>
+                      <label className="text-xs text-muted-foreground">Max O-Level doubles per week</label>
                       <Input type="number" min={0} max={6} className="mt-1" value={doubles.oLevelDoubleDays}
                         onChange={e => setDoubles({ ...doubles, oLevelDoubleDays: Math.max(0, Math.min(6, Number(e.target.value) || 0)) })} />
+                      <p className="text-[10px] text-muted-foreground mt-1">0 = unlimited doubles per week</p>
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Periods per O-Level double block (2–4)</label>
+                      <label className="text-xs text-muted-foreground">Periods per O-Level double block</label>
                       <Input type="number" min={2} max={4} className="mt-1" value={doubles.oLevelDoubleLength ?? 2}
                         onChange={e => setDoubles({ ...doubles, oLevelDoubleLength: Math.max(2, Math.min(4, Number(e.target.value) || 2)) })} />
+                      <p className="text-[10px] text-muted-foreground mt-1">2 = normal double, 3–4 = triple/quad</p>
                     </div>
                   </div>
 
 
                   <div className="pt-3 border-t">
                     <h5 className="text-xs font-semibold mb-1">Specific subjects always doubled</h5>
-                    <p className="text-[10px] text-muted-foreground mb-2">Tick a subject to force back-to-back lessons for it in every class. First box = doubles per week (0 = use level default), second box = periods per double block (0 = use level default). Weekly maximum periods are never exceeded.</p>
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      Tick a subject to force it into back-to-back blocks. “Max doubles/week” limits how many times that subject may double (0 = use level default above). “Periods/block” sets the block length for that subject (0 = use level default above). Total weekly periods are still respected.
+                    </p>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground pr-1">
                       <span className="flex-1" />
-                      <span className="w-16 text-center">Per week</span>
+                      <span className="w-16 text-center">Max/wk</span>
                       <span className="w-16 text-center">Length</span>
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
