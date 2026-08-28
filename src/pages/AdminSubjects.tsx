@@ -328,6 +328,67 @@ export default function AdminSubjects() {
                   ))}
                 </div>
               </div>
+
+              {/* Classes studying this subject — synced with Teachers section */}
+              <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium">Classes studying this subject</div>
+                  {editing && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[11px]"
+                      onClick={() => {
+                        const ids = teacherClassIdsFor(editing.id);
+                        if (ids.size === 0) { toast.info('No teacher assignments found for this subject'); return; }
+                        setSelectedClassIds(prev => Array.from(new Set([...prev, ...ids])));
+                        toast.success(`Synced ${ids.size} class(es) from teacher assignments`);
+                      }}
+                    >
+                      Sync from teachers
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+                  Ticked classes get this subject in their allocation. Classes already assigned to a teacher for this subject are pre-selected.
+                </p>
+                {form.forms.length === 0 ? (
+                  <span className="text-[11px] text-muted-foreground italic">Select the subject's forms first.</span>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {[...classes]
+                      .filter(c => form.forms.includes(c.form))
+                      .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream))
+                      .map(c => {
+                        const active = selectedClassIds.includes(c.id);
+                        const tNames = editing ? teacherNamesFor(editing.id, c.id) : [];
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => setSelectedClassIds(prev => active ? prev.filter(id => id !== c.id) : [...prev, c.id])}
+                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border text-left transition-colors ${active ? 'bg-primary/10 border-primary/50' : 'bg-muted/40 border-border'}`}
+                          >
+                            <span className="text-xs">
+                              Form {c.form} · {c.stream}{c.learningArea ? ` (${c.learningArea})` : ''}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              {tNames.length > 0 && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{tNames[0]}{tNames.length > 1 ? ` +${tNames.length - 1}` : ''}</Badge>
+                              )}
+                              <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${active ? 'bg-primary text-primary-foreground border-primary' : 'border-border'}`}>{active ? '✓' : ''}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    {classes.filter(c => form.forms.includes(c.form)).length === 0 && (
+                      <span className="text-[11px] text-muted-foreground italic">No classes exist for the selected forms.</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
                 <div className="text-sm font-medium">Compulsory periods per week — per class &amp; stream</div>
                 <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
