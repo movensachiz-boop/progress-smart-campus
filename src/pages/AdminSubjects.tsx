@@ -351,12 +351,12 @@ export default function AdminSubjects() {
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
-                  Ticked classes get this subject in their allocation. Classes already assigned to a teacher for this subject are pre-selected.
+                  Ticked classes get this subject in their allocation. The number next to the teacher is the compulsory periods/week for that class (blank = default {form.periodsPerWeek}).
                 </p>
                 {form.forms.length === 0 ? (
                   <span className="text-[11px] text-muted-foreground italic">Select the subject's forms first.</span>
                 ) : (
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
                     {[...classes]
                       .filter(c => form.forms.includes(c.form))
                       .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream))
@@ -364,59 +364,47 @@ export default function AdminSubjects() {
                         const active = selectedClassIds.includes(c.id);
                         const tNames = editing ? teacherNamesFor(editing.id, c.id) : [];
                         return (
-                          <button
+                          <div
                             key={c.id}
-                            type="button"
-                            onClick={() => setSelectedClassIds(prev => active ? prev.filter(id => id !== c.id) : [...prev, c.id])}
-                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border text-left transition-colors ${active ? 'bg-primary/10 border-primary/50' : 'bg-muted/40 border-border'}`}
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              if ((e.target as HTMLElement).closest('input')) return;
+                              setSelectedClassIds(prev => active ? prev.filter(id => id !== c.id) : [...prev, c.id]);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setSelectedClassIds(prev => active ? prev.filter(id => id !== c.id) : [...prev, c.id]);
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border text-left transition-colors cursor-pointer ${active ? 'bg-primary/10 border-primary/50' : 'bg-muted/40 border-border'}`}
                           >
                             <span className="text-xs">
                               Form {c.form} · {c.stream}{c.learningArea ? ` (${c.learningArea})` : ''}
                             </span>
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1.5">
                               {tNames.length > 0 && (
                                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{tNames[0]}{tNames.length > 1 ? ` +${tNames.length - 1}` : ''}</Badge>
                               )}
+                              <Input
+                                type="number"
+                                min={1}
+                                max={20}
+                                className="h-7 w-16 text-xs px-1.5"
+                                placeholder={String(form.periodsPerWeek)}
+                                value={perClass[c.id] ?? ''}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  setPerClass(p => ({ ...p, [c.id]: e.target.value }));
+                                }}
+                              />
                               <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${active ? 'bg-primary text-primary-foreground border-primary' : 'border-border'}`}>{active ? '✓' : ''}</span>
                             </span>
-                          </button>
+                          </div>
                         );
                       })}
-                    {classes.filter(c => form.forms.includes(c.form)).length === 0 && (
-                      <span className="text-[11px] text-muted-foreground italic">No classes exist for the selected forms.</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
-                <div className="text-sm font-medium">Compulsory periods per week — per class &amp; stream</div>
-                <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
-                  Leave blank to use the default of {form.periodsPerWeek}/week. A value here forces that exact number of periods for that class/stream.
-                </p>
-                {form.forms.length === 0 ? (
-                  <span className="text-[11px] text-muted-foreground italic">Select the subject's forms first.</span>
-                ) : (
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                    {[...classes]
-                      .filter(c => form.forms.includes(c.form))
-                      .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream))
-                      .map(c => (
-                        <div key={c.id} className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            Form {c.form} · {c.stream}{c.learningArea ? ` (${c.learningArea})` : ''}
-                          </span>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={20}
-                            className="h-8 w-20 text-xs"
-                            placeholder={String(form.periodsPerWeek)}
-                            value={perClass[c.id] ?? ''}
-                            onChange={e => setPerClass(p => ({ ...p, [c.id]: e.target.value }))}
-                          />
-                        </div>
-                      ))}
                     {classes.filter(c => form.forms.includes(c.form)).length === 0 && (
                       <span className="text-[11px] text-muted-foreground italic">No classes exist for the selected forms.</span>
                     )}
