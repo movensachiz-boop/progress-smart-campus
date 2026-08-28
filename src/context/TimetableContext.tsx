@@ -3,6 +3,8 @@ import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, 
 import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefaultTeachers, DAYS } from '@/data/defaults';
 import { v4 } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
+
 
 interface TimetableContextType {
   config: SchoolConfig;
