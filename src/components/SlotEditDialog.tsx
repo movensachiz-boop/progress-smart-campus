@@ -41,8 +41,12 @@ export default function SlotEditDialog({
 
   const availableSubjects = useMemo(() => {
     if (!cls) return subjects;
-    return subjects.filter(s => cls.subjectIds.includes(s.id));
+    const inClass = subjects.filter(s => cls.subjectIds.includes(s.id));
+    if (cls.form !== 5 && cls.form !== 6) return inClass;
+    const area = resolveLearningArea(cls);
+    return inClass.filter(s => isSubjectAllowedInALevelArea(s, area));
   }, [cls, subjects]);
+
 
   const availableTeachers = useMemo(() => {
     if (!subjectId) return [];
