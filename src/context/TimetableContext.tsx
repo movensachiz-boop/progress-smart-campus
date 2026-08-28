@@ -199,13 +199,24 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     _setClasses(nextClasses);
     try { localStorage.setItem('tt_classes', JSON.stringify(nextClasses)); } catch {}
 
+    const key = (subjectId: string, classId: string) => `${subjectId}|${classId}`;
+
+    // Remember unticked pairs so defaults never re-add them on reload; forget any
+    // pair that is present again on a class.
+    try {
+      const prev = new Set(loadLS<string[]>('tt_removed_class_subjects', []));
+      removals.forEach(r => prev.add(key(r.subjectId, r.classId)));
+      nextClasses.forEach(c => c.subjectIds.forEach(sId => prev.delete(key(sId, c.id))));
+      localStorage.setItem('tt_removed_class_subjects', JSON.stringify(Array.from(prev)));
+    } catch {}
+
     if (removals.length === 0) {
       scheduleCloudSave({ classes: nextClasses });
       return;
     }
 
-    const key = (subjectId: string, classId: string) => `${subjectId}|${classId}`;
     const removed = new Set(removals.map(r => key(r.subjectId, r.classId)));
+
 
     // Teacher assignments may reference a class by a friendly alias ("5 Sciences",
     // "Form 3G1"). Resolve any alias back to the real class id before filtering.
