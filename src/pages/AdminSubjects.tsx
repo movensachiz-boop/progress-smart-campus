@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 export default function AdminSubjects() {
-  const { subjects, setSubjects, classes, setClasses, timetable, teachers } = useTimetable();
+  const { subjects, setSubjects, classes, setClasses, timetable, teachers, reassignTeacher } = useTimetable();
   const [pendingRename, setPendingRename] = useState<{ data: Subject; count: number; classNames: string[] } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
