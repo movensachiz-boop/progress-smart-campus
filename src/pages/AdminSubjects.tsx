@@ -47,11 +47,17 @@ export default function AdminSubjects() {
     return ids;
   };
 
-  const teacherNamesFor = (subjectId: string, classId: string) =>
+  const teachersFor = (subjectId: string, classId: string) =>
     teachers.filter(t => t.assignments.some(a => a.subjectId === subjectId && a.classIds.some(cid => {
       const cls = classes.find(c => c.id === classId);
       return cls ? matchesClass(cid, cls) : false;
-    }))).map(t => `${t.title} ${t.name}`);
+    })));
+
+  const teacherNamesFor = (subjectId: string, classId: string) =>
+    teachersFor(subjectId, classId).map(t => `${t.title} ${t.name}`);
+
+  const teacherIdFor = (subjectId: string, classId: string) =>
+    teachersFor(subjectId, classId)[0]?.id ?? '';
 
   const openNew = () => {
     setEditing(null);
