@@ -11,6 +11,12 @@ export interface DoubleSettings {
   subjectDoubleIds: string[];
   /** Optional per-subject cap on double days per week (0/absent = use level default). */
   subjectDoubleDays: Record<string, number>;
+  /** How many consecutive periods make one A-level "double" block (2-4). */
+  aLevelDoubleLength: number;
+  /** How many consecutive periods make one O-level "double" block (2-4). */
+  oLevelDoubleLength: number;
+  /** Optional per-subject block length (0/absent = use level default). */
+  subjectDoubleLength: Record<string, number>;
 }
 
 export const DEFAULT_DOUBLE_SETTINGS: DoubleSettings = {
@@ -20,7 +26,11 @@ export const DEFAULT_DOUBLE_SETTINGS: DoubleSettings = {
   oLevelDoubleDays: 2,
   subjectDoubleIds: [],
   subjectDoubleDays: {},
+  aLevelDoubleLength: 2,
+  oLevelDoubleLength: 2,
+  subjectDoubleLength: {},
 };
+
 
 
 const KEY = 'tt_double_settings';
