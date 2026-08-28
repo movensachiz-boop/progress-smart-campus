@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 export default function AdminSubjects() {
-  const { subjects, setSubjects, classes, setClasses, timetable, teachers } = useTimetable();
+  const { subjects, setSubjects, classes, setClasses, timetable, teachers, reassignTeacher } = useTimetable();
   const [pendingRename, setPendingRename] = useState<{ data: Subject; count: number; classNames: string[] } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
@@ -47,11 +47,17 @@ export default function AdminSubjects() {
     return ids;
   };
 
-  const teacherNamesFor = (subjectId: string, classId: string) =>
+  const teachersFor = (subjectId: string, classId: string) =>
     teachers.filter(t => t.assignments.some(a => a.subjectId === subjectId && a.classIds.some(cid => {
       const cls = classes.find(c => c.id === classId);
       return cls ? matchesClass(cid, cls) : false;
-    }))).map(t => `${t.title} ${t.name}`);
+    })));
+
+  const teacherNamesFor = (subjectId: string, classId: string) =>
+    teachersFor(subjectId, classId).map(t => `${t.title} ${t.name}`);
+
+  const teacherIdFor = (subjectId: string, classId: string) =>
+    teachersFor(subjectId, classId)[0]?.id ?? '';
 
   const openNew = () => {
     setEditing(null);
@@ -378,14 +384,35 @@ export default function AdminSubjects() {
                                 setSelectedClassIds(prev => active ? prev.filter(id => id !== c.id) : [...prev, c.id]);
                               }
                             }}
-                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border text-left transition-colors cursor-pointer ${active ? 'bg-primary/10 border-primary/50' : 'bg-muted/40 border-border'}`}
+                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border text-left transition-colors cursor-pointer ${
+                              active && tNames.length === 0
+                                ? 'bg-destructive/10 border-destructive/50'
+                                : active ? 'bg-primary/10 border-primary/50' : 'bg-muted/40 border-border'
+                            }`}
                           >
-                            <span className="text-xs">
+                            <span className="text-xs flex items-center gap-1">
                               Form {c.form} · {c.stream}{c.learningArea ? ` (${c.learningArea})` : ''}
+                              {active && tNames.length === 0 && (
+                                <span className="text-[10px] text-destructive font-medium">· no teacher</span>
+                              )}
                             </span>
                             <span className="flex items-center gap-1.5">
-                              {tNames.length > 0 && (
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{tNames[0]}{tNames.length > 1 ? ` +${tNames.length - 1}` : ''}</Badge>
+                              {editing && (
+                                <select
+                                  value={teacherIdFor(editing.id, c.id) ?? ''}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    reassignTeacher(editing.id, c.id, e.target.value || null);
+                                    toast.success(e.target.value ? 'Teacher updated in timetable' : 'Teacher cleared');
+                                  }}
+                                  className={`h-7 max-w-[130px] text-[11px] rounded-md border bg-background px-1.5 ${tNames.length === 0 ? 'border-destructive/60 text-destructive' : 'border-border'}`}
+                                >
+                                  <option value="">No teacher</option>
+                                  {teachers.map(t => (
+                                    <option key={t.id} value={t.id}>{t.title} {t.name}</option>
+                                  ))}
+                                </select>
                               )}
                               <Input
                                 type="number"
