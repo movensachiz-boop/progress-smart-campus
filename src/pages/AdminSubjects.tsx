@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { generateSubjectStaffingReport } from '@/lib/generateSubjectStaffingReport';
 
 const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -260,7 +261,20 @@ export default function AdminSubjects() {
             <h2 className="text-2xl font-bold text-foreground">Subjects</h2>
             <p className="text-sm text-muted-foreground">{subjects.length} subjects · ZIMSEC-aligned</p>
           </div>
-          <Button onClick={openNew} size="sm"><Plus className="w-4 h-4 mr-1" /> Add Subject</Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const r = generateSubjectStaffingReport({ subjects, teachers, classes, timetable });
+                toast.success(`Report generated · ${r.allocations} allocations, ${r.unassigned} without a teacher`);
+              }}
+            >
+              <FileDown className="w-4 h-4 mr-1" /> Staffing Report
+            </Button>
+            <Button onClick={openNew} size="sm"><Plus className="w-4 h-4 mr-1" /> Add Subject</Button>
+          </div>
+
         </div>
 
         <div className="relative max-w-sm">
