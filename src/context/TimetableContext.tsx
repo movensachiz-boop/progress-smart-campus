@@ -523,32 +523,52 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const base = classForm === 6 ? 10 : classForm === 5 ? 8 : subject.periodsPerWeek;
       return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
     };
+    // Admin-configurable double-period rules (Timetable → Settings → Double Periods).
+    const dblSettings = loadDoubleSettings();
+    const isALevelForm = (form: number | undefined) => form === 5 || form === 6;
     // Subjects eligible for an automatic double period somewhere in the week:
     // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects),
     // plus any subject flagged as `subjectDoubles` on the specific class.
     const globalDoubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
     const isDoubleEligible = (subjectId: string, classId: string) => {
-      if (globalDoubleEligible.has(subjectId)) return true;
       const cls = classes.find(c => c.id === classId);
+      const aLevel = isALevelForm(cls?.form);
+      if (aLevel && !dblSettings.aLevelDoubles) return false;
+      if (!aLevel && !dblSettings.oLevelDoubles) return false;
+      if (globalDoubleEligible.has(subjectId)) return true;
       return !!cls?.subjectDoubles?.includes(subjectId);
     };
     // "Always double" subjects: every placement must be part of a double period.
-    // Covers core sciences + Agriculture by code. A-level (forms 5/6) use QUADS instead.
+    // Covers core sciences + Agriculture by code.
     const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP']);
-    // A-level subjects (forms 5/6) are scheduled as doubles (2 consecutive periods) so that
-    // teachers meet each class multiple times per week. With 8 periods/week per subject this
-    // yields 4 meetings per week per A-level subject.
+    // A-level subjects (forms 5/6) are scheduled as doubles (2 consecutive periods) when the
+    // admin keeps "A-Level doubles" on, so teachers meet each class multiple times per week.
     const mustQuad = (form: number | undefined) => false;
-    const isALevelForm = (form: number | undefined) => form === 5 || form === 6;
-    const mustDouble = (s: Subject, form: number | undefined) =>
-      isALevelForm(form) || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
+    const mustDouble = (s: Subject, form: number | undefined) => {
+      if (isALevelForm(form)) return dblSettings.aLevelDoubles;
+      return dblSettings.oLevelDoubles && ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
+    };
     // Per-day block size required when this subject appears on a day.
     const blockSize = (s: Subject, form: number | undefined) => {
       if (mustDouble(s, form)) return 2;
       return 1;
     };
+    // Limit how many days per week a (class, subject) may carry a double period.
+    const doubleDayLimit = (form: number | undefined) =>
+      isALevelForm(form) ? dblSettings.aLevelDoubleDays : dblSettings.oLevelDoubleDays;
+    const classSubjectDoubleDays: Record<string, number> = {};
+    const canDoubleMore = (classId: string, subjectId: string, form: number | undefined) => {
+      const limit = doubleDayLimit(form);
+      if (!limit || limit <= 0) return true; // 0 = unlimited
+      return (classSubjectDoubleDays[`${classId}-${subjectId}`] || 0) < limit;
+    };
+    const noteDoubleDay = (classId: string, subjectId: string) => {
+      const k = `${classId}-${subjectId}`;
+      classSubjectDoubleDays[k] = (classSubjectDoubleDays[k] || 0) + 1;
+    };
 
     const classSubjectDayDoubled: Record<string, boolean> = {};
+
     // All compulsory (core) subjects should appear EVERY day for each class.
     const dailySubjectIds = new Set(subjects.filter(s => s.isCompulsory).map(s => s.id));
     const classSubjectDay: Record<string, Set<string>> = {};
