@@ -552,10 +552,18 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return dblSettings.oLevelDoubles && ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
     };
     // Per-day block size required when this subject appears on a day.
+    // Admin can decide how many consecutive periods make one "double" block.
+    const clampLen = (n: number) => Math.max(2, Math.min(4, Math.round(n) || 2));
+    const doubleLength = (s: Subject, form: number | undefined) => {
+      const per = Number(dblSettings.subjectDoubleLength?.[s.id] || 0);
+      if (per > 0) return clampLen(per);
+      return clampLen(isALevelForm(form) ? (dblSettings.aLevelDoubleLength || 2) : (dblSettings.oLevelDoubleLength || 2));
+    };
     const blockSize = (s: Subject, form: number | undefined) => {
-      if (mustDouble(s, form)) return 2;
+      if (mustDouble(s, form)) return doubleLength(s, form);
       return 1;
     };
+
     // Limit how many days per week a (class, subject) may carry a double period.
     const doubleDayLimit = (form: number | undefined, subjectId?: string) => {
       const per = subjectId ? Number(dblSettings.subjectDoubleDays?.[subjectId] || 0) : 0;
