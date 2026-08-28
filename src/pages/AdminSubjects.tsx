@@ -10,23 +10,54 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
+const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
 export default function AdminSubjects() {
-  const { subjects, setSubjects, classes, setClasses, timetable } = useTimetable();
+  const { subjects, setSubjects, classes, setClasses, timetable, teachers } = useTimetable();
   const [pendingRename, setPendingRename] = useState<{ data: Subject; count: number; classNames: string[] } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
   const [perClass, setPerClass] = useState<Record<string, string>>({});
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: '', code: '', forms: [] as FormLevel[], learningAreas: [] as LearningArea[],
     periodsPerWeek: 4, isCompulsory: false, commonForms: [] as FormLevel[],
   });
 
+  /** Match a teacher-assignment class id (may be a friendly label like "5 Sciences") to a class. */
+  const matchesClass = (assignedId: string, c: { id: string; form: number; stream: string; learningArea?: string }) => {
+    const a = normKey(assignedId);
+    return a === normKey(c.id)
+      || a === normKey(`${c.form}${c.stream}`)
+      || a === normKey(`form${c.form}${c.stream}`)
+      || (!!c.learningArea && a === normKey(`${c.form}${c.learningArea}`));
+  };
+
+  /** Class ids that teachers have been assigned for this subject (Teachers section). */
+  const teacherClassIdsFor = (subjectId: string) => {
+    const ids = new Set<string>();
+    teachers.forEach(t => t.assignments
+      .filter(a => a.subjectId === subjectId)
+      .forEach(a => a.classIds.forEach(cid => {
+        const cls = classes.find(c => matchesClass(cid, c));
+        if (cls) ids.add(cls.id);
+      })));
+    return ids;
+  };
+
+  const teacherNamesFor = (subjectId: string, classId: string) =>
+    teachers.filter(t => t.assignments.some(a => a.subjectId === subjectId && a.classIds.some(cid => {
+      const cls = classes.find(c => c.id === classId);
+      return cls ? matchesClass(cid, cls) : false;
+    }))).map(t => `${t.title} ${t.name}`);
+
   const openNew = () => {
     setEditing(null);
     setForm({ name: '', code: '', forms: [], learningAreas: [], periodsPerWeek: 4, isCompulsory: false, commonForms: [] });
     setPerClass({});
+    setSelectedClassIds([]);
     setDialogOpen(true);
   };
 
@@ -42,25 +73,41 @@ export default function AdminSubjects() {
       if (typeof v === 'number') overrides[c.id] = String(v);
     });
     setPerClass(overrides);
+    const teacherIds = teacherClassIdsFor(s.id);
+    setSelectedClassIds(classes.filter(c => c.subjectIds.includes(s.id) || teacherIds.has(c.id)).map(c => c.id));
     setDialogOpen(true);
   };
 
-  /** Write the per-class/stream period overrides onto the class records. */
+  /** Write per-class period overrides AND class membership onto the class records. */
   const applyPerClassPeriods = (subjectId: string) => {
     const targetForms = new Set(form.forms);
+    const selected = new Set(selectedClassIds);
     const next = classes.map(c => {
       if (!targetForms.has(c.form)) return c;
+      let updated = c;
+
+      // Sync which classes study this subject
+      const shouldHave = selected.has(c.id);
+      const has = c.subjectIds.includes(subjectId);
+      if (shouldHave !== has) {
+        updated = {
+          ...updated,
+          subjectIds: shouldHave ? [...c.subjectIds, subjectId] : c.subjectIds.filter(id => id !== subjectId),
+        };
+      }
+
       const raw = perClass[c.id];
       const num = raw === undefined || raw === '' ? undefined : Number(raw);
       const current = c.subjectPeriods?.[subjectId];
-      if (num === undefined && current === undefined) return c;
-      const sp = { ...(c.subjectPeriods || {}) };
+      if (num === undefined && current === undefined) return updated;
+      const sp = { ...(updated.subjectPeriods || {}) };
       if (num === undefined || !Number.isFinite(num) || num <= 0) delete sp[subjectId];
       else sp[subjectId] = num;
-      return { ...c, subjectPeriods: Object.keys(sp).length ? sp : undefined };
+      return { ...updated, subjectPeriods: Object.keys(sp).length ? sp : undefined };
     });
     setClasses(next);
   };
+
 
 
   const save = () => {
