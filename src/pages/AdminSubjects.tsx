@@ -96,11 +96,12 @@ export default function AdminSubjects() {
   const applyPerClassPeriods = (subjectId: string) => {
     const targetForms = new Set(form.forms);
     const selected = new Set(selectedClassIds);
+    const teacherIds = teacherClassIdsFor(subjectId);
     const removals: { subjectId: string; classId: string }[] = [];
     const next = classes.map(c => {
       // A class outside the subject's forms must never keep the subject either.
       if (!targetForms.has(c.form)) {
-        if (!c.subjectIds.includes(subjectId)) return c;
+        if (!c.subjectIds.includes(subjectId) && !teacherIds.has(c.id)) return c;
         removals.push({ subjectId, classId: c.id });
         const sp = { ...(c.subjectPeriods || {}) };
         delete sp[subjectId];
@@ -116,7 +117,11 @@ export default function AdminSubjects() {
           ...updated,
           subjectIds: shouldHave ? [...c.subjectIds, subjectId] : c.subjectIds.filter(id => id !== subjectId),
         };
-        if (!shouldHave) removals.push({ subjectId, classId: c.id });
+      }
+      // An unticked class must be recorded as removed even when the subject only
+      // reached it through a teacher assignment (never present in subjectIds).
+      if (!shouldHave && (has || teacherIds.has(c.id))) {
+        removals.push({ subjectId, classId: c.id });
       }
 
       // Unticked classes lose any period override too.
