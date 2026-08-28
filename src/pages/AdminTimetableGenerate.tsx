@@ -11,6 +11,7 @@ import TimetableBackupPanel from '@/components/TimetableBackupPanel';
 import PhoneCameraPairDialog from '@/components/PhoneCameraPairDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 } from '@/lib/utils';
+import { loadDoubleSettings, saveDoubleSettings, type DoubleSettings } from '@/lib/doubleSettings';
 
 const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -18,6 +19,8 @@ export default function AdminTimetableGenerate() {
   const { teachers, setTeachers, subjects, setSubjects, classes, setClasses, config, setConfig, generateTimetable, timetable } = useTimetable();
   const [generating, setGenerating] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [doubles, setDoublesState] = useState<DoubleSettings>(() => loadDoubleSettings());
+  const setDoubles = (next: DoubleSettings) => { setDoublesState(next); saveDoubleSettings(next); };
   const [importing, setImporting] = useState(false);
   const navigate = useNavigate();
 
@@ -340,6 +343,33 @@ export default function AdminTimetableGenerate() {
                   <label className="text-xs text-muted-foreground">Lunch After Period</label>
                   <Input type="number" min={1} max={config.periodsPerDay} className="mt-1" value={config.lunchAfterPeriod}
                     onChange={e => setConfig({ ...config, lunchAfterPeriod: Math.max(1, Number(e.target.value) || 1) })} />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-semibold mb-1">Double Periods</h4>
+                <p className="text-[10px] text-muted-foreground mb-3">Control which levels get double (back-to-back) lessons and how many days per week each subject may be doubled. Maximum periods per subject are never exceeded.</p>
+                <div className="space-y-3">
+                  <label className="flex items-center justify-between gap-3 text-xs">
+                    <span>Force A-Level subjects to be doubles</span>
+                    <input type="checkbox" className="w-4 h-4 accent-[hsl(var(--primary))]" checked={doubles.aLevelDoubles}
+                      onChange={e => setDoubles({ ...doubles, aLevelDoubles: e.target.checked })} />
+                  </label>
+                  <div>
+                    <label className="text-xs text-muted-foreground">A-Level double days per week (0 = every day allowed)</label>
+                    <Input type="number" min={0} max={6} className="mt-1" value={doubles.aLevelDoubleDays}
+                      onChange={e => setDoubles({ ...doubles, aLevelDoubleDays: Math.max(0, Math.min(6, Number(e.target.value) || 0)) })} />
+                  </div>
+                  <label className="flex items-center justify-between gap-3 text-xs">
+                    <span>Allow O-Level (Forms 1–4) doubles</span>
+                    <input type="checkbox" className="w-4 h-4 accent-[hsl(var(--primary))]" checked={doubles.oLevelDoubles}
+                      onChange={e => setDoubles({ ...doubles, oLevelDoubles: e.target.checked })} />
+                  </label>
+                  <div>
+                    <label className="text-xs text-muted-foreground">O-Level double days per week (0 = every day allowed)</label>
+                    <Input type="number" min={0} max={6} className="mt-1" value={doubles.oLevelDoubleDays}
+                      onChange={e => setDoubles({ ...doubles, oLevelDoubleDays: Math.max(0, Math.min(6, Number(e.target.value) || 0)) })} />
+                  </div>
                 </div>
               </div>
             </div>
