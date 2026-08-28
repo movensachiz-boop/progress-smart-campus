@@ -370,6 +370,35 @@ export default function AdminTimetableGenerate() {
                     <Input type="number" min={0} max={6} className="mt-1" value={doubles.oLevelDoubleDays}
                       onChange={e => setDoubles({ ...doubles, oLevelDoubleDays: Math.max(0, Math.min(6, Number(e.target.value) || 0)) })} />
                   </div>
+
+                  <div className="pt-3 border-t">
+                    <h5 className="text-xs font-semibold mb-1">Specific subjects always doubled</h5>
+                    <p className="text-[10px] text-muted-foreground mb-2">Tick a subject to force back-to-back lessons for it in every class. Set days/week per subject (0 = use level default). Weekly maximum periods are never exceeded.</p>
+                    <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                      {[...subjects].sort((a, b) => a.name.localeCompare(b.name)).map(s => {
+                        const on = (doubles.subjectDoubleIds || []).includes(s.id);
+                        return (
+                          <div key={s.id} className="flex items-center gap-2 text-xs py-0.5">
+                            <input type="checkbox" className="w-4 h-4 accent-[hsl(var(--primary))]" checked={on}
+                              onChange={e => setDoubles({
+                                ...doubles,
+                                subjectDoubleIds: e.target.checked
+                                  ? [...new Set([...(doubles.subjectDoubleIds || []), s.id])]
+                                  : (doubles.subjectDoubleIds || []).filter(id => id !== s.id),
+                              })} />
+                            <span className="flex-1 truncate">{s.name} <span className="text-muted-foreground">({s.code})</span></span>
+                            <Input type="number" min={0} max={6} disabled={!on} className="h-7 w-16 text-xs"
+                              value={doubles.subjectDoubleDays?.[s.id] ?? 0}
+                              onChange={e => setDoubles({
+                                ...doubles,
+                                subjectDoubleDays: { ...(doubles.subjectDoubleDays || {}), [s.id]: Math.max(0, Math.min(6, Number(e.target.value) || 0)) },
+                              })} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
