@@ -145,10 +145,16 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (!s) return false;
       return (s.code || '').trim().toUpperCase().endsWith('A');
     };
+    // Also enforce the stream rules: e.g. Bio A must never sit in a Commercials class.
+    const allowedInClass = (subjectId: string, cls: SchoolClass) => {
+      const s = subjects.find(x => x.id === subjectId);
+      if (!s) return false;
+      return isSubjectAllowedInALevelArea(s, resolveLearningArea(cls));
+    };
     let classesChanged = false;
     const nextClasses = classes.map(c => {
       if (c.form !== 5 && c.form !== 6) return c;
-      const cleaned = c.subjectIds.filter(isALevelSubject);
+      const cleaned = c.subjectIds.filter(id => isALevelSubject(id) && allowedInClass(id, c));
       if (cleaned.length !== c.subjectIds.length) {
         classesChanged = true;
         return { ...c, subjectIds: cleaned };
@@ -160,16 +166,20 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       try { localStorage.setItem('tt_classes', JSON.stringify(nextClasses)); } catch {}
     }
     if (timetable) {
-      const aLevelClassIds = new Set(classes.filter(c => c.form === 5 || c.form === 6).map(c => c.id));
+      const aLevelClasses = new Map(classes.filter(c => c.form === 5 || c.form === 6).map(c => [c.id, c]));
+      const aLevelClassIds = new Set(aLevelClasses.keys());
       let ttChanged = false;
       let nextSlots = timetable.slots.map(s => {
-        if (!aLevelClassIds.has(s.classId)) return s;
-        if (s.subjectId && !isALevelSubject(s.subjectId)) {
+        const cls = aLevelClasses.get(s.classId);
+        if (!cls) return s;
+        const bad = (id?: string) => !!id && (!isALevelSubject(id) || !allowedInClass(id, cls));
+        if (bad(s.subjectId) || bad(s.pairedSubjectId)) {
           ttChanged = true;
-          return { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined };
+          return { ...s, subjectId: bad(s.subjectId) ? undefined : s.subjectId, teacherId: bad(s.subjectId) ? undefined : s.teacherId, pairedSubjectId: undefined, pairedTeacherId: undefined };
         }
         return s;
       });
+
       // A-LEVEL rule: doubles only, and never the same subject twice on the same day.
       // 1) Any lesson slot without an adjacent same-subject neighbour is an illegal singleton → clear it.
       // 2) If a subject appears in more than one double on the same day, keep the first, clear the rest.
