@@ -181,6 +181,74 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     scheduleCloudSave({ teachers: nextTeachers, ...(nextTimetable ? { timetable: nextTimetable } : {}) });
   };
 
+  /**
+   * Persist class-subject membership changes. Any subject removed from a class is also
+   * stripped from teacher assignments and purged from the existing timetable for that
+   * class (instead of wiping the whole timetable).
+   */
+  const applyClassSubjectChanges = (
+    nextClasses: SchoolClass[],
+    removals: { subjectId: string; classId: string }[],
+  ) => {
+    _setClasses(nextClasses);
+    try { localStorage.setItem('tt_classes', JSON.stringify(nextClasses)); } catch {}
+
+    if (removals.length === 0) {
+      scheduleCloudSave({ classes: nextClasses });
+      return;
+    }
+
+    const key = (subjectId: string, classId: string) => `${subjectId}|${classId}`;
+    const removed = new Set(removals.map(r => key(r.subjectId, r.classId)));
+
+    const nextTeachers = teachers.map(t => ({
+      ...t,
+      assignments: t.assignments
+        .map(a => ({ ...a, classIds: a.classIds.filter(cid => !removed.has(key(a.subjectId, cid))) }))
+        .filter(a => a.classIds.length > 0),
+    }));
+    _setTeachers(nextTeachers);
+    try { localStorage.setItem('tt_teachers', JSON.stringify(nextTeachers)); } catch {}
+
+    let nextTimetable = timetable;
+    if (timetable) {
+      const slots = timetable.slots.map(s => {
+        if (s.type !== 'lesson') return s;
+        let out = s;
+        // Drop the class from combined groups it should no longer join.
+        if (out.combinedClassIds?.length && out.subjectId) {
+          const kept = out.combinedClassIds.filter(cid => !removed.has(key(out.subjectId!, cid)));
+          if (kept.length !== out.combinedClassIds.length) {
+            out = { ...out, combinedClassIds: kept.length ? kept : undefined };
+          }
+        }
+        if (out.subjectId && removed.has(key(out.subjectId, out.classId))) {
+          out = {
+            ...out,
+            subjectId: out.pairedSubjectId,
+            teacherId: out.pairedTeacherId,
+            pairedSubjectId: undefined,
+            pairedTeacherId: undefined,
+          };
+        }
+        if (out.pairedSubjectId && removed.has(key(out.pairedSubjectId, out.classId))) {
+          out = { ...out, pairedSubjectId: undefined, pairedTeacherId: undefined };
+        }
+        return out;
+      });
+      nextTimetable = { ...timetable, slots };
+      setTimetable(nextTimetable);
+      try { localStorage.setItem('tt_timetable', JSON.stringify(nextTimetable)); } catch {}
+    }
+
+    scheduleCloudSave({
+      classes: nextClasses,
+      teachers: nextTeachers,
+      ...(nextTimetable ? { timetable: nextTimetable } : {}),
+    });
+  };
+
+
   // Auto-purge: any subject whose code doesn't end with "A" is not an A-level subject.
   // Strip it from Forms 5 & 6 class allocations and any existing A-level timetable slots.
   useEffect(() => {
