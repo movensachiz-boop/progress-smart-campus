@@ -450,6 +450,22 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return keys.has(codeStripped) || keys.has(nameStripped) || keys.has(code) || keys.has(name);
     };
 
+    /**
+     * Resolve a class's A-level learning area. Falls back to reading the stream
+     * label (e.g. "Commercials", "Comm", "Sci", "Arts") when the class record has
+     * no explicit learningArea set — otherwise the stream filter silently allows
+     * every A-level subject into that class (e.g. Bio A landing in 5 Commercials).
+     */
+    const resolveLearningArea = (c: SchoolClass): SchoolClass['learningArea'] | undefined => {
+      if (c.learningArea) return c.learningArea;
+      const s = normaliseSubjectKey(c.stream || '');
+      if (!s) return undefined;
+      if (s.startsWith('SCI')) return 'Sciences';
+      if (s.startsWith('COMM') || s.startsWith('COM')) return 'Commercials';
+      if (s.startsWith('ART')) return 'Arts';
+      return undefined;
+    };
+
     const aLevelAllowedAreas = (subject: Subject): SchoolClass['learningArea'][] | null => {
       const areas: SchoolClass['learningArea'][] = [];
       if (subjectMatchesStreamKey(subject, A_LEVEL_SCIENCES_KEYS)) areas.push('Sciences');
@@ -469,6 +485,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (!code.endsWith('A')) return true;
       return false;
     };
+
 
     // Respect the class subject allocation exactly. Teacher assignments decide who can teach
     // a selected subject, but they must not silently re-add subjects removed from a class.
