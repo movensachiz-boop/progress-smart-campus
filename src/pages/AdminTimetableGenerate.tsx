@@ -388,7 +388,12 @@ export default function AdminTimetableGenerate() {
 
                   <div className="pt-3 border-t">
                     <h5 className="text-xs font-semibold mb-1">Specific subjects always doubled</h5>
-                    <p className="text-[10px] text-muted-foreground mb-2">Tick a subject to force back-to-back lessons for it in every class. Set days/week per subject (0 = use level default). Weekly maximum periods are never exceeded.</p>
+                    <p className="text-[10px] text-muted-foreground mb-2">Tick a subject to force back-to-back lessons for it in every class. First box = doubles per week (0 = use level default), second box = periods per double block (0 = use level default). Weekly maximum periods are never exceeded.</p>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground pr-1">
+                      <span className="flex-1" />
+                      <span className="w-16 text-center">Per week</span>
+                      <span className="w-16 text-center">Length</span>
+                    </div>
                     <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
                       {[...subjects].sort((a, b) => a.name.localeCompare(b.name)).map(s => {
                         const on = (doubles.subjectDoubleIds || []).includes(s.id);
@@ -408,9 +413,16 @@ export default function AdminTimetableGenerate() {
                                 ...doubles,
                                 subjectDoubleDays: { ...(doubles.subjectDoubleDays || {}), [s.id]: Math.max(0, Math.min(6, Number(e.target.value) || 0)) },
                               })} />
+                            <Input type="number" min={0} max={4} disabled={!on} className="h-7 w-16 text-xs"
+                              value={doubles.subjectDoubleLength?.[s.id] ?? 0}
+                              onChange={e => setDoubles({
+                                ...doubles,
+                                subjectDoubleLength: { ...(doubles.subjectDoubleLength || {}), [s.id]: Math.max(0, Math.min(4, Number(e.target.value) || 0)) },
+                              })} />
                           </div>
                         );
                       })}
+
                     </div>
                   </div>
 
