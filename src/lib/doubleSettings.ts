@@ -7,6 +7,10 @@ export interface DoubleSettings {
   oLevelDoubles: boolean;
   /** Max number of days per week a given O-level subject may have a double (0 = unlimited). */
   oLevelDoubleDays: number;
+  /** Specific subject ids that must always be scheduled as doubles. */
+  subjectDoubleIds: string[];
+  /** Optional per-subject cap on double days per week (0/absent = use level default). */
+  subjectDoubleDays: Record<string, number>;
 }
 
 export const DEFAULT_DOUBLE_SETTINGS: DoubleSettings = {
@@ -14,7 +18,10 @@ export const DEFAULT_DOUBLE_SETTINGS: DoubleSettings = {
   aLevelDoubleDays: 0,
   oLevelDoubles: true,
   oLevelDoubleDays: 2,
+  subjectDoubleIds: [],
+  subjectDoubleDays: {},
 };
+
 
 const KEY = 'tt_double_settings';
 
