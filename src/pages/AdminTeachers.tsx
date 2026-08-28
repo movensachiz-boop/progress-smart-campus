@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useTimetable } from '@/context/TimetableContext';
 import { Teacher, FormLevel, TeacherClassAssignment } from '@/types/school';
@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, Users, Search, AlertTriangle, KeyRound, Copy, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, Search, AlertTriangle, KeyRound, Copy, Loader2, CheckCircle2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
+const VERIFIED_KEY = 'pcc_verified_teachers';
+
 
 
 export default function AdminTeachers() {
@@ -22,6 +25,15 @@ export default function AdminTeachers() {
   const [loginPassword, setLoginPassword] = useState('');
   const [creatingLogin, setCreatingLogin] = useState(false);
   const [createdCreds, setCreatedCreds] = useState<{ name: string; password: string } | null>(null);
+  const [verified, setVerified] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(VERIFIED_KEY) || '[]'); } catch { return []; }
+  });
+  const [showVerified, setShowVerified] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(VERIFIED_KEY, JSON.stringify(verified));
+  }, [verified]);
+
 
   const [form, setForm] = useState({
     name: '', title: 'Mr.', subjectIds: [] as string[],
@@ -63,6 +75,8 @@ export default function AdminTeachers() {
   const handleDelete = () => {
     if (!deleteTarget) return;
     setTeachers(teachers.filter(x => x.id !== deleteTarget.id));
+    setVerified(v => v.filter(id => id !== deleteTarget.id));
+
     toast.success(`${deleteTarget.title} ${deleteTarget.name} removed`);
     setDeleteTarget(null);
   };
@@ -158,9 +172,17 @@ export default function AdminTeachers() {
 
   const relevantClasses = classes.filter(c => form.forms.includes(c.form));
 
-  const filtered = teachers.filter(t =>
-    !search || `${t.title} ${t.name} ${t.subjectIds.map(sId => subjects.find(s => s.id === sId)?.code).join(' ')}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const matchesSearch = (t: Teacher) =>
+    !search || `${t.title} ${t.name} ${t.subjectIds.map(sId => subjects.find(s => s.id === sId)?.code).join(' ')}`.toLowerCase().includes(search.toLowerCase());
+
+  const remaining = teachers.filter(t => matchesSearch(t) && !verified.includes(t.id));
+  const filtered = showVerified ? teachers.filter(matchesSearch) : remaining;
+  const verifiedCount = teachers.filter(t => verified.includes(t.id)).length;
+
+  const toggleVerified = (t: Teacher) => {
+    setVerified(v => v.includes(t.id) ? v.filter(id => id !== t.id) : [...v, t.id]);
+    if (!verified.includes(t.id)) toast.success(`${t.title} ${t.name} verified`);
+  };
 
   return (
     <DashboardLayout role="admin">
@@ -168,28 +190,46 @@ export default function AdminTeachers() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-foreground">Teachers</h2>
-            <p className="text-sm text-muted-foreground">{teachers.length} teachers · Manage staff and class assignments</p>
+            <p className="text-sm text-muted-foreground">
+              {teachers.length} teachers · {verifiedCount} verified · {teachers.length - verifiedCount} left to check
+            </p>
           </div>
           <Button onClick={openNew} size="sm"><Plus className="w-4 h-4 mr-1" /> Add Teacher</Button>
         </div>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search teachers..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative max-w-sm flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search teachers..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowVerified(s => !s)}>
+            {showVerified ? 'Hide verified' : `Show verified (${verifiedCount})`}
+          </Button>
+          {verifiedCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => { setVerified([]); toast.success('Verification reset'); }}>
+              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reset
+            </Button>
+          )}
         </div>
 
         {filtered.length === 0 ? (
-          <p className="text-center py-12 text-muted-foreground">No teachers found</p>
+          <p className="text-center py-12 text-muted-foreground">
+            {teachers.length > 0 && verifiedCount === teachers.length ? 'All teachers verified 🎉' : 'No teachers found'}
+          </p>
         ) : (
+
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map(t => (
-              <div key={t.id} className="bg-card rounded-xl border p-4 flex items-start justify-between group hover:shadow-md transition-shadow">
+              <div key={t.id} className={`bg-card rounded-xl border p-4 flex items-start justify-between group hover:shadow-md transition-shadow ${verified.includes(t.id) ? 'opacity-60 border-primary/40' : ''}`}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Users className="w-4 h-4 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">{t.title} {t.name}</p>
+                    <p className="text-sm font-semibold flex items-center gap-1">
+                      {t.title} {t.name}
+                      {verified.includes(t.id) && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
+                    </p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {t.subjectIds.map(sId => {
                         const subj = subjects.find(s => s.id === sId);
@@ -213,13 +253,23 @@ export default function AdminTeachers() {
                         })}
                       </div>
                     )}
+                    <Button
+                      size="sm"
+                      variant={verified.includes(t.id) ? 'secondary' : 'outline'}
+                      className="mt-2 h-7 text-xs gap-1"
+                      onClick={() => toggleVerified(t)}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {verified.includes(t.id) ? 'Unverify' : 'Verify'}
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                   <button title="Create/Reset Login" onClick={() => openLoginDialog(t)} className="p-1.5 rounded-md hover:bg-primary/10"><KeyRound className="w-3.5 h-3.5 text-primary" /></button>
                   <button title="Edit" onClick={() => openEdit(t)} className="p-1.5 rounded-md hover:bg-muted"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
                   <button title="Delete" onClick={() => setDeleteTarget(t)} className="p-1.5 rounded-md hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                 </div>
+
 
               </div>
             ))}
