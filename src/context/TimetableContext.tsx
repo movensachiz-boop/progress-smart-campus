@@ -39,20 +39,25 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [classes, _setClasses] = useState<SchoolClass[]>(() => {
     const stored = loadLS<SchoolClass[]>('tt_classes', generateDefaultClasses());
     const deletedSet = new Set(loadLS<string[]>('tt_deleted_classes', []));
+    // Pairs the user explicitly unticked in the Subjects section — never re-add them.
+    const removedPairs = new Set(loadLS<string[]>('tt_removed_class_subjects', []));
     // Skip any class the user has explicitly deleted.
     const defaults = generateDefaultClasses().filter(d => !deletedSet.has(d.id));
     let changed = false;
     const filteredStored = stored.filter(c => !deletedSet.has(c.id));
     if (filteredStored.length !== stored.length) changed = true;
     const merged: SchoolClass[] = filteredStored.map(c => {
+      const kept = c.subjectIds.filter(sId => !removedPairs.has(`${sId}|${c.id}`));
+      if (kept.length !== c.subjectIds.length) changed = true;
+      const base = kept.length !== c.subjectIds.length ? { ...c, subjectIds: kept } : c;
       const def = defaults.find(d => d.id === c.id);
-      if (!def) return c;
-      const missingSubs = def.subjectIds.filter(sId => !c.subjectIds.includes(sId));
+      if (!def) return base;
+      const missingSubs = def.subjectIds.filter(sId => !kept.includes(sId) && !removedPairs.has(`${sId}|${c.id}`));
       if (missingSubs.length) {
         changed = true;
-        return { ...c, subjectIds: [...c.subjectIds, ...missingSubs] };
+        return { ...base, subjectIds: [...kept, ...missingSubs] };
       }
-      return c;
+      return base;
     });
     const missingClasses = defaults.filter(d => !merged.some(c => c.id === d.id));
     if (missingClasses.length) { changed = true; merged.push(...missingClasses); }
@@ -62,6 +67,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     }
     return stored;
   });
+
   const [timetable, setTimetable] = useState<Timetable | null>(() => loadLS<Timetable | null>('tt_timetable', null));
   const cloudSaveTimer = useRef<NodeJS.Timeout | null>(null);
   const snapshotRef = useRef({ config, subjects, teachers, classes, timetable });
@@ -119,7 +125,16 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (snapshot.config) { _setConfig(snapshot.config); localStorage.setItem('tt_config', JSON.stringify(snapshot.config)); }
       if (snapshot.subjects) { _setSubjects(snapshot.subjects); localStorage.setItem('tt_subjects', JSON.stringify(snapshot.subjects)); }
       if (snapshot.teachers) { _setTeachers(snapshot.teachers); localStorage.setItem('tt_teachers', JSON.stringify(snapshot.teachers)); }
-      if (snapshot.classes) { _setClasses(snapshot.classes); localStorage.setItem('tt_classes', JSON.stringify(snapshot.classes)); }
+      if (snapshot.classes) {
+        const removedPairs = new Set(loadLS<string[]>('tt_removed_class_subjects', []));
+        const cleaned = (snapshot.classes as SchoolClass[]).map(c => ({
+          ...c,
+          subjectIds: (c.subjectIds || []).filter(sId => !removedPairs.has(`${sId}|${c.id}`)),
+        }));
+        _setClasses(cleaned);
+        localStorage.setItem('tt_classes', JSON.stringify(cleaned));
+      }
+
       if (snapshot.timetable) { setTimetable(snapshot.timetable); localStorage.setItem('tt_timetable', JSON.stringify(snapshot.timetable)); }
       localStorage.setItem('tt_cloud_snapshot_at', data.created_at);
     })();
@@ -193,20 +208,46 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     _setClasses(nextClasses);
     try { localStorage.setItem('tt_classes', JSON.stringify(nextClasses)); } catch {}
 
+    const key = (subjectId: string, classId: string) => `${subjectId}|${classId}`;
+
+    // Remember unticked pairs so defaults never re-add them on reload; forget any
+    // pair that is present again on a class.
+    try {
+      const prev = new Set(loadLS<string[]>('tt_removed_class_subjects', []));
+      removals.forEach(r => prev.add(key(r.subjectId, r.classId)));
+      nextClasses.forEach(c => c.subjectIds.forEach(sId => prev.delete(key(sId, c.id))));
+      localStorage.setItem('tt_removed_class_subjects', JSON.stringify(Array.from(prev)));
+    } catch {}
+
     if (removals.length === 0) {
       scheduleCloudSave({ classes: nextClasses });
       return;
     }
 
-    const key = (subjectId: string, classId: string) => `${subjectId}|${classId}`;
     const removed = new Set(removals.map(r => key(r.subjectId, r.classId)));
+
+
+    // Teacher assignments may reference a class by a friendly alias ("5 Sciences",
+    // "Form 3G1"). Resolve any alias back to the real class id before filtering.
+    const nk = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const resolveClassId = (cid: string) => {
+      const a = nk(cid);
+      const match = nextClasses.find(c =>
+        a === nk(c.id)
+        || a === nk(`${c.form}${c.stream}`)
+        || a === nk(`form${c.form}${c.stream}`)
+        || (!!c.learningArea && a === nk(`${c.form}${c.learningArea}`))
+      );
+      return match ? match.id : cid;
+    };
 
     const nextTeachers = teachers.map(t => ({
       ...t,
       assignments: t.assignments
-        .map(a => ({ ...a, classIds: a.classIds.filter(cid => !removed.has(key(a.subjectId, cid))) }))
+        .map(a => ({ ...a, classIds: a.classIds.filter(cid => !removed.has(key(a.subjectId, resolveClassId(cid)))) }))
         .filter(a => a.classIds.length > 0),
     }));
+
     _setTeachers(nextTeachers);
     try { localStorage.setItem('tt_teachers', JSON.stringify(nextTeachers)); } catch {}
 
