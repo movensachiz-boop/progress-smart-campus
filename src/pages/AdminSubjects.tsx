@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { generateSubjectStaffingReport } from '@/lib/generateSubjectStaffingReport';
 
 const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
