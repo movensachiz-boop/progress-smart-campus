@@ -92,9 +92,11 @@ export default function AdminSubjects() {
         return;
       }
       setSubjects(subjects.map(s => s.id === editing.id ? subjectData : s));
+      applyPerClassPeriods(subjectData.id);
       toast.success(`${form.name} updated`);
     } else {
       setSubjects([...subjects, subjectData]);
+      applyPerClassPeriods(subjectData.id);
       toast.success(`${form.name} added`);
     }
     setDialogOpen(false);
@@ -103,6 +105,7 @@ export default function AdminSubjects() {
   const confirmRename = () => {
     if (!pendingRename || !editing) return;
     setSubjects(subjects.map(s => s.id === editing.id ? pendingRename.data : s));
+    applyPerClassPeriods(pendingRename.data.id);
     toast.success(`${pendingRename.data.name} updated across ${pendingRename.count} A-level slot(s)`);
     setPendingRename(null);
     setDialogOpen(false);
