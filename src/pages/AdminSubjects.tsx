@@ -281,6 +281,41 @@ export default function AdminSubjects() {
                   ))}
                 </div>
               </div>
+              <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+                <div className="text-sm font-medium">Compulsory periods per week — per class &amp; stream</div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+                  Leave blank to use the default of {form.periodsPerWeek}/week. A value here forces that exact number of periods for that class/stream.
+                </p>
+                {form.forms.length === 0 ? (
+                  <span className="text-[11px] text-muted-foreground italic">Select the subject's forms first.</span>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {[...classes]
+                      .filter(c => form.forms.includes(c.form))
+                      .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream))
+                      .map(c => (
+                        <div key={c.id} className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            Form {c.form} · {c.stream}{c.learningArea ? ` (${c.learningArea})` : ''}
+                          </span>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={20}
+                            className="h-8 w-20 text-xs"
+                            placeholder={String(form.periodsPerWeek)}
+                            value={perClass[c.id] ?? ''}
+                            onChange={e => setPerClass(p => ({ ...p, [c.id]: e.target.value }))}
+                          />
+                        </div>
+                      ))}
+                    {classes.filter(c => form.forms.includes(c.form)).length === 0 && (
+                      <span className="text-[11px] text-muted-foreground italic">No classes exist for the selected forms.</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <Button onClick={save} className="w-full">{editing ? 'Update' : 'Add'} Subject</Button>
             </div>
           </DialogContent>
