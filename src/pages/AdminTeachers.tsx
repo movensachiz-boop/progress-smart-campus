@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useTimetable } from '@/context/TimetableContext';
 import { Teacher, FormLevel, TeacherClassAssignment } from '@/types/school';
@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, Users, Search, AlertTriangle, KeyRound, Copy, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, Search, AlertTriangle, KeyRound, Copy, Loader2, CheckCircle2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
+const VERIFIED_KEY = 'pcc_verified_teachers';
+
 
 
 export default function AdminTeachers() {
