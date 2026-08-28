@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, Users } from 'lucide-react';
 import { TimetableSlot, Subject, Teacher, SchoolClass } from '@/types/school';
-import { formatSubjectName } from '@/lib/timetableUtils';
+import { formatSubjectName, resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
 
 interface SlotEditDialogProps {
   slot: TimetableSlot | null;
@@ -41,8 +41,12 @@ export default function SlotEditDialog({
 
   const availableSubjects = useMemo(() => {
     if (!cls) return subjects;
-    return subjects.filter(s => cls.subjectIds.includes(s.id));
+    const inClass = subjects.filter(s => cls.subjectIds.includes(s.id));
+    if (cls.form !== 5 && cls.form !== 6) return inClass;
+    const area = resolveLearningArea(cls);
+    return inClass.filter(s => isSubjectAllowedInALevelArea(s, area));
   }, [cls, subjects]);
+
 
   const availableTeachers = useMemo(() => {
     if (!subjectId) return [];

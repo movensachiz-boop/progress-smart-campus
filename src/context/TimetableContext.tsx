@@ -3,6 +3,8 @@ import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, 
 import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefaultTeachers, DAYS } from '@/data/defaults';
 import { v4 } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
+
 
 interface TimetableContextType {
   config: SchoolConfig;
@@ -145,10 +147,16 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (!s) return false;
       return (s.code || '').trim().toUpperCase().endsWith('A');
     };
+    // Also enforce the stream rules: e.g. Bio A must never sit in a Commercials class.
+    const allowedInClass = (subjectId: string, cls: SchoolClass) => {
+      const s = subjects.find(x => x.id === subjectId);
+      if (!s) return false;
+      return isSubjectAllowedInALevelArea(s, resolveLearningArea(cls));
+    };
     let classesChanged = false;
     const nextClasses = classes.map(c => {
       if (c.form !== 5 && c.form !== 6) return c;
-      const cleaned = c.subjectIds.filter(isALevelSubject);
+      const cleaned = c.subjectIds.filter(id => isALevelSubject(id) && allowedInClass(id, c));
       if (cleaned.length !== c.subjectIds.length) {
         classesChanged = true;
         return { ...c, subjectIds: cleaned };
@@ -160,16 +168,20 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       try { localStorage.setItem('tt_classes', JSON.stringify(nextClasses)); } catch {}
     }
     if (timetable) {
-      const aLevelClassIds = new Set(classes.filter(c => c.form === 5 || c.form === 6).map(c => c.id));
+      const aLevelClasses = new Map(classes.filter(c => c.form === 5 || c.form === 6).map(c => [c.id, c]));
+      const aLevelClassIds = new Set(aLevelClasses.keys());
       let ttChanged = false;
       let nextSlots = timetable.slots.map(s => {
-        if (!aLevelClassIds.has(s.classId)) return s;
-        if (s.subjectId && !isALevelSubject(s.subjectId)) {
+        const cls = aLevelClasses.get(s.classId);
+        if (!cls) return s;
+        const bad = (id?: string) => !!id && (!isALevelSubject(id) || !allowedInClass(id, cls));
+        if (bad(s.subjectId) || bad(s.pairedSubjectId)) {
           ttChanged = true;
-          return { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined };
+          return { ...s, subjectId: bad(s.subjectId) ? undefined : s.subjectId, teacherId: bad(s.subjectId) ? undefined : s.teacherId, pairedSubjectId: undefined, pairedTeacherId: undefined };
         }
         return s;
       });
+
       // A-LEVEL rule: doubles only, and never the same subject twice on the same day.
       // 1) Any lesson slot without an adjacent same-subject neighbour is an illegal singleton → clear it.
       // 2) If a subject appears in more than one double on the same day, keep the first, clear the rest.
@@ -450,6 +462,22 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return keys.has(codeStripped) || keys.has(nameStripped) || keys.has(code) || keys.has(name);
     };
 
+    /**
+     * Resolve a class's A-level learning area. Falls back to reading the stream
+     * label (e.g. "Commercials", "Comm", "Sci", "Arts") when the class record has
+     * no explicit learningArea set — otherwise the stream filter silently allows
+     * every A-level subject into that class (e.g. Bio A landing in 5 Commercials).
+     */
+    const resolveLearningArea = (c: SchoolClass): SchoolClass['learningArea'] | undefined => {
+      if (c.learningArea) return c.learningArea;
+      const s = normaliseSubjectKey(c.stream || '');
+      if (!s) return undefined;
+      if (s.startsWith('SCI')) return 'Sciences';
+      if (s.startsWith('COMM') || s.startsWith('COM')) return 'Commercials';
+      if (s.startsWith('ART')) return 'Arts';
+      return undefined;
+    };
+
     const aLevelAllowedAreas = (subject: Subject): SchoolClass['learningArea'][] | null => {
       const areas: SchoolClass['learningArea'][] = [];
       if (subjectMatchesStreamKey(subject, A_LEVEL_SCIENCES_KEYS)) areas.push('Sciences');
@@ -469,6 +497,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (!code.endsWith('A')) return true;
       return false;
     };
+
 
     // Respect the class subject allocation exactly. Teacher assignments decide who can teach
     // a selected subject, but they must not silently re-add subjects removed from a class.
@@ -510,20 +539,22 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // receive Arts/Commercials subjects (e.g. GEO A) even if the class definition
       // drifted or an unknown subject slipped in.
       if (isALevel) {
+        const area = resolveLearningArea(c);
         // Ensure every Sciences/Commercials A-level stream offers COMP A — but NOT Arts.
-        if (compASubject && c.learningArea !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
+        if (compASubject && area !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
         merged = merged.filter(sId => {
           const subj = subjects.find(s => s.id === sId);
           if (!subj) return false;
           if (isExcludedFromALevel(subj)) return false;
-          if (!c.learningArea) return true;
+          if (!area) return true;
           const allowedAreas = aLevelAllowedAreas(subj);
           // Unknown A-level subject (no stream key match, no learningAreas set):
           // reject rather than allow everywhere — prevents silent cross-stream leaks.
           if (!allowedAreas) return false;
-          return allowedAreas.includes(c.learningArea);
+          return allowedAreas.includes(area);
         });
       }
+
       classSubjectIds[c.id] = merged;
       classSubjectCount[c.id] = {};
       merged.forEach(sId => { classSubjectCount[c.id][sId] = 0; });
