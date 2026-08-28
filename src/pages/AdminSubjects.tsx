@@ -11,12 +11,13 @@ import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle } from 'lucide-re
 import { toast } from 'sonner';
 
 export default function AdminSubjects() {
-  const { subjects, setSubjects, classes, timetable } = useTimetable();
+  const { subjects, setSubjects, classes, setClasses, timetable } = useTimetable();
   const [pendingRename, setPendingRename] = useState<{ data: Subject; count: number; classNames: string[] } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
+  const [perClass, setPerClass] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     name: '', code: '', forms: [] as FormLevel[], learningAreas: [] as LearningArea[],
     periodsPerWeek: 4, isCompulsory: false, commonForms: [] as FormLevel[],
@@ -25,6 +26,7 @@ export default function AdminSubjects() {
   const openNew = () => {
     setEditing(null);
     setForm({ name: '', code: '', forms: [], learningAreas: [], periodsPerWeek: 4, isCompulsory: false, commonForms: [] });
+    setPerClass({});
     setDialogOpen(true);
   };
 
@@ -34,8 +36,32 @@ export default function AdminSubjects() {
       ? [...s.commonForms]
       : (s.isCommon ? [3, 4] : []);
     setForm({ name: s.name, code: s.code, forms: [...s.forms], learningAreas: s.learningAreas ? [...s.learningAreas] : [], periodsPerWeek: s.periodsPerWeek, isCompulsory: s.isCompulsory, commonForms: initialCommon });
+    const overrides: Record<string, string> = {};
+    classes.forEach(c => {
+      const v = c.subjectPeriods?.[s.id];
+      if (typeof v === 'number') overrides[c.id] = String(v);
+    });
+    setPerClass(overrides);
     setDialogOpen(true);
   };
+
+  /** Write the per-class/stream period overrides onto the class records. */
+  const applyPerClassPeriods = (subjectId: string) => {
+    const targetForms = new Set(form.forms);
+    const next = classes.map(c => {
+      if (!targetForms.has(c.form)) return c;
+      const raw = perClass[c.id];
+      const num = raw === undefined || raw === '' ? undefined : Number(raw);
+      const current = c.subjectPeriods?.[subjectId];
+      if (num === undefined && current === undefined) return c;
+      const sp = { ...(c.subjectPeriods || {}) };
+      if (num === undefined || !Number.isFinite(num) || num <= 0) delete sp[subjectId];
+      else sp[subjectId] = num;
+      return { ...c, subjectPeriods: Object.keys(sp).length ? sp : undefined };
+    });
+    setClasses(next);
+  };
+
 
   const save = () => {
     if (!form.name || !form.code) { toast.error('Name and code are required'); return; }
