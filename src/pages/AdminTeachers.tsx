@@ -170,9 +170,17 @@ export default function AdminTeachers() {
 
   const relevantClasses = classes.filter(c => form.forms.includes(c.form));
 
-  const filtered = teachers.filter(t =>
-    !search || `${t.title} ${t.name} ${t.subjectIds.map(sId => subjects.find(s => s.id === sId)?.code).join(' ')}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const matchesSearch = (t: Teacher) =>
+    !search || `${t.title} ${t.name} ${t.subjectIds.map(sId => subjects.find(s => s.id === sId)?.code).join(' ')}`.toLowerCase().includes(search.toLowerCase());
+
+  const remaining = teachers.filter(t => matchesSearch(t) && !verified.includes(t.id));
+  const filtered = showVerified ? teachers.filter(matchesSearch) : remaining;
+  const verifiedCount = teachers.filter(t => verified.includes(t.id)).length;
+
+  const toggleVerified = (t: Teacher) => {
+    setVerified(v => v.includes(t.id) ? v.filter(id => id !== t.id) : [...v, t.id]);
+    if (!verified.includes(t.id)) toast.success(`${t.title} ${t.name} verified`);
+  };
 
   return (
     <DashboardLayout role="admin">
@@ -180,19 +188,34 @@ export default function AdminTeachers() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-foreground">Teachers</h2>
-            <p className="text-sm text-muted-foreground">{teachers.length} teachers · Manage staff and class assignments</p>
+            <p className="text-sm text-muted-foreground">
+              {teachers.length} teachers · {verifiedCount} verified · {teachers.length - verifiedCount} left to check
+            </p>
           </div>
           <Button onClick={openNew} size="sm"><Plus className="w-4 h-4 mr-1" /> Add Teacher</Button>
         </div>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search teachers..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative max-w-sm flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search teachers..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowVerified(s => !s)}>
+            {showVerified ? 'Hide verified' : `Show verified (${verifiedCount})`}
+          </Button>
+          {verifiedCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => { setVerified([]); toast.success('Verification reset'); }}>
+              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reset
+            </Button>
+          )}
         </div>
 
         {filtered.length === 0 ? (
-          <p className="text-center py-12 text-muted-foreground">No teachers found</p>
+          <p className="text-center py-12 text-muted-foreground">
+            {teachers.length > 0 && verifiedCount === teachers.length ? 'All teachers verified 🎉' : 'No teachers found'}
+          </p>
         ) : (
+
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map(t => (
               <div key={t.id} className="bg-card rounded-xl border p-4 flex items-start justify-between group hover:shadow-md transition-shadow">
