@@ -80,7 +80,15 @@ export default function AdminSubjects() {
     });
     setPerClass(overrides);
     const teacherIds = teacherClassIdsFor(s.id);
-    setSelectedClassIds(classes.filter(c => c.subjectIds.includes(s.id) || teacherIds.has(c.id)).map(c => c.id));
+    // Never re-tick pairs the admin explicitly removed before.
+    let removedPairs = new Set<string>();
+    try { removedPairs = new Set(JSON.parse(localStorage.getItem('tt_removed_class_subjects') || '[]')); } catch { /* ignore */ }
+    setSelectedClassIds(
+      classes
+        .filter(c => !removedPairs.has(`${s.id}|${c.id}`))
+        .filter(c => c.subjectIds.includes(s.id) || teacherIds.has(c.id))
+        .map(c => c.id)
+    );
     setDialogOpen(true);
   };
 
