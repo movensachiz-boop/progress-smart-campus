@@ -88,8 +88,16 @@ export default function AdminSubjects() {
   const applyPerClassPeriods = (subjectId: string) => {
     const targetForms = new Set(form.forms);
     const selected = new Set(selectedClassIds);
+    const removals: { subjectId: string; classId: string }[] = [];
     const next = classes.map(c => {
-      if (!targetForms.has(c.form)) return c;
+      // A class outside the subject's forms must never keep the subject either.
+      if (!targetForms.has(c.form)) {
+        if (!c.subjectIds.includes(subjectId)) return c;
+        removals.push({ subjectId, classId: c.id });
+        const sp = { ...(c.subjectPeriods || {}) };
+        delete sp[subjectId];
+        return { ...c, subjectIds: c.subjectIds.filter(id => id !== subjectId), subjectPeriods: Object.keys(sp).length ? sp : undefined };
+      }
       let updated = c;
 
       // Sync which classes study this subject
@@ -100,6 +108,15 @@ export default function AdminSubjects() {
           ...updated,
           subjectIds: shouldHave ? [...c.subjectIds, subjectId] : c.subjectIds.filter(id => id !== subjectId),
         };
+        if (!shouldHave) removals.push({ subjectId, classId: c.id });
+      }
+
+      // Unticked classes lose any period override too.
+      if (!shouldHave) {
+        const sp = { ...(updated.subjectPeriods || {}) };
+        if (sp[subjectId] === undefined) return updated;
+        delete sp[subjectId];
+        return { ...updated, subjectPeriods: Object.keys(sp).length ? sp : undefined };
       }
 
       const raw = perClass[c.id];
@@ -111,7 +128,10 @@ export default function AdminSubjects() {
       else sp[subjectId] = num;
       return { ...updated, subjectPeriods: Object.keys(sp).length ? sp : undefined };
     });
-    setClasses(next);
+    applyClassSubjectChanges(next, removals);
+    if (removals.length > 0) {
+      toast.success(`Removed from ${removals.length} class(es) and cleared from their timetable`);
+    }
   };
 
 
