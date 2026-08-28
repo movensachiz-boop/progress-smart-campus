@@ -39,20 +39,25 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [classes, _setClasses] = useState<SchoolClass[]>(() => {
     const stored = loadLS<SchoolClass[]>('tt_classes', generateDefaultClasses());
     const deletedSet = new Set(loadLS<string[]>('tt_deleted_classes', []));
+    // Pairs the user explicitly unticked in the Subjects section — never re-add them.
+    const removedPairs = new Set(loadLS<string[]>('tt_removed_class_subjects', []));
     // Skip any class the user has explicitly deleted.
     const defaults = generateDefaultClasses().filter(d => !deletedSet.has(d.id));
     let changed = false;
     const filteredStored = stored.filter(c => !deletedSet.has(c.id));
     if (filteredStored.length !== stored.length) changed = true;
     const merged: SchoolClass[] = filteredStored.map(c => {
+      const kept = c.subjectIds.filter(sId => !removedPairs.has(`${sId}|${c.id}`));
+      if (kept.length !== c.subjectIds.length) changed = true;
+      const base = kept.length !== c.subjectIds.length ? { ...c, subjectIds: kept } : c;
       const def = defaults.find(d => d.id === c.id);
-      if (!def) return c;
-      const missingSubs = def.subjectIds.filter(sId => !c.subjectIds.includes(sId));
+      if (!def) return base;
+      const missingSubs = def.subjectIds.filter(sId => !kept.includes(sId) && !removedPairs.has(`${sId}|${c.id}`));
       if (missingSubs.length) {
         changed = true;
-        return { ...c, subjectIds: [...c.subjectIds, ...missingSubs] };
+        return { ...base, subjectIds: [...kept, ...missingSubs] };
       }
-      return c;
+      return base;
     });
     const missingClasses = defaults.filter(d => !merged.some(c => c.id === d.id));
     if (missingClasses.length) { changed = true; merged.push(...missingClasses); }
@@ -62,6 +67,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     }
     return stored;
   });
+
   const [timetable, setTimetable] = useState<Timetable | null>(() => loadLS<Timetable | null>('tt_timetable', null));
   const cloudSaveTimer = useRef<NodeJS.Timeout | null>(null);
   const snapshotRef = useRef({ config, subjects, teachers, classes, timetable });
