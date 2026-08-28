@@ -139,6 +139,46 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const setTeachers = (v: Teacher[]) => { _setTeachers(v); try { localStorage.setItem('tt_teachers', JSON.stringify(v)); } catch {} scheduleCloudSave({ teachers: v }); invalidateTimetable(); };
   const setClasses = (v: SchoolClass[]) => { _setClasses(v); try { localStorage.setItem('tt_classes', JSON.stringify(v)); } catch {} scheduleCloudSave({ classes: v }); invalidateTimetable(); };
 
+  /**
+   * Fix a wrongly-assigned teacher for one subject in one class.
+   * Updates teacher assignments AND existing timetable slots without wiping the timetable.
+   */
+  const reassignTeacher = (subjectId: string, classId: string, teacherId: string | null) => {
+    const nextTeachers = teachers.map(t => {
+      const assignments = t.assignments.map(a => {
+        if (a.subjectId !== subjectId) return a;
+        return { ...a, classIds: a.classIds.filter(cid => cid !== classId) };
+      }).filter(a => a.classIds.length > 0 || a.subjectId !== subjectId);
+      return { ...t, assignments };
+    }).map(t => {
+      if (!teacherId || t.id !== teacherId) return t;
+      const existing = t.assignments.find(a => a.subjectId === subjectId);
+      const assignments = existing
+        ? t.assignments.map(a => a.subjectId === subjectId ? { ...a, classIds: Array.from(new Set([...a.classIds, classId])) } : a)
+        : [...t.assignments, { subjectId, classIds: [classId] }];
+      const subjectIds = t.subjectIds.includes(subjectId) ? t.subjectIds : [...t.subjectIds, subjectId];
+      return { ...t, assignments, subjectIds };
+    });
+
+    _setTeachers(nextTeachers);
+    try { localStorage.setItem('tt_teachers', JSON.stringify(nextTeachers)); } catch {}
+
+    let nextTimetable = timetable;
+    if (timetable) {
+      nextTimetable = {
+        ...timetable,
+        slots: timetable.slots.map(s =>
+          s.classId === classId && s.subjectId === subjectId
+            ? { ...s, teacherId: teacherId || undefined }
+            : s
+        ),
+      };
+      setTimetable(nextTimetable);
+      try { localStorage.setItem('tt_timetable', JSON.stringify(nextTimetable)); } catch {}
+    }
+    scheduleCloudSave({ teachers: nextTeachers, ...(nextTimetable ? { timetable: nextTimetable } : {}) });
+  };
+
   // Auto-purge: any subject whose code doesn't end with "A" is not an A-level subject.
   // Strip it from Forms 5 & 6 class allocations and any existing A-level timetable slots.
   useEffect(() => {
