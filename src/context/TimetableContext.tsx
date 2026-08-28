@@ -527,20 +527,22 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // receive Arts/Commercials subjects (e.g. GEO A) even if the class definition
       // drifted or an unknown subject slipped in.
       if (isALevel) {
+        const area = resolveLearningArea(c);
         // Ensure every Sciences/Commercials A-level stream offers COMP A — but NOT Arts.
-        if (compASubject && c.learningArea !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
+        if (compASubject && area !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
         merged = merged.filter(sId => {
           const subj = subjects.find(s => s.id === sId);
           if (!subj) return false;
           if (isExcludedFromALevel(subj)) return false;
-          if (!c.learningArea) return true;
+          if (!area) return true;
           const allowedAreas = aLevelAllowedAreas(subj);
           // Unknown A-level subject (no stream key match, no learningAreas set):
           // reject rather than allow everywhere — prevents silent cross-stream leaks.
           if (!allowedAreas) return false;
-          return allowedAreas.includes(c.learningArea);
+          return allowedAreas.includes(area);
         });
       }
+
       classSubjectIds[c.id] = merged;
       classSubjectCount[c.id] = {};
       merged.forEach(sId => { classSubjectCount[c.id][sId] = 0; });
