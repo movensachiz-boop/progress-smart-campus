@@ -25,6 +25,15 @@ export default function AdminTeachers() {
   const [loginPassword, setLoginPassword] = useState('');
   const [creatingLogin, setCreatingLogin] = useState(false);
   const [createdCreds, setCreatedCreds] = useState<{ name: string; password: string } | null>(null);
+  const [verified, setVerified] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(VERIFIED_KEY) || '[]'); } catch { return []; }
+  });
+  const [showVerified, setShowVerified] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(VERIFIED_KEY, JSON.stringify(verified));
+  }, [verified]);
+
 
   const [form, setForm] = useState({
     name: '', title: 'Mr.', subjectIds: [] as string[],
