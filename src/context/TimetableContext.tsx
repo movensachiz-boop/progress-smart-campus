@@ -1248,7 +1248,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
               const targetBlock = blockSize(subject, cls.form);
-              const wantsBlock = targetBlock > 1 || isDoubleEligible(subject.id, cls.id);
+              const wantsBlock = (targetBlock > 1 || isDoubleEligible(subject.id, cls.id)) && canDoubleMore(cls.id, subject.id, cls.form);
               if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
                 const extra = Math.max(1, targetBlock - 1);
                 let placed = 0;
@@ -1280,7 +1280,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   placed++;
                   if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
                 }
-                if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
+                if (placed > 0) { classSubjectDayDoubled[doubleKey] = true; noteDoubleDay(cls.id, subject.id); }
               }
               break;
             }
@@ -1348,7 +1348,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
               const targetBlock = blockSize(subject, cls.form);
-              const wantsBlock = targetBlock > 1 || isDoubleEligible(subject.id, cls.id);
+              const wantsBlock = (targetBlock > 1 || isDoubleEligible(subject.id, cls.id)) && canDoubleMore(cls.id, subject.id, cls.form);
               if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
                 const extra = Math.max(1, targetBlock - 1);
                 let placed = 0;
@@ -1376,7 +1376,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   placed++;
                   if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
                 }
-                if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
+                if (placed > 0) { classSubjectDayDoubled[doubleKey] = true; noteDoubleDay(cls.id, subject.id); }
               }
               break;
             }
@@ -1412,7 +1412,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
               const targetBlock = blockSize(subject, cls.form);
-              const wantsBlock = targetBlock > 1 || isDoubleEligible(subject.id, cls.id);
+              const wantsBlock = (targetBlock > 1 || isDoubleEligible(subject.id, cls.id)) && canDoubleMore(cls.id, subject.id, cls.form);
               if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
                 const extra = Math.max(1, targetBlock - 1);
                 let placed = 0;
@@ -1428,7 +1428,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   placed++;
                   if (targetBlock <= 1 && isDoubleEligible(subject.id, cls.id)) break;
                 }
-                if (placed > 0) classSubjectDayDoubled[doubleKey] = true;
+                if (placed > 0) { classSubjectDayDoubled[doubleKey] = true; noteDoubleDay(cls.id, subject.id); }
               }
               break;
             }
