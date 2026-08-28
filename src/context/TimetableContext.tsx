@@ -530,7 +530,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // anything scheduled at 6+ periods/week (covers core sciences, languages, A-level subjects),
     // plus any subject flagged as `subjectDoubles` on the specific class.
     const globalDoubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
+    const forcedDoubleIds = new Set(dblSettings.subjectDoubleIds || []);
     const isDoubleEligible = (subjectId: string, classId: string) => {
+      if (forcedDoubleIds.has(subjectId)) return true;
       const cls = classes.find(c => c.id === classId);
       const aLevel = isALevelForm(cls?.form);
       if (aLevel && !dblSettings.aLevelDoubles) return false;
@@ -545,6 +547,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // admin keeps "A-Level doubles" on, so teachers meet each class multiple times per week.
     const mustQuad = (form: number | undefined) => false;
     const mustDouble = (s: Subject, form: number | undefined) => {
+      if (forcedDoubleIds.has(s.id)) return true;
       if (isALevelForm(form)) return dblSettings.aLevelDoubles;
       return dblSettings.oLevelDoubles && ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
     };
@@ -554,14 +557,18 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return 1;
     };
     // Limit how many days per week a (class, subject) may carry a double period.
-    const doubleDayLimit = (form: number | undefined) =>
-      isALevelForm(form) ? dblSettings.aLevelDoubleDays : dblSettings.oLevelDoubleDays;
+    const doubleDayLimit = (form: number | undefined, subjectId?: string) => {
+      const per = subjectId ? Number(dblSettings.subjectDoubleDays?.[subjectId] || 0) : 0;
+      if (per > 0) return per;
+      return isALevelForm(form) ? dblSettings.aLevelDoubleDays : dblSettings.oLevelDoubleDays;
+    };
     const classSubjectDoubleDays: Record<string, number> = {};
     const canDoubleMore = (classId: string, subjectId: string, form: number | undefined) => {
-      const limit = doubleDayLimit(form);
+      const limit = doubleDayLimit(form, subjectId);
       if (!limit || limit <= 0) return true; // 0 = unlimited
       return (classSubjectDoubleDays[`${classId}-${subjectId}`] || 0) < limit;
     };
+
     const noteDoubleDay = (classId: string, subjectId: string) => {
       const k = `${classId}-${subjectId}`;
       classSubjectDoubleDays[k] = (classSubjectDoubleDays[k] || 0) + 1;
