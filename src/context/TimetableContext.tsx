@@ -125,7 +125,16 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (snapshot.config) { _setConfig(snapshot.config); localStorage.setItem('tt_config', JSON.stringify(snapshot.config)); }
       if (snapshot.subjects) { _setSubjects(snapshot.subjects); localStorage.setItem('tt_subjects', JSON.stringify(snapshot.subjects)); }
       if (snapshot.teachers) { _setTeachers(snapshot.teachers); localStorage.setItem('tt_teachers', JSON.stringify(snapshot.teachers)); }
-      if (snapshot.classes) { _setClasses(snapshot.classes); localStorage.setItem('tt_classes', JSON.stringify(snapshot.classes)); }
+      if (snapshot.classes) {
+        const removedPairs = new Set(loadLS<string[]>('tt_removed_class_subjects', []));
+        const cleaned = (snapshot.classes as SchoolClass[]).map(c => ({
+          ...c,
+          subjectIds: (c.subjectIds || []).filter(sId => !removedPairs.has(`${sId}|${c.id}`)),
+        }));
+        _setClasses(cleaned);
+        localStorage.setItem('tt_classes', JSON.stringify(cleaned));
+      }
+
       if (snapshot.timetable) { setTimetable(snapshot.timetable); localStorage.setItem('tt_timetable', JSON.stringify(snapshot.timetable)); }
       localStorage.setItem('tt_cloud_snapshot_at', data.created_at);
     })();
