@@ -75,6 +75,8 @@ export default function AdminTeachers() {
   const handleDelete = () => {
     if (!deleteTarget) return;
     setTeachers(teachers.filter(x => x.id !== deleteTarget.id));
+    setVerified(v => v.filter(id => id !== deleteTarget.id));
+
     toast.success(`${deleteTarget.title} ${deleteTarget.name} removed`);
     setDeleteTarget(null);
   };
