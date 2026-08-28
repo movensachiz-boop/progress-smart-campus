@@ -31,3 +31,50 @@ export function formatPairedSubjectNames(
   if (!a) return formatSubjectName(b, classForm);
   return `${formatSubjectName(a, classForm)}${separator}${formatSubjectName(b, classForm)}`;
 }
+
+/* ------------------------------------------------------------------ *
+ * A-Level stream rules (shared by the generator and the slot editor)
+ * ------------------------------------------------------------------ */
+
+const normKey = (v: string) => v.toUpperCase().replace(/&/g, 'AND').replace(/[^A-Z0-9]+/g, '');
+const stripA = (v: string) => {
+  const n = normKey(v);
+  return n.endsWith('A') && n.length > 1 ? n.slice(0, -1) : n;
+};
+
+const SCIENCES_KEYS = new Set(['MATH','MATHS','MATHEMATICS','PHY','PHYSICS','CHE','CHEM','CHEMISTRY','BIO','BIOLOGY','COMP','COMPUTING','COMPUTERSCIENCE','CS','GEO','GEOG','GEOGRAPHY']);
+const COMMERCIALS_KEYS = new Set(['MATH','MATHS','MATHEMATICS','ACC','ACCT','ACCOUNTING','ACCOUNTS','BS','BUS','BUSINESS','BUSINESSSTUDIES','ECO','ECON','ECONOMICS','COMP','COMPUTING','COMPUTERSCIENCE','CS','GEO','GEOG','GEOGRAPHY']);
+const ARTS_KEYS = new Set(['LIT','LITERATURE','LITERATUREINENGLISH','ENGLISHLITERATURE','HIS','HIST','HISTORY','GEO','GEOG','GEOGRAPHY','SHO','SHON','SHONA','NDE','NDEBELE','BIB','BIBLE','BIBLEKNOWLEDGE','BIBLICALSTUDIES','RS','RE','REL','RELIGION','RELIGIOUSSTUDIES','DIVINITY','HER','HEL','HERITAGE','HERITAGESTUDIES','FRS','FRE','FRENCH']);
+const EXCLUDED_KEYS = new Set(['ENG','ENGLISH','ENGLISHLANGUAGE']);
+
+/** Infer a class learning area from its explicit field or its stream label. */
+export function resolveLearningArea(cls: { learningArea?: string; stream?: string } | undefined) {
+  if (!cls) return undefined;
+  if (cls.learningArea) return cls.learningArea as 'Sciences' | 'Commercials' | 'Arts';
+  const s = normKey(cls.stream || '');
+  if (!s) return undefined;
+  if (s.startsWith('SCI')) return 'Sciences' as const;
+  if (s.startsWith('COM')) return 'Commercials' as const;
+  if (s.startsWith('ART')) return 'Arts' as const;
+  return undefined;
+}
+
+/** True when the subject may be taught in the given A-level learning area. */
+export function isSubjectAllowedInALevelArea(subject: Subject, area?: string): boolean {
+  const code = (subject.code || '').trim().toUpperCase();
+  if (!code.endsWith('A')) return false;
+  if (EXCLUDED_KEYS.has(normKey(subject.code || '')) || EXCLUDED_KEYS.has(normKey(subject.name || ''))) return false;
+  if (!area) return true;
+  const match = (keys: Set<string>) =>
+    keys.has(stripA(subject.code || '')) || keys.has(stripA(subject.name || '')) ||
+    keys.has(normKey(subject.code || '')) || keys.has(normKey(subject.name || ''));
+  const areas: string[] = [];
+  if (match(SCIENCES_KEYS)) areas.push('Sciences');
+  if (match(COMMERCIALS_KEYS)) areas.push('Commercials');
+  if (match(ARTS_KEYS)) areas.push('Arts');
+  if (!areas.length) {
+    if (subject.learningAreas?.length) return subject.learningAreas.includes(area as never);
+    return false;
+  }
+  return areas.includes(area);
+}
