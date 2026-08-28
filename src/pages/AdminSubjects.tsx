@@ -374,10 +374,12 @@ export default function AdminSubjects() {
                       size="sm"
                       className="h-7 text-[11px]"
                       onClick={() => {
-                        const ids = teacherClassIdsFor(editing.id);
-                        if (ids.size === 0) { toast.info('No teacher assignments found for this subject'); return; }
+                        let removedPairs = new Set<string>();
+                        try { removedPairs = new Set(JSON.parse(localStorage.getItem('tt_removed_class_subjects') || '[]')); } catch { /* ignore */ }
+                        const ids = Array.from(teacherClassIdsFor(editing.id)).filter(id => !removedPairs.has(`${editing.id}|${id}`));
+                        if (ids.length === 0) { toast.info('No teacher assignments found for this subject'); return; }
                         setSelectedClassIds(prev => Array.from(new Set([...prev, ...ids])));
-                        toast.success(`Synced ${ids.size} class(es) from teacher assignments`);
+                        toast.success(`Synced ${ids.length} class(es) from teacher assignments`);
                       }}
                     >
                       Sync from teachers
