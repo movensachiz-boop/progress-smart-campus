@@ -451,6 +451,25 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     };
     const familySlotOwner: Record<string, string> = {}; // `${fam}-${day}-${slot}` -> owning subjectId
     const fKey = (fam: string, day: string, slot: number) => `${fam}-${day}-${slot}`;
+    // Which teachers can teach each subject (any class). The family lock exists to stop
+    // one teacher being double-booked across related subjects (e.g. ENG and LIT A). When
+    // two related subjects have completely different staff there is no real clash, so we
+    // must NOT block them — otherwise Forms 1-4 (scheduled first) would consume every
+    // period of a family and starve A-level streams such as 5 Arts (LIT A / GEO A / BIB A).
+    const subjectTeacherIds: Record<string, Set<string>> = {};
+    teachers.forEach(t => {
+      t.assignments.forEach(a => {
+        (subjectTeacherIds[a.subjectId] ||= new Set()).add(t.id);
+      });
+      (t.subjectIds || []).forEach(sid => { (subjectTeacherIds[sid] ||= new Set()).add(t.id); });
+    });
+    const shareTeacher = (aId: string, bId: string) => {
+      const a = subjectTeacherIds[aId];
+      const b = subjectTeacherIds[bId];
+      if (!a || !b || a.size === 0 || b.size === 0) return false;
+      for (const id of a) if (b.has(id)) return true;
+      return false;
+    };
     const markFamily = (subjectId: string, day: string, slot: number) => {
       const fam = familyOfSubject(subjectId);
       if (!fam) return;
@@ -461,8 +480,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const fam = familyOfSubject(subjectId);
       if (!fam) return false;
       const owner = familySlotOwner[fKey(fam, day, slot)];
-      return owner !== undefined && owner !== subjectId;
+      if (owner === undefined || owner === subjectId) return false;
+      // Only a genuine shared-staff clash blocks the slot.
+      return shareTeacher(owner, subjectId);
     };
+
 
     const totalSlots = config.periodsPerDay + 2;
     const breakSlot = config.morningBreakAfterPeriod + 1;
@@ -1391,9 +1413,46 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
+          // LAST RESORT: the class still has unmet subject quota but every candidate was
+          // rejected by the soft spacing / cross-form / family rules. Rather than leaving
+          // a blank column (e.g. an entire A-level stream with no subjects at all), place
+          // the most under-allocated subject here, respecting only hard clashes
+          // (teacher already busy at this period).
+          if (!assigned) {
+            const pending = (classSubjectIds[cls.id] || cls.subjectIds)
+              .map(sId => subjects.find(s => s.id === sId)!)
+              .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
+              .filter(s => (classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0) < blockSize(s, cls.form))
+              .sort((a, b) => {
+                const aRemain = ppwFor(a, cls) - (classSubjectCount[cls.id][a.id] || 0);
+                const bRemain = ppwFor(b, cls) - (classSubjectCount[cls.id][b.id] || 0);
+                return bRemain - aRemain;
+              });
+            for (const subject of pending) {
+              const teacher = teachers
+                .filter(t =>
+                  t.assignments.some(a => a.subjectId === subject.id && a.classIds.some(cid => matchesClass(cid, cls.id)))
+                  && (teacherLoad[t.id] || 0) < t.maxPeriodsPerWeek
+                  && !teacherSchedule[t.id]?.[`${day}-${slot}`]
+                )
+                .sort((a, b) => (teacherLoad[a.id] || 0) - (teacherLoad[b.id] || 0))[0];
+              const hasAnyTeacher = teachers.some(t =>
+                t.assignments.some(a => a.subjectId === subject.id && a.classIds.some(cid => matchesClass(cid, cls.id)))
+              );
+              // If the subject has staff but they are all busy this period, skip it.
+              if (hasAnyTeacher && !teacher) continue;
+              slots.push({ id: v4(), day, period: slot, classId: cls.id, subjectId: subject.id, teacherId: teacher?.id, type: 'lesson' });
+              recordSubjectSlot(cls.id, day, subject.id, slot, teacher?.id, teacher);
+              markALevel(cls.form, subject.id, day, slot); markFamily(subject.id, day, slot);
+              assigned = true;
+              break;
+            }
+          }
+
           if (!assigned) {
             slots.push({ id: v4(), day, period: slot, classId: cls.id, type: 'lesson' });
           }
+
         }
       }
     }
