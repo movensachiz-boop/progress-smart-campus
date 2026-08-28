@@ -19,6 +19,7 @@ interface TimetableContextType {
   generateTimetable: () => void;
   updateSlot: (slotId: string, updates: Partial<TimetableSlot>, combinedClassIds?: string[]) => void;
   replaceTimetable: (next: Timetable) => void;
+  reassignTeacher: (subjectId: string, classId: string, teacherId: string | null) => void;
 }
 
 const TimetableContext = createContext<TimetableContextType | undefined>(undefined);
