@@ -451,6 +451,25 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     };
     const familySlotOwner: Record<string, string> = {}; // `${fam}-${day}-${slot}` -> owning subjectId
     const fKey = (fam: string, day: string, slot: number) => `${fam}-${day}-${slot}`;
+    // Which teachers can teach each subject (any class). The family lock exists to stop
+    // one teacher being double-booked across related subjects (e.g. ENG and LIT A). When
+    // two related subjects have completely different staff there is no real clash, so we
+    // must NOT block them — otherwise Forms 1-4 (scheduled first) would consume every
+    // period of a family and starve A-level streams such as 5 Arts (LIT A / GEO A / BIB A).
+    const subjectTeacherIds: Record<string, Set<string>> = {};
+    teachers.forEach(t => {
+      t.assignments.forEach(a => {
+        (subjectTeacherIds[a.subjectId] ||= new Set()).add(t.id);
+      });
+      (t.subjectIds || []).forEach(sid => { (subjectTeacherIds[sid] ||= new Set()).add(t.id); });
+    });
+    const shareTeacher = (aId: string, bId: string) => {
+      const a = subjectTeacherIds[aId];
+      const b = subjectTeacherIds[bId];
+      if (!a || !b || a.size === 0 || b.size === 0) return false;
+      for (const id of a) if (b.has(id)) return true;
+      return false;
+    };
     const markFamily = (subjectId: string, day: string, slot: number) => {
       const fam = familyOfSubject(subjectId);
       if (!fam) return;
@@ -461,8 +480,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const fam = familyOfSubject(subjectId);
       if (!fam) return false;
       const owner = familySlotOwner[fKey(fam, day, slot)];
-      return owner !== undefined && owner !== subjectId;
+      if (owner === undefined || owner === subjectId) return false;
+      // Only a genuine shared-staff clash blocks the slot.
+      return shareTeacher(owner, subjectId);
     };
+
 
     const totalSlots = config.periodsPerDay + 2;
     const breakSlot = config.morningBreakAfterPeriod + 1;
