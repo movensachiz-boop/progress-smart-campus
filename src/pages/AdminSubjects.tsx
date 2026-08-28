@@ -10,23 +10,54 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
+const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
 export default function AdminSubjects() {
-  const { subjects, setSubjects, classes, setClasses, timetable } = useTimetable();
+  const { subjects, setSubjects, classes, setClasses, timetable, teachers } = useTimetable();
   const [pendingRename, setPendingRename] = useState<{ data: Subject; count: number; classNames: string[] } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
   const [perClass, setPerClass] = useState<Record<string, string>>({});
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: '', code: '', forms: [] as FormLevel[], learningAreas: [] as LearningArea[],
     periodsPerWeek: 4, isCompulsory: false, commonForms: [] as FormLevel[],
   });
 
+  /** Match a teacher-assignment class id (may be a friendly label like "5 Sciences") to a class. */
+  const matchesClass = (assignedId: string, c: { id: string; form: number; stream: string; learningArea?: string }) => {
+    const a = normKey(assignedId);
+    return a === normKey(c.id)
+      || a === normKey(`${c.form}${c.stream}`)
+      || a === normKey(`form${c.form}${c.stream}`)
+      || (!!c.learningArea && a === normKey(`${c.form}${c.learningArea}`));
+  };
+
+  /** Class ids that teachers have been assigned for this subject (Teachers section). */
+  const teacherClassIdsFor = (subjectId: string) => {
+    const ids = new Set<string>();
+    teachers.forEach(t => t.assignments
+      .filter(a => a.subjectId === subjectId)
+      .forEach(a => a.classIds.forEach(cid => {
+        const cls = classes.find(c => matchesClass(cid, c));
+        if (cls) ids.add(cls.id);
+      })));
+    return ids;
+  };
+
+  const teacherNamesFor = (subjectId: string, classId: string) =>
+    teachers.filter(t => t.assignments.some(a => a.subjectId === subjectId && a.classIds.some(cid => {
+      const cls = classes.find(c => c.id === classId);
+      return cls ? matchesClass(cid, cls) : false;
+    }))).map(t => `${t.title} ${t.name}`);
+
   const openNew = () => {
     setEditing(null);
     setForm({ name: '', code: '', forms: [], learningAreas: [], periodsPerWeek: 4, isCompulsory: false, commonForms: [] });
     setPerClass({});
+    setSelectedClassIds([]);
     setDialogOpen(true);
   };
 
@@ -42,25 +73,41 @@ export default function AdminSubjects() {
       if (typeof v === 'number') overrides[c.id] = String(v);
     });
     setPerClass(overrides);
+    const teacherIds = teacherClassIdsFor(s.id);
+    setSelectedClassIds(classes.filter(c => c.subjectIds.includes(s.id) || teacherIds.has(c.id)).map(c => c.id));
     setDialogOpen(true);
   };
 
-  /** Write the per-class/stream period overrides onto the class records. */
+  /** Write per-class period overrides AND class membership onto the class records. */
   const applyPerClassPeriods = (subjectId: string) => {
     const targetForms = new Set(form.forms);
+    const selected = new Set(selectedClassIds);
     const next = classes.map(c => {
       if (!targetForms.has(c.form)) return c;
+      let updated = c;
+
+      // Sync which classes study this subject
+      const shouldHave = selected.has(c.id);
+      const has = c.subjectIds.includes(subjectId);
+      if (shouldHave !== has) {
+        updated = {
+          ...updated,
+          subjectIds: shouldHave ? [...c.subjectIds, subjectId] : c.subjectIds.filter(id => id !== subjectId),
+        };
+      }
+
       const raw = perClass[c.id];
       const num = raw === undefined || raw === '' ? undefined : Number(raw);
       const current = c.subjectPeriods?.[subjectId];
-      if (num === undefined && current === undefined) return c;
-      const sp = { ...(c.subjectPeriods || {}) };
+      if (num === undefined && current === undefined) return updated;
+      const sp = { ...(updated.subjectPeriods || {}) };
       if (num === undefined || !Number.isFinite(num) || num <= 0) delete sp[subjectId];
       else sp[subjectId] = num;
-      return { ...c, subjectPeriods: Object.keys(sp).length ? sp : undefined };
+      return { ...updated, subjectPeriods: Object.keys(sp).length ? sp : undefined };
     });
     setClasses(next);
   };
+
 
 
   const save = () => {
@@ -281,6 +328,67 @@ export default function AdminSubjects() {
                   ))}
                 </div>
               </div>
+
+              {/* Classes studying this subject — synced with Teachers section */}
+              <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium">Classes studying this subject</div>
+                  {editing && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[11px]"
+                      onClick={() => {
+                        const ids = teacherClassIdsFor(editing.id);
+                        if (ids.size === 0) { toast.info('No teacher assignments found for this subject'); return; }
+                        setSelectedClassIds(prev => Array.from(new Set([...prev, ...ids])));
+                        toast.success(`Synced ${ids.size} class(es) from teacher assignments`);
+                      }}
+                    >
+                      Sync from teachers
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+                  Ticked classes get this subject in their allocation. Classes already assigned to a teacher for this subject are pre-selected.
+                </p>
+                {form.forms.length === 0 ? (
+                  <span className="text-[11px] text-muted-foreground italic">Select the subject's forms first.</span>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {[...classes]
+                      .filter(c => form.forms.includes(c.form))
+                      .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream))
+                      .map(c => {
+                        const active = selectedClassIds.includes(c.id);
+                        const tNames = editing ? teacherNamesFor(editing.id, c.id) : [];
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => setSelectedClassIds(prev => active ? prev.filter(id => id !== c.id) : [...prev, c.id])}
+                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md border text-left transition-colors ${active ? 'bg-primary/10 border-primary/50' : 'bg-muted/40 border-border'}`}
+                          >
+                            <span className="text-xs">
+                              Form {c.form} · {c.stream}{c.learningArea ? ` (${c.learningArea})` : ''}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              {tNames.length > 0 && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{tNames[0]}{tNames.length > 1 ? ` +${tNames.length - 1}` : ''}</Badge>
+                              )}
+                              <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${active ? 'bg-primary text-primary-foreground border-primary' : 'border-border'}`}>{active ? '✓' : ''}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    {classes.filter(c => form.forms.includes(c.form)).length === 0 && (
+                      <span className="text-[11px] text-muted-foreground italic">No classes exist for the selected forms.</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
                 <div className="text-sm font-medium">Compulsory periods per week — per class &amp; stream</div>
                 <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
