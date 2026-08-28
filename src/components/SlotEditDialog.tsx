@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, Users } from 'lucide-react';
 import { TimetableSlot, Subject, Teacher, SchoolClass } from '@/types/school';
-import { formatSubjectName } from '@/lib/timetableUtils';
+import { formatSubjectName, resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
 
 interface SlotEditDialogProps {
   slot: TimetableSlot | null;
