@@ -218,13 +218,16 @@ export default function AdminTeachers() {
 
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map(t => (
-              <div key={t.id} className="bg-card rounded-xl border p-4 flex items-start justify-between group hover:shadow-md transition-shadow">
+              <div key={t.id} className={`bg-card rounded-xl border p-4 flex items-start justify-between group hover:shadow-md transition-shadow ${verified.includes(t.id) ? 'opacity-60 border-primary/40' : ''}`}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Users className="w-4 h-4 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">{t.title} {t.name}</p>
+                    <p className="text-sm font-semibold flex items-center gap-1">
+                      {t.title} {t.name}
+                      {verified.includes(t.id) && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
+                    </p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {t.subjectIds.map(sId => {
                         const subj = subjects.find(s => s.id === sId);
@@ -248,13 +251,23 @@ export default function AdminTeachers() {
                         })}
                       </div>
                     )}
+                    <Button
+                      size="sm"
+                      variant={verified.includes(t.id) ? 'secondary' : 'outline'}
+                      className="mt-2 h-7 text-xs gap-1"
+                      onClick={() => toggleVerified(t)}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {verified.includes(t.id) ? 'Unverify' : 'Verify'}
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                   <button title="Create/Reset Login" onClick={() => openLoginDialog(t)} className="p-1.5 rounded-md hover:bg-primary/10"><KeyRound className="w-3.5 h-3.5 text-primary" /></button>
                   <button title="Edit" onClick={() => openEdit(t)} className="p-1.5 rounded-md hover:bg-muted"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
                   <button title="Delete" onClick={() => setDeleteTarget(t)} className="p-1.5 rounded-md hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                 </div>
+
 
               </div>
             ))}
