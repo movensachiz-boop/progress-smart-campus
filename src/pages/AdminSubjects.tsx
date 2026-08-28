@@ -11,12 +11,13 @@ import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle } from 'lucide-re
 import { toast } from 'sonner';
 
 export default function AdminSubjects() {
-  const { subjects, setSubjects, classes, timetable } = useTimetable();
+  const { subjects, setSubjects, classes, setClasses, timetable } = useTimetable();
   const [pendingRename, setPendingRename] = useState<{ data: Subject; count: number; classNames: string[] } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Subject | null>(null);
+  const [perClass, setPerClass] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     name: '', code: '', forms: [] as FormLevel[], learningAreas: [] as LearningArea[],
     periodsPerWeek: 4, isCompulsory: false, commonForms: [] as FormLevel[],
@@ -25,6 +26,7 @@ export default function AdminSubjects() {
   const openNew = () => {
     setEditing(null);
     setForm({ name: '', code: '', forms: [], learningAreas: [], periodsPerWeek: 4, isCompulsory: false, commonForms: [] });
+    setPerClass({});
     setDialogOpen(true);
   };
 
@@ -34,8 +36,32 @@ export default function AdminSubjects() {
       ? [...s.commonForms]
       : (s.isCommon ? [3, 4] : []);
     setForm({ name: s.name, code: s.code, forms: [...s.forms], learningAreas: s.learningAreas ? [...s.learningAreas] : [], periodsPerWeek: s.periodsPerWeek, isCompulsory: s.isCompulsory, commonForms: initialCommon });
+    const overrides: Record<string, string> = {};
+    classes.forEach(c => {
+      const v = c.subjectPeriods?.[s.id];
+      if (typeof v === 'number') overrides[c.id] = String(v);
+    });
+    setPerClass(overrides);
     setDialogOpen(true);
   };
+
+  /** Write the per-class/stream period overrides onto the class records. */
+  const applyPerClassPeriods = (subjectId: string) => {
+    const targetForms = new Set(form.forms);
+    const next = classes.map(c => {
+      if (!targetForms.has(c.form)) return c;
+      const raw = perClass[c.id];
+      const num = raw === undefined || raw === '' ? undefined : Number(raw);
+      const current = c.subjectPeriods?.[subjectId];
+      if (num === undefined && current === undefined) return c;
+      const sp = { ...(c.subjectPeriods || {}) };
+      if (num === undefined || !Number.isFinite(num) || num <= 0) delete sp[subjectId];
+      else sp[subjectId] = num;
+      return { ...c, subjectPeriods: Object.keys(sp).length ? sp : undefined };
+    });
+    setClasses(next);
+  };
+
 
   const save = () => {
     if (!form.name || !form.code) { toast.error('Name and code are required'); return; }
@@ -66,9 +92,11 @@ export default function AdminSubjects() {
         return;
       }
       setSubjects(subjects.map(s => s.id === editing.id ? subjectData : s));
+      applyPerClassPeriods(subjectData.id);
       toast.success(`${form.name} updated`);
     } else {
       setSubjects([...subjects, subjectData]);
+      applyPerClassPeriods(subjectData.id);
       toast.success(`${form.name} added`);
     }
     setDialogOpen(false);
@@ -77,6 +105,7 @@ export default function AdminSubjects() {
   const confirmRename = () => {
     if (!pendingRename || !editing) return;
     setSubjects(subjects.map(s => s.id === editing.id ? pendingRename.data : s));
+    applyPerClassPeriods(pendingRename.data.id);
     toast.success(`${pendingRename.data.name} updated across ${pendingRename.count} A-level slot(s)`);
     setPendingRename(null);
     setDialogOpen(false);
@@ -252,6 +281,41 @@ export default function AdminSubjects() {
                   ))}
                 </div>
               </div>
+              <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+                <div className="text-sm font-medium">Compulsory periods per week — per class &amp; stream</div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+                  Leave blank to use the default of {form.periodsPerWeek}/week. A value here forces that exact number of periods for that class/stream.
+                </p>
+                {form.forms.length === 0 ? (
+                  <span className="text-[11px] text-muted-foreground italic">Select the subject's forms first.</span>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {[...classes]
+                      .filter(c => form.forms.includes(c.form))
+                      .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream))
+                      .map(c => (
+                        <div key={c.id} className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            Form {c.form} · {c.stream}{c.learningArea ? ` (${c.learningArea})` : ''}
+                          </span>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={20}
+                            className="h-8 w-20 text-xs"
+                            placeholder={String(form.periodsPerWeek)}
+                            value={perClass[c.id] ?? ''}
+                            onChange={e => setPerClass(p => ({ ...p, [c.id]: e.target.value }))}
+                          />
+                        </div>
+                      ))}
+                    {classes.filter(c => form.forms.includes(c.form)).length === 0 && (
+                      <span className="text-[11px] text-muted-foreground italic">No classes exist for the selected forms.</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <Button onClick={save} className="w-full">{editing ? 'Update' : 'Add'} Subject</Button>
             </div>
           </DialogContent>
