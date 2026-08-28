@@ -201,12 +201,27 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const key = (subjectId: string, classId: string) => `${subjectId}|${classId}`;
     const removed = new Set(removals.map(r => key(r.subjectId, r.classId)));
 
+    // Teacher assignments may reference a class by a friendly alias ("5 Sciences",
+    // "Form 3G1"). Resolve any alias back to the real class id before filtering.
+    const nk = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const resolveClassId = (cid: string) => {
+      const a = nk(cid);
+      const match = nextClasses.find(c =>
+        a === nk(c.id)
+        || a === nk(`${c.form}${c.stream}`)
+        || a === nk(`form${c.form}${c.stream}`)
+        || (!!c.learningArea && a === nk(`${c.form}${c.learningArea}`))
+      );
+      return match ? match.id : cid;
+    };
+
     const nextTeachers = teachers.map(t => ({
       ...t,
       assignments: t.assignments
-        .map(a => ({ ...a, classIds: a.classIds.filter(cid => !removed.has(key(a.subjectId, cid))) }))
+        .map(a => ({ ...a, classIds: a.classIds.filter(cid => !removed.has(key(a.subjectId, resolveClassId(cid)))) }))
         .filter(a => a.classIds.length > 0),
     }));
+
     _setTeachers(nextTeachers);
     try { localStorage.setItem('tt_teachers', JSON.stringify(nextTeachers)); } catch {}
 
