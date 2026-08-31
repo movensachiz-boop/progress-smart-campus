@@ -17,7 +17,31 @@ export interface DoubleSettings {
   oLevelDoubleLength: number;
   /** Optional per-subject block length (0/absent = use level default). */
   subjectDoubleLength: Record<string, number>;
+  /**
+   * Per-class / per-form double period rules.
+   * Key is either a class id (e.g. "4G1") or a form key (e.g. "form:4").
+   * A class rule wins over a form rule, which wins over the level defaults.
+   */
+  classRules: Record<string, ClassDoubleRule>;
 }
+
+export interface ClassDoubleRule {
+  /** Turn doubles on/off for this class or form. */
+  enabled: boolean;
+  /** Max doubles per week per subject (0 = unlimited). */
+  maxPerWeek: number;
+  /** Periods per double block (0 = use level default). */
+  length: number;
+  /** If non-empty, only these subjects are doubled in this class/form. */
+  subjectIds: string[];
+}
+
+export const DEFAULT_CLASS_DOUBLE_RULE: ClassDoubleRule = {
+  enabled: true,
+  maxPerWeek: 0,
+  length: 0,
+  subjectIds: [],
+};
 
 export const DEFAULT_DOUBLE_SETTINGS: DoubleSettings = {
   aLevelDoubles: true,
@@ -29,7 +53,23 @@ export const DEFAULT_DOUBLE_SETTINGS: DoubleSettings = {
   aLevelDoubleLength: 2,
   oLevelDoubleLength: 2,
   subjectDoubleLength: {},
+  classRules: {},
 };
+
+export const formRuleKey = (form: number | string) => `form:${form}`;
+
+/** Resolve the effective rule for a class (class rule > form rule > none). */
+export function resolveClassRule(
+  s: DoubleSettings,
+  classId?: string,
+  form?: number,
+): ClassDoubleRule | undefined {
+  const rules = s.classRules || {};
+  if (classId && rules[classId]) return { ...DEFAULT_CLASS_DOUBLE_RULE, ...rules[classId] };
+  if (form != null && rules[formRuleKey(form)]) return { ...DEFAULT_CLASS_DOUBLE_RULE, ...rules[formRuleKey(form)] };
+  return undefined;
+}
+
 
 
 
