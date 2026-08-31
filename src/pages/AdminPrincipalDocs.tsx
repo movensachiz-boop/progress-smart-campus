@@ -63,6 +63,10 @@ const AdminPrincipalDocs = () => {
   const [enrolling, setEnrolling] = useState(false);
   const [applicationYear, setApplicationYear] = useState<string>("2027");
   const [generatingApplication, setGeneratingApplication] = useState(false);
+  const [calendarTerm, setCalendarTerm] = useState<string>("Term 3");
+  const [calendarYear, setCalendarYear] = useState<string>("2026");
+  const [generatingCalendar, setGeneratingCalendar] = useState(false);
+
 
   // Business letter state
   const [letterRecipientName, setLetterRecipientName] = useState("");
