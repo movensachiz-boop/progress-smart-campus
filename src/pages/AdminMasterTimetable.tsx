@@ -100,6 +100,7 @@ export default function AdminMasterTimetable() {
     } catch { /* logo optional */ }
 
     doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 51, 102);
     doc.text(config.schoolName, pageW / 2, 27, { align: 'center' });
     doc.setFontSize(13);
@@ -109,14 +110,18 @@ export default function AdminMasterTimetable() {
     doc.setTextColor(128, 128, 128);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageW / 2, 39, { align: 'center' });
 
-    // One table per day
-    let startY = 45;
-    for (const day of DAYS) {
-      const dayNum = DAYS.indexOf(day) + 1;
-      doc.setFontSize(11);
+
+    // One table per day, each on its own page
+    for (let d = 0; d < DAYS.length; d++) {
+      const day = DAYS[d];
+      if (d > 0) doc.addPage();
+      let startY = d === 0 ? 45 : 20;
+      const dayNum = d + 1;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 51, 102);
       doc.text(`Day ${dayNum}`, 14, startY);
-      startY += 2;
+      startY += 3;
 
       const headers = ['Period / Time', ...sortedClasses.map(c => `${c.form}${c.stream}`)];
       const rows = periods.map(period => {
@@ -141,20 +146,16 @@ export default function AdminMasterTimetable() {
         head: [headers],
         body: rows,
         theme: 'grid',
-        headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 6, cellPadding: 1.5 },
-        bodyStyles: { fontSize: 6, cellPadding: 1.5, halign: 'center', textColor: [51, 51, 51] },
-        columnStyles: { 0: { halign: 'left', cellWidth: 28 } },
+        styles: { fontStyle: 'bold' },
+        headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 7, cellPadding: 1.5, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 7, cellPadding: 1.5, halign: 'center', textColor: [33, 33, 33], fontStyle: 'bold' },
+        columnStyles: { 0: { halign: 'left', cellWidth: 28, fontStyle: 'bold' } },
         alternateRowStyles: { fillColor: [245, 245, 245] },
         margin: { left: 10, right: 10 },
         tableWidth: 'auto',
       });
-
-      startY = (doc as any).lastAutoTable.finalY + 8;
-      if (startY > doc.internal.pageSize.height - 30 && day !== DAYS[DAYS.length - 1]) {
-        doc.addPage();
-        startY = 15;
-      }
     }
+
 
     // Footer on all pages
     const pageCount = doc.getNumberOfPages();
