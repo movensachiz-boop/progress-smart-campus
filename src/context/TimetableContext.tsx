@@ -1505,6 +1505,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               .map(sId => subjects.find(s => s.id === sId)!)
               .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
               .filter(s => (classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0) < blockSize(s, cls.form, cls.id))
+              .filter(s => !isPracticalSubject(s) || practicalRunAllows(cls.id, day, slot))
               .sort((a, b) => {
                 const aRemain = ppwFor(a, cls) - (classSubjectCount[cls.id][a.id] || 0);
                 const bRemain = ppwFor(b, cls) - (classSubjectCount[cls.id][b.id] || 0);
