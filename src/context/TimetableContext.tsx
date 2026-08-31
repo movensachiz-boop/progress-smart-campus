@@ -1109,7 +1109,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           )
             .filter(s => {
               const dayCount = classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0;
-              const maxBlock = blockSize(s, cls.form);
+              const maxBlock = blockSize(s, cls.form, cls.id);
               if (dayCount >= maxBlock) return false;
               if (dayCount >= 1) return isConsecutive(cls.id, day, s.id, slot);
               return true;
@@ -1202,7 +1202,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               const teacher = availableTeachers.sort((a, b) => (teacherLoad[a.id] || 0) - (teacherLoad[b.id] || 0))[0];
 
               const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
-              const block = blockSize(subject, cls.form);
+              const block = blockSize(subject, cls.form, cls.id);
               const requireBlock = block > 1 && remainingThisSubject >= block;
               if (requireBlock) {
                 const alreadyTodayChk = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
@@ -1233,7 +1233,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                     if (isPreMarkedFree(cid, day, slot)) return false;
                     if ((classSubjectCount[cid]?.[subject.id] || 0) >= ppwFor(subject, classes.find(c => c.id === cid))) return false;
                     const dayCount = classSubjectDayCount[`${cid}-${day}-${subject.id}`] || 0;
-                    if (dayCount >= blockSize(subject, classes.find(c => c.id === cid)?.form)) return false;
+                    if (dayCount >= blockSize(subject, classes.find(c => c.id === cid)?.form, cid)) return false;
                     return (classSubjectIds[cid] || []).includes(subject.id);
                   })
                 : [cls.id];
@@ -1281,7 +1281,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               assigned = true;
 
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
-              const targetBlock = blockSize(subject, cls.form);
+              const targetBlock = blockSize(subject, cls.form, cls.id);
               const wantsBlock = (targetBlock > 1 || isDoubleEligible(subject.id, cls.id)) && canDoubleMore(cls.id, subject.id, cls.form);
               if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
                 const extra = Math.max(1, targetBlock - 1);
@@ -1334,13 +1334,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 if (isPreMarkedFree(cid, day, slot)) return false;
                 if ((classSubjectCount[cid]?.[subject.id] || 0) >= ppwFor(subject, classes.find(c => c.id === cid))) return false;
                 const dayCount = classSubjectDayCount[`${cid}-${day}-${subject.id}`] || 0;
-                if (dayCount >= blockSize(subject, classes.find(c => c.id === cid)?.form)) return false;
+                if (dayCount >= blockSize(subject, classes.find(c => c.id === cid)?.form, cid)) return false;
                 return (classSubjectIds[cid] || []).includes(subject.id);
               });
               if (groupMembers.length !== grp.groupClassIds.length) continue;
 
               const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
-              const block = blockSize(subject, cls.form);
+              const block = blockSize(subject, cls.form, cls.id);
               const requireBlock = block > 1 && remainingThisSubject >= block;
               if (requireBlock) {
                 const alreadyTodayChk = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
@@ -1381,7 +1381,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               assigned = true;
 
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
-              const targetBlock = blockSize(subject, cls.form);
+              const targetBlock = blockSize(subject, cls.form, cls.id);
               const wantsBlock = (targetBlock > 1 || isDoubleEligible(subject.id, cls.id)) && canDoubleMore(cls.id, subject.id, cls.form);
               if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
                 const extra = Math.max(1, targetBlock - 1);
@@ -1420,7 +1420,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             for (const subject of candidateSubjects) {
               if (combineGroups[cls.id]?.[subject.id]?.strict) continue;
               const remainingThisSubject = ppwFor(subject, cls) - (classSubjectCount[cls.id][subject.id] || 0);
-              const block = blockSize(subject, cls.form);
+              const block = blockSize(subject, cls.form, cls.id);
               const requireBlock = block > 1 && remainingThisSubject >= block;
               if (requireBlock) {
                 const alreadyTodayChk = classSubjectDayCount[`${cls.id}-${day}-${subject.id}`] || 0;
@@ -1445,7 +1445,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               assigned = true;
 
               const doubleKey = `${cls.id}-${subject.id}-${day}`;
-              const targetBlock = blockSize(subject, cls.form);
+              const targetBlock = blockSize(subject, cls.form, cls.id);
               const wantsBlock = (targetBlock > 1 || isDoubleEligible(subject.id, cls.id)) && canDoubleMore(cls.id, subject.id, cls.form);
               if (wantsBlock && !classSubjectDayDoubled[doubleKey]) {
                 const extra = Math.max(1, targetBlock - 1);
@@ -1477,7 +1477,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             const pending = (classSubjectIds[cls.id] || cls.subjectIds)
               .map(sId => subjects.find(s => s.id === sId)!)
               .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
-              .filter(s => (classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0) < blockSize(s, cls.form))
+              .filter(s => (classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0) < blockSize(s, cls.form, cls.id))
               .sort((a, b) => {
                 const aRemain = ppwFor(a, cls) - (classSubjectCount[cls.id][a.id] || 0);
                 const bRemain = ppwFor(b, cls) - (classSubjectCount[cls.id][b.id] || 0);
