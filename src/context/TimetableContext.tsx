@@ -559,7 +559,26 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (per > 0) return clampLen(per);
       return clampLen(isALevelForm(form) ? (dblSettings.aLevelDoubleLength || 2) : (dblSettings.oLevelDoubleLength || 2));
     };
-    const blockSize = (s: Subject, form: number | undefined) => {
+    // Practical subjects (Computer Science / Agriculture) must run as ONE unbroken
+    // block on a day — no break, lunch or other subject in between.
+    const PRACTICAL_KEYS = ['AGR', 'AGRI', 'AGRIC', 'AGRICULTURE', 'CS', 'COMP', 'COMPUTING', 'COMPUTERSCIENCE'];
+    const isPracticalSubject = (s: Subject) => {
+      const norm = (v: string) => (v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const code = norm(s.code);
+      const name = norm(s.name);
+      const bare = (v: string) => (v.endsWith('A') && v.length > 1 ? v.slice(0, -1) : v);
+      return PRACTICAL_KEYS.some(k => bare(code) === k || bare(name) === k || code.startsWith(k) || name.startsWith(k));
+    };
+    const blockSize = (s: Subject, form: number | undefined, classId?: string) => {
+      if (isPracticalSubject(s)) {
+        const per = Number(dblSettings.subjectDoubleLength?.[s.id] || 0);
+        if (per > 0) return clampLen(per);
+        const cls = classId ? classes.find(c => c.id === classId) : undefined;
+        const remaining = cls
+          ? ppwFor(s, cls) - (classSubjectCount[cls.id]?.[s.id] || 0)
+          : 4;
+        return Math.max(2, Math.min(4, remaining));
+      }
       if (mustDouble(s, form)) return doubleLength(s, form);
       return 1;
     };
