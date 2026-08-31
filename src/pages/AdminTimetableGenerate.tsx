@@ -11,7 +11,7 @@ import TimetableBackupPanel from '@/components/TimetableBackupPanel';
 import PhoneCameraPairDialog from '@/components/PhoneCameraPairDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 } from '@/lib/utils';
-import { loadDoubleSettings, saveDoubleSettings, type DoubleSettings } from '@/lib/doubleSettings';
+import { loadDoubleSettings, saveDoubleSettings, formRuleKey, DEFAULT_CLASS_DOUBLE_RULE, type DoubleSettings } from '@/lib/doubleSettings';
 
 const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
