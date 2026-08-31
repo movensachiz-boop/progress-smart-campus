@@ -163,9 +163,9 @@ export const generateTermCalendar = async (input: TermCalendarInput = {}) => {
   const gold: [number, number, number] = [255, 215, 0];
 
   const header = () => {
-    doc.setFillColor(...black);
+    doc.setFillColor(...navy);
     doc.rect(0, 0, pageW, 30, "F");
-    doc.setFillColor(...gray);
+    doc.setFillColor(...gold);
     doc.rect(0, 30, pageW, 1.2, "F");
     if (logo) {
       try {
@@ -217,7 +217,7 @@ export const generateTermCalendar = async (input: TermCalendarInput = {}) => {
       lineWidth: 0.2,
       textColor: [0, 0, 0],
     },
-    headStyles: { fillColor: black, textColor: 255, fontSize: 9.5, halign: "center", fontStyle: "bold" },
+    headStyles: { fillColor: navy, textColor: 255, fontSize: 9.5, halign: "center", fontStyle: "bold" },
     columnStyles: {
       0: { cellWidth: 40, fontStyle: "bold", halign: "left" },
       1: { cellWidth: 150 },
