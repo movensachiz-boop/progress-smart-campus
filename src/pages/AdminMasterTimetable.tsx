@@ -123,6 +123,11 @@ export default function AdminMasterTimetable() {
       doc.text(`Day ${dayNum}`, 14, startY);
       startY += 3;
 
+      const isPractical = (code?: string) => {
+        const c = (code || '').toUpperCase().replace(/[^A-Z]/g, '');
+        return c.startsWith('COMP') || c === 'CS' || c.startsWith('AGRIC') || c.startsWith('AGR');
+      };
+
       const headers = ['Period / Time', ...sortedClasses.map(c => `${c.form}${c.stream}`)];
       const rows = periods.map(period => {
         const label = `${getPeriodLabel(period)}\n${getPeriodTime(period)}`;
@@ -135,25 +140,31 @@ export default function AdminMasterTimetable() {
           const sub = subjects.find(s => s.id === slot.subjectId);
           const pSub = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
           if (!sub) return '—';
+          if (isPractical(sub.code) || (pSub && isPractical(pSub.code))) return 'PRACTICALS';
           if (!pSub) return sub.code;
-          const compFirst = ['COMP', 'CS'].includes((pSub.code || '').toUpperCase());
-          return compFirst ? `${pSub.code}/${sub.code}` : `${sub.code}/${pSub.code}`;
+          return `${sub.code}/${pSub.code}`;
         })];
       });
+
+      // Stretch table to fill the page
+      const pageH = doc.internal.pageSize.height;
+      const availableH = pageH - startY - 18;
+      const rowH = Math.max(6, (availableH - 10) / rows.length);
 
       autoTable(doc, {
         startY,
         head: [headers],
         body: rows,
         theme: 'grid',
-        styles: { fontStyle: 'bold' },
-        headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 7, cellPadding: 1.5, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 7, cellPadding: 1.5, halign: 'center', textColor: [33, 33, 33], fontStyle: 'bold' },
-        columnStyles: { 0: { halign: 'left', cellWidth: 28, fontStyle: 'bold' } },
+        styles: { fontStyle: 'bold', valign: 'middle' },
+        headStyles: { fillColor: [0, 51, 102], textColor: 255, fontSize: 9, cellPadding: 2, fontStyle: 'bold', halign: 'center' },
+        bodyStyles: { fontSize: 9, cellPadding: 1.5, halign: 'center', textColor: [33, 33, 33], fontStyle: 'bold', minCellHeight: rowH },
+        columnStyles: { 0: { halign: 'left', cellWidth: 34, fontStyle: 'bold' } },
         alternateRowStyles: { fillColor: [245, 245, 245] },
         margin: { left: 10, right: 10 },
-        tableWidth: 'auto',
+        tableWidth: pageW - 20,
       });
+
     }
 
 
