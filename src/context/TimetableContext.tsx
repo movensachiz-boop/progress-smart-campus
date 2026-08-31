@@ -4,7 +4,7 @@ import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefault
 import { v4 } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
-import { loadDoubleSettings } from '@/lib/doubleSettings';
+import { loadDoubleSettings, resolveClassRule } from '@/lib/doubleSettings';
 
 
 interface TimetableContextType {
@@ -531,9 +531,16 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // plus any subject flagged as `subjectDoubles` on the specific class.
     const globalDoubleEligible = new Set(subjects.filter(s => s.periodsPerWeek >= 6).map(s => s.id));
     const forcedDoubleIds = new Set(dblSettings.subjectDoubleIds || []);
+    const ruleFor = (classId?: string, form?: number) => resolveClassRule(dblSettings, classId, form);
     const isDoubleEligible = (subjectId: string, classId: string) => {
-      if (forcedDoubleIds.has(subjectId)) return true;
       const cls = classes.find(c => c.id === classId);
+      const rule = ruleFor(classId, cls?.form);
+      if (rule) {
+        if (!rule.enabled) return false;
+        if (rule.subjectIds.length > 0) return rule.subjectIds.includes(subjectId);
+        return true;
+      }
+      if (forcedDoubleIds.has(subjectId)) return true;
       const aLevel = isALevelForm(cls?.form);
       if (aLevel && !dblSettings.aLevelDoubles) return false;
       if (!aLevel && !dblSettings.oLevelDoubles) return false;
@@ -546,7 +553,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // A-level subjects (forms 5/6) are scheduled as doubles (2 consecutive periods) when the
     // admin keeps "A-Level doubles" on, so teachers meet each class multiple times per week.
     const mustQuad = (form: number | undefined) => false;
-    const mustDouble = (s: Subject, form: number | undefined) => {
+    const mustDouble = (s: Subject, form: number | undefined, classId?: string) => {
+      const rule = ruleFor(classId, form);
+      if (rule) {
+        if (!rule.enabled) return false;
+        if (rule.subjectIds.length > 0) return rule.subjectIds.includes(s.id);
+        if (isALevelForm(form)) return true;
+        return forcedDoubleIds.has(s.id) || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
+      }
       if (forcedDoubleIds.has(s.id)) return true;
       if (isALevelForm(form)) return dblSettings.aLevelDoubles;
       return dblSettings.oLevelDoubles && ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
@@ -554,11 +568,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // Per-day block size required when this subject appears on a day.
     // Admin can decide how many consecutive periods make one "double" block.
     const clampLen = (n: number) => Math.max(2, Math.min(4, Math.round(n) || 2));
-    const doubleLength = (s: Subject, form: number | undefined) => {
+    const doubleLength = (s: Subject, form: number | undefined, classId?: string) => {
+      const rule = ruleFor(classId, form);
+      if (rule && rule.length > 0) return clampLen(rule.length);
       const per = Number(dblSettings.subjectDoubleLength?.[s.id] || 0);
       if (per > 0) return clampLen(per);
       return clampLen(isALevelForm(form) ? (dblSettings.aLevelDoubleLength || 2) : (dblSettings.oLevelDoubleLength || 2));
     };
+
     // Practical subjects (Computer Science / Agriculture) must run as ONE unbroken
     // block on a day — no break, lunch or other subject in between.
     const PRACTICAL_KEYS = ['AGR', 'AGRI', 'AGRIC', 'AGRICULTURE', 'CS', 'COMP', 'COMPUTING', 'COMPUTERSCIENCE'];
@@ -579,19 +596,21 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           : 4;
         return Math.max(2, Math.min(4, remaining));
       }
-      if (mustDouble(s, form)) return doubleLength(s, form);
+      if (mustDouble(s, form, classId)) return doubleLength(s, form, classId);
       return 1;
     };
 
     // Limit how many days per week a (class, subject) may carry a double period.
-    const doubleDayLimit = (form: number | undefined, subjectId?: string) => {
+    const doubleDayLimit = (form: number | undefined, subjectId?: string, classId?: string) => {
+      const rule = ruleFor(classId, form);
+      if (rule && rule.maxPerWeek > 0) return rule.maxPerWeek;
       const per = subjectId ? Number(dblSettings.subjectDoubleDays?.[subjectId] || 0) : 0;
       if (per > 0) return per;
       return isALevelForm(form) ? dblSettings.aLevelDoubleDays : dblSettings.oLevelDoubleDays;
     };
     const classSubjectDoubleDays: Record<string, number> = {};
     const canDoubleMore = (classId: string, subjectId: string, form: number | undefined) => {
-      const limit = doubleDayLimit(form, subjectId);
+      const limit = doubleDayLimit(form, subjectId, classId);
       if (!limit || limit <= 0) return true; // 0 = unlimited
       return (classSubjectDoubleDays[`${classId}-${subjectId}`] || 0) < limit;
     };

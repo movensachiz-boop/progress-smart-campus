@@ -11,7 +11,7 @@ import TimetableBackupPanel from '@/components/TimetableBackupPanel';
 import PhoneCameraPairDialog from '@/components/PhoneCameraPairDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 } from '@/lib/utils';
-import { loadDoubleSettings, saveDoubleSettings, type DoubleSettings } from '@/lib/doubleSettings';
+import { loadDoubleSettings, saveDoubleSettings, formRuleKey, DEFAULT_CLASS_DOUBLE_RULE, type DoubleSettings } from '@/lib/doubleSettings';
 
 const ALL_DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -436,8 +436,85 @@ export default function AdminTimetableGenerate() {
                     </div>
                   </div>
 
+                  <div className="pt-3 border-t">
+                    <h5 className="text-xs font-semibold mb-1">Doubles for a specific class or form</h5>
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      Set rules for one form (e.g. Form 4) or a single class. A class rule beats a form rule, and both beat the level defaults above. Leave subjects unticked to apply to all subjects of that class.
+                    </p>
+                    <div className="space-y-2">
+                      {[1, 2, 3, 4, 5, 6].map(form => {
+                        const key = formRuleKey(form);
+                        const formClasses = classes.filter(c => c.form === form);
+                        if (formClasses.length === 0) return null;
+                        const rows: { key: string; label: string }[] = [
+                          { key, label: `Form ${form} (all classes)` },
+                          ...formClasses.map(c => ({ key: c.id, label: `  ${c.id}` })),
+                        ];
+                        return rows.map(row => {
+                          const rule = doubles.classRules?.[row.key];
+                          const active = !!rule;
+                          const r = { ...DEFAULT_CLASS_DOUBLE_RULE, ...(rule || {}) };
+                          const update = (patch: Partial<typeof r>) => setDoubles({
+                            ...doubles,
+                            classRules: { ...(doubles.classRules || {}), [row.key]: { ...r, ...patch } },
+                          });
+                          const remove = () => {
+                            const next = { ...(doubles.classRules || {}) };
+                            delete next[row.key];
+                            setDoubles({ ...doubles, classRules: next });
+                          };
+                          const clsSubjects = row.key.startsWith('form:')
+                            ? subjects.filter(s => s.forms?.includes(form as never))
+                            : subjects.filter(s => formClasses.find(c => c.id === row.key)?.subjectIds.includes(s.id));
+                          return (
+                            <div key={row.key} className={`rounded-md border p-2 ${active ? 'border-primary/50 bg-primary/5' : ''}`}>
+                              <div className="flex items-center gap-2 text-xs">
+                                <input type="checkbox" className="w-4 h-4 accent-[hsl(var(--primary))]" checked={active}
+                                  onChange={e => (e.target.checked ? update({}) : remove())} />
+                                <span className="flex-1 whitespace-pre font-medium">{row.label}</span>
+                                {active && (
+                                  <>
+                                    <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                      On
+                                      <input type="checkbox" className="w-3.5 h-3.5 accent-[hsl(var(--primary))]" checked={r.enabled}
+                                        onChange={e => update({ enabled: e.target.checked })} />
+                                    </label>
+                                    <Input type="number" min={0} max={6} className="h-7 w-16 text-xs" value={r.maxPerWeek}
+                                      title="Max doubles per week (0 = unlimited)"
+                                      onChange={e => update({ maxPerWeek: Math.max(0, Math.min(6, Number(e.target.value) || 0)) })} />
+                                    <Input type="number" min={0} max={4} className="h-7 w-16 text-xs" value={r.length}
+                                      title="Periods per double block (0 = level default)"
+                                      onChange={e => update({ length: Math.max(0, Math.min(4, Number(e.target.value) || 0)) })} />
+                                  </>
+                                )}
+                              </div>
+                              {active && (
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                  {clsSubjects.map(s => {
+                                    const on = r.subjectIds.includes(s.id);
+                                    return (
+                                      <button key={s.id} type="button"
+                                        onClick={() => update({ subjectIds: on ? r.subjectIds.filter(id => id !== s.id) : [...r.subjectIds, s.id] })}
+                                        className={`px-2 py-0.5 text-[10px] rounded border ${on ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border'}`}>
+                                        {s.code}
+                                      </button>
+                                    );
+                                  })}
+                                  {r.subjectIds.length === 0 && (
+                                    <span className="text-[10px] text-muted-foreground">All subjects doubled</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        });
+                      })}
+                    </div>
+                  </div>
+
                 </div>
               </div>
+
             </div>
           </div>
 
