@@ -123,9 +123,22 @@ export default function AdminMasterTimetable() {
       doc.text(`Day ${dayNum}`, 14, startY);
       startY += 3;
 
-      const isPractical = (code?: string) => {
-        const c = (code || '').toUpperCase().replace(/[^A-Z]/g, '');
-        return c.startsWith('COMP') || c === 'CS' || c.startsWith('AGRIC') || c.startsWith('AGR');
+      const norm = (code?: string) => (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const isComputerScience = (code?: string) => {
+        const c = norm(code);
+        return c.startsWith('COMP') || c === 'CS';
+      };
+      const isAgriculture = (code?: string) => {
+        const c = norm(code);
+        return c.startsWith('AGRIC') || c.startsWith('AGR');
+      };
+      // Practical relabeling: Computer Science stays as its subject label for
+      // A-Level (Forms 5 & 6); Agriculture is relabeled for all forms.
+      const practicalLabelFor = (code: string | undefined, form: number | string) => {
+        const f = Number(form);
+        if (isComputerScience(code) && (f === 5 || f === 6)) return null;
+        if (isComputerScience(code) || isAgriculture(code)) return 'PRACTICALS';
+        return null;
       };
 
       const headers = ['Period / Time', ...sortedClasses.map(c => `${c.form}${c.stream}`)];
@@ -140,9 +153,20 @@ export default function AdminMasterTimetable() {
           const sub = subjects.find(s => s.id === slot.subjectId);
           const pSub = slot.pairedSubjectId ? subjects.find(s => s.id === slot.pairedSubjectId) : undefined;
           if (!sub) return '—';
-          if (isPractical(sub.code) || (pSub && isPractical(pSub.code))) return 'PRACTICALS';
-          if (!pSub) return sub.code;
-          return `${sub.code}/${pSub.code}`;
+          const label = sub.name || sub.code;
+          const pLabel = pSub ? (pSub.name || pSub.code) : undefined;
+          // A-Level Computer Science keeps its full subject name (e.g. COMPUTER SCIENCE A)
+          const isALevel = Number(c.form) === 5 || Number(c.form) === 6;
+          if (isALevel && isComputerScience(sub.code) && !pSub) return label;
+          if (isALevel && isComputerScience(sub.code) && pSub) return `${label}/${pLabel}`;
+          const pl = practicalLabelFor(sub.code, c.form);
+          if (pl) return pl;
+          if (pSub) {
+            const ppl = practicalLabelFor(pSub.code, c.form);
+            if (ppl) return ppl;
+            return `${sub.code}/${pSub.code}`;
+          }
+          return sub.code;
         })];
       });
 
