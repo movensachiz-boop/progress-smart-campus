@@ -159,8 +159,8 @@ export const generateTermCalendar = async (input: TermCalendarInput = {}) => {
   const logo = await loadImage(pccLogo).catch(() => "");
   const pageW = 210;
   const pageH = 297;
-  const black: [number, number, number] = [0, 0, 0];
-  const gray: [number, number, number] = [80, 80, 80];
+  const navy: [number, number, number] = [0, 51, 102];
+  const gold: [number, number, number] = [255, 215, 0];
 
   const header = () => {
     doc.setFillColor(...black);
