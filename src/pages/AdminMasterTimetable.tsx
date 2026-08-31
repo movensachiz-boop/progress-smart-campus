@@ -161,9 +161,12 @@ export default function AdminMasterTimetable() {
           if (isALevel && isComputerScience(sub.code) && pSub) return `${label}/${pLabel}`;
           const pl = practicalLabelFor(sub.code, c.form);
           if (pl) return pl;
-          if (pSub && practicalLabelFor(pSub.code, c.form)) return pl || 'PRACTICALS';
-          if (!pSub) return sub.code;
-          return `${sub.code}/${pSub.code}`;
+          if (pSub) {
+            const ppl = practicalLabelFor(pSub.code, c.form);
+            if (ppl) return ppl;
+            return `${sub.code}/${pSub.code}`;
+          }
+          return sub.code;
         })];
       });
 
