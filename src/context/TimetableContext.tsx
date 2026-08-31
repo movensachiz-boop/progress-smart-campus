@@ -990,6 +990,33 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return lastSlot !== undefined && currentSlot - lastSlot === 1;
     };
 
+    // Practicals (Agriculture / Computer Science) must form ONE unbroken run of
+    // periods per class per day — never split by break, lunch or another subject.
+    // A new practical period is only allowed when it extends the existing run.
+    const practicalRunAllows = (classId: string, day: DayOfWeek, slot: number): boolean => {
+      const used: number[] = [];
+      slots.forEach(s => {
+        if (s.classId !== classId || s.day !== day || !s.subjectId) return;
+        const subj = subjects.find(x => x.id === s.subjectId);
+        if (subj && isPracticalSubject(subj)) used.push(s.period);
+      });
+      Object.keys(preAssigned).forEach(k => {
+        const pref = `${classId}-${day}-`;
+        if (!k.startsWith(pref)) return;
+        const p = Number(k.slice(pref.length));
+        const pa = preAssigned[k];
+        const subj = pa?.subjectId ? subjects.find(x => x.id === pa.subjectId) : undefined;
+        if (subj && isPracticalSubject(subj) && Number.isFinite(p)) used.push(p);
+      });
+      if (used.length === 0) return true;
+      const min = Math.min(...used);
+      const max = Math.max(...used);
+      // Must be immediately adjacent AND not across a break / lunch period.
+      if (slot === max + 1 && !isNonAcademic(day, slot) && !isNonAcademic(day, max)) return true;
+      if (slot === min - 1 && !isNonAcademic(day, slot) && !isNonAcademic(day, min)) return true;
+      return false;
+    };
+
     const recordSubjectSlot = (
       classId: string, day: DayOfWeek, subjectId: string, slot: number,
       teacherId?: string, teacher?: Teacher
