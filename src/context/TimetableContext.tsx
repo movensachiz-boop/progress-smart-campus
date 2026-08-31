@@ -1134,6 +1134,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
               .map(sId => subjects.find(s => s.id === sId)!)
               .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
           )
+            .filter(s => !isPracticalSubject(s) || practicalRunAllows(cls.id, day, slot))
             .filter(s => {
               const dayCount = classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0;
               const maxBlock = blockSize(s, cls.form, cls.id);
