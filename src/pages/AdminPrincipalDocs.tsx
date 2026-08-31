@@ -408,6 +408,59 @@ const AdminPrincipalDocs = () => {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><CalendarDays size={18} /> Term Road Map / Calendar</CardTitle>
+            <CardDescription>
+              Download the official term road map (cycle ending dates and activities) on the school letterhead.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Term</Label>
+                <Select value={calendarTerm} onValueChange={setCalendarTerm}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Term 1">Term 1</SelectItem>
+                    <SelectItem value="Term 2">Term 2</SelectItem>
+                    <SelectItem value="Term 3">Term 3</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Year</Label>
+                <Input value={calendarYear} onChange={(e) => setCalendarYear(e.target.value)} placeholder="2026" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={async () => {
+                  setGeneratingCalendar(true);
+                  try {
+                    await generateTermCalendar({ term: calendarTerm, year: calendarYear });
+                    toast.success("Term road map downloaded");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to generate road map");
+                  } finally {
+                    setGeneratingCalendar(false);
+                  }
+                }}
+                disabled={generatingCalendar}
+                className="gap-2"
+              >
+                {generatingCalendar ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+                Download {calendarTerm} {calendarYear} Road Map
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Contains all cycle ending dates from check-in to closing day, including mock exams, Cambridge examinations, mid-term and end of year exams.
+            </p>
+          </CardContent>
+        </Card>
+
+
+
 
         <Card>
           <CardHeader>
