@@ -4,7 +4,7 @@ import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefault
 import { v4 } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
-import { loadDoubleSettings } from '@/lib/doubleSettings';
+import { loadDoubleSettings, resolveClassRule } from '@/lib/doubleSettings';
 
 
 interface TimetableContextType {
@@ -596,19 +596,21 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           : 4;
         return Math.max(2, Math.min(4, remaining));
       }
-      if (mustDouble(s, form)) return doubleLength(s, form);
+      if (mustDouble(s, form, classId)) return doubleLength(s, form, classId);
       return 1;
     };
 
     // Limit how many days per week a (class, subject) may carry a double period.
-    const doubleDayLimit = (form: number | undefined, subjectId?: string) => {
+    const doubleDayLimit = (form: number | undefined, subjectId?: string, classId?: string) => {
+      const rule = ruleFor(classId, form);
+      if (rule && rule.maxPerWeek > 0) return rule.maxPerWeek;
       const per = subjectId ? Number(dblSettings.subjectDoubleDays?.[subjectId] || 0) : 0;
       if (per > 0) return per;
       return isALevelForm(form) ? dblSettings.aLevelDoubleDays : dblSettings.oLevelDoubleDays;
     };
     const classSubjectDoubleDays: Record<string, number> = {};
     const canDoubleMore = (classId: string, subjectId: string, form: number | undefined) => {
-      const limit = doubleDayLimit(form, subjectId);
+      const limit = doubleDayLimit(form, subjectId, classId);
       if (!limit || limit <= 0) return true; // 0 = unlimited
       return (classSubjectDoubleDays[`${classId}-${subjectId}`] || 0) < limit;
     };
