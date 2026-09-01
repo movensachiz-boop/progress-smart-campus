@@ -347,17 +347,18 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         if (!aLevelClassIds.has(s.classId) || !s.subjectId || s.type !== 'lesson') continue;
         if (!hasNeighbour(s)) cleared.add(s.id);
       }
-      // Detect duplicate doubles per (class, day, subject): keep earliest block.
-      const seen: Record<string, number> = {};
+      // ALL CLASSES: a subject may repeat in a day only as a consecutive block.
+      // Keep the earliest run; clear any later, non-adjacent repeat.
+      const lastPeriod: Record<string, number> = {};
       const perBlock = [...nextSlots]
-        .filter(s => aLevelClassIds.has(s.classId) && s.subjectId && s.type === 'lesson' && !cleared.has(s.id))
+        .filter(s => s.subjectId && s.type === 'lesson' && !cleared.has(s.id))
         .sort((a, b) => a.day.localeCompare(b.day) || a.period - b.period);
       for (const s of perBlock) {
         const key = `${s.classId}#${s.day}#${s.subjectId}`;
-        const first = seen[key];
-        if (first === undefined) { seen[key] = s.period; continue; }
-        // If this slot is part of a different (non-adjacent to first) block, clear it.
-        if (Math.abs(s.period - first) > 1) cleared.add(s.id);
+        const prev = lastPeriod[key];
+        if (prev === undefined) { lastPeriod[key] = s.period; continue; }
+        if (s.period === prev + 1) { lastPeriod[key] = s.period; continue; }
+        cleared.add(s.id);
       }
       if (cleared.size) {
         ttChanged = true;
@@ -1527,7 +1528,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             const pending = (classSubjectIds[cls.id] || cls.subjectIds)
               .map(sId => subjects.find(s => s.id === sId)!)
               .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
-              .filter(s => (classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0) < blockSize(s, cls.form, cls.id))
+              .filter(s => {
+                const dayCount = classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0;
+                if (dayCount >= blockSize(s, cls.form, cls.id)) return false;
+                // Never repeat a subject later in the day with other subjects in
+                // between — a second period is only allowed back-to-back.
+                if (dayCount >= 1) return isConsecutive(cls.id, day, s.id, slot);
+                return true;
+              })
               .filter(s => !isPracticalSubject(s) || practicalRunAllows(cls.id, day, slot))
               .sort((a, b) => {
                 const aRemain = ppwFor(a, cls) - (classSubjectCount[cls.id][a.id] || 0);
@@ -1560,6 +1568,34 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           }
 
         }
+      }
+    }
+
+    // GLOBAL RULE: a subject may appear only once per class per day, unless the
+    // periods are consecutive (a genuine double/triple block). Any later,
+    // non-adjacent repeat is cleared so the slot stays free instead.
+    {
+      const byKey: Record<string, TimetableSlot[]> = {};
+      slots.forEach(s => {
+        if (s.type !== 'lesson' || !s.subjectId) return;
+        const k = `${s.classId}#${s.day}#${s.subjectId}`;
+        (byKey[k] ||= []).push(s);
+      });
+      const drop = new Set<string>();
+      Object.values(byKey).forEach(group => {
+        if (group.length < 2) return;
+        const sorted = [...group].sort((a, b) => a.period - b.period);
+        let last = sorted[0].period;
+        for (let i = 1; i < sorted.length; i++) {
+          if (sorted[i].period === last + 1) { last = sorted[i].period; continue; }
+          drop.add(sorted[i].id);
+        }
+      });
+      if (drop.size) {
+        slots.forEach((s, i) => {
+          if (!drop.has(s.id)) return;
+          slots[i] = { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined };
+        });
       }
     }
 
