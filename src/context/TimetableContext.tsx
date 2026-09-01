@@ -1527,7 +1527,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             const pending = (classSubjectIds[cls.id] || cls.subjectIds)
               .map(sId => subjects.find(s => s.id === sId)!)
               .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
-              .filter(s => (classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0) < blockSize(s, cls.form, cls.id))
+              .filter(s => {
+                const dayCount = classSubjectDayCount[`${cls.id}-${day}-${s.id}`] || 0;
+                if (dayCount >= blockSize(s, cls.form, cls.id)) return false;
+                // Never repeat a subject later in the day with other subjects in
+                // between — a second period is only allowed back-to-back.
+                if (dayCount >= 1) return isConsecutive(cls.id, day, s.id, slot);
+                return true;
+              })
               .filter(s => !isPracticalSubject(s) || practicalRunAllows(cls.id, day, slot))
               .sort((a, b) => {
                 const aRemain = ppwFor(a, cls) - (classSubjectCount[cls.id][a.id] || 0);
