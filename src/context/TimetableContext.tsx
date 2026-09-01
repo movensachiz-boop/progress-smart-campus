@@ -495,15 +495,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const STRICT_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO']);
     const isStrictDouble = (s: Subject) => STRICT_DOUBLE_CODES.has((s.code || '').toUpperCase());
 
-    // Per-class subject periods-per-week overrides. Matched by class stream (case-insensitive)
-    // and subject code. These ALWAYS take precedence over the default O-level / A-level counts.
-    const streamIs = (classId: string, stream: string) =>
-      new RegExp(`^\\d+\\s*${stream}$`, 'i').test(classId);
-    const PPW_OVERRIDES: Array<{ match: (cls: { id: string; form?: number }) => boolean; code: string; periods: number }> = [
-      { match: (c) => c.form === 4 && streamIs(c.id, 'whale'), code: 'ECO', periods: 5 },
-      { match: (c) => c.form === 4 && streamIs(c.id, 'whale'), code: 'ACC', periods: 7 },
-      { match: (c) => c.form === 6, code: 'ECO', periods: 4 },
-    ];
+    // NOTE: no hardcoded per-class period overrides. Admin settings (per-class
+    // `subjectPeriods`, else the subject's configured periodsPerWeek) are the only source.
+    const PPW_OVERRIDES: Array<{ match: (cls: { id: string; form?: number }) => boolean; code: string; periods: number }> = [];
+
     // A-level (forms 5/6) classes get 8 periods/week per subject regardless of the subject's
     // configured periodsPerWeek. O-level uses the subject's configured value; strict sciences
     // are rounded up to an even count so they can never be forced into a single session.
