@@ -549,7 +549,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     };
     // "Always double" subjects: every placement must be part of a double period.
     // Covers core sciences + Agriculture by code.
-    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP']);
+    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP', 'ICT']);
     // A-level subjects (forms 5/6) are scheduled as doubles (2 consecutive periods) when the
     // admin keeps "A-Level doubles" on, so teachers meet each class multiple times per week.
     const mustQuad = (form: number | undefined) => false;
@@ -576,9 +576,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return clampLen(isALevelForm(form) ? (dblSettings.aLevelDoubleLength || 2) : (dblSettings.oLevelDoubleLength || 2));
     };
 
-    // Practical subjects (Computer Science / Agriculture) must run as ONE unbroken
+    // Practical subjects (Computer Science / ICT / Agriculture) must run as ONE unbroken
     // block on a day — no break, lunch or other subject in between.
-    const PRACTICAL_KEYS = ['AGR', 'AGRI', 'AGRIC', 'AGRICULTURE', 'CS', 'COMP', 'COMPUTING', 'COMPUTERSCIENCE'];
+    const PRACTICAL_KEYS = ['AGR', 'AGRI', 'AGRIC', 'AGRICULTURE', 'CS', 'COMP', 'COMPUTING', 'COMPUTERSCIENCE', 'ICT', 'INFORMATIONTECHNOLOGY', 'INFORMATIONANDCOMMUNICATIONTECHNOLOGY'];
     const isPracticalSubject = (s: Subject) => {
       const norm = (v: string) => (v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
       const code = norm(s.code);
@@ -769,19 +769,22 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     });
     const classSubjectIds: Record<string, string[]> = {};
+    // Explicit removals (Admin unticked a subject for a class) must never be re-added.
+    const removedPairsGen = new Set(loadLS<string[]>('tt_removed_class_subjects', []));
+    const removedKey = (sid: string, cid: string) => `${sid}::${cid}`;
     // COMP A is a mandatory A-level subject for every stream (Sciences, Commercials, Arts).
     const compASubject = subjects.find(s => /^COMP.*A$/i.test((s.code || '').trim()));
     classes.forEach(c => {
       const fromClass = c.subjectIds.filter(sId => subjects.some(s => s.id === sId));
-      // A-level (Forms 5 & 6): admin's per-class subject ticks are the SINGLE
-      // source of truth. Do NOT merge teacher assignments — otherwise a teacher
-      // who teaches e.g. Accounting A in Commercials but is also (mistakenly)
-      // linked to an Arts class would silently inject Accounting A into Arts.
-      // Forms 1-4 still merge teacher assignments (helps recover from missing ticks).
+      // The Admin → Classes subject ticks are the SINGLE source of truth for every form.
+      // Teacher assignments only decide WHO teaches an already-selected subject; they must
+      // never inject a subject a class does not do. Teacher assignments are merged only as
+      // a recovery path when a Forms 1-4 class has no subjects ticked at all.
       const isALevel = c.form === 5 || c.form === 6;
-      let merged = isALevel
-        ? [...fromClass]
-        : Array.from(new Set([...fromClass, ...teacherAssignedByClass[c.id]]));
+      let merged = (!isALevel && fromClass.length === 0)
+        ? Array.from(teacherAssignedByClass[c.id])
+        : [...fromClass];
+      merged = merged.filter(sId => !removedPairsGen.has(removedKey(sId, c.id)));
       // A-level is strictly split by learning area. A Sciences stream must never
       // receive Arts/Commercials subjects (e.g. GEO A) even if the class definition
       // drifted or an unknown subject slipped in.

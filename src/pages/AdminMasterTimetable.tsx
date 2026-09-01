@@ -132,12 +132,16 @@ export default function AdminMasterTimetable() {
         const c = norm(code);
         return c.startsWith('AGRIC') || c.startsWith('AGR');
       };
+      const isICT = (code?: string) => {
+        const c = norm(code);
+        return c === 'ICT' || c === 'ICTA' || c.startsWith('INFORMATIONTECH') || c.startsWith('INFORMATIONANDCOMM');
+      };
       // Practical relabeling: Computer Science stays as its subject label for
-      // A-Level (Forms 5 & 6); Agriculture is relabeled for all forms.
+      // A-Level (Forms 5 & 6); Agriculture and ICT are relabeled for all forms.
       const practicalLabelFor = (code: string | undefined, form: number | string) => {
         const f = Number(form);
         if (isComputerScience(code) && (f === 5 || f === 6)) return null;
-        if (isComputerScience(code) || isAgriculture(code)) return 'PRACTICALS';
+        if (isComputerScience(code) || isAgriculture(code) || isICT(code)) return 'PRACTICALS';
         return null;
       };
 
