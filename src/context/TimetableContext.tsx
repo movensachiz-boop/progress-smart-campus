@@ -1591,9 +1591,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         }
       });
       if (drop.size) {
-        slots = slots.map(s => drop.has(s.id)
-          ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
-          : s);
+        slots.forEach((s, i) => {
+          if (!drop.has(s.id)) return;
+          slots[i] = { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined };
+        });
       }
     }
 
