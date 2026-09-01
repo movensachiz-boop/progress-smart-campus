@@ -549,7 +549,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     };
     // "Always double" subjects: every placement must be part of a double period.
     // Covers core sciences + Agriculture by code.
-    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP']);
+    const ALWAYS_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO', 'CLS', 'AGR', 'AGRI', 'CS', 'COMP', 'ICT']);
     // A-level subjects (forms 5/6) are scheduled as doubles (2 consecutive periods) when the
     // admin keeps "A-Level doubles" on, so teachers meet each class multiple times per week.
     const mustQuad = (form: number | undefined) => false;
@@ -576,9 +576,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return clampLen(isALevelForm(form) ? (dblSettings.aLevelDoubleLength || 2) : (dblSettings.oLevelDoubleLength || 2));
     };
 
-    // Practical subjects (Computer Science / Agriculture) must run as ONE unbroken
+    // Practical subjects (Computer Science / ICT / Agriculture) must run as ONE unbroken
     // block on a day — no break, lunch or other subject in between.
-    const PRACTICAL_KEYS = ['AGR', 'AGRI', 'AGRIC', 'AGRICULTURE', 'CS', 'COMP', 'COMPUTING', 'COMPUTERSCIENCE'];
+    const PRACTICAL_KEYS = ['AGR', 'AGRI', 'AGRIC', 'AGRICULTURE', 'CS', 'COMP', 'COMPUTING', 'COMPUTERSCIENCE', 'ICT', 'INFORMATIONTECHNOLOGY', 'INFORMATIONANDCOMMUNICATIONTECHNOLOGY'];
     const isPracticalSubject = (s: Subject) => {
       const norm = (v: string) => (v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
       const code = norm(s.code);
