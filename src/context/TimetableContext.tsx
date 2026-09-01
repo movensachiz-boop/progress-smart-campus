@@ -347,17 +347,18 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         if (!aLevelClassIds.has(s.classId) || !s.subjectId || s.type !== 'lesson') continue;
         if (!hasNeighbour(s)) cleared.add(s.id);
       }
-      // Detect duplicate doubles per (class, day, subject): keep earliest block.
-      const seen: Record<string, number> = {};
+      // ALL CLASSES: a subject may repeat in a day only as a consecutive block.
+      // Keep the earliest run; clear any later, non-adjacent repeat.
+      const lastPeriod: Record<string, number> = {};
       const perBlock = [...nextSlots]
-        .filter(s => aLevelClassIds.has(s.classId) && s.subjectId && s.type === 'lesson' && !cleared.has(s.id))
+        .filter(s => s.subjectId && s.type === 'lesson' && !cleared.has(s.id))
         .sort((a, b) => a.day.localeCompare(b.day) || a.period - b.period);
       for (const s of perBlock) {
         const key = `${s.classId}#${s.day}#${s.subjectId}`;
-        const first = seen[key];
-        if (first === undefined) { seen[key] = s.period; continue; }
-        // If this slot is part of a different (non-adjacent to first) block, clear it.
-        if (Math.abs(s.period - first) > 1) cleared.add(s.id);
+        const prev = lastPeriod[key];
+        if (prev === undefined) { lastPeriod[key] = s.period; continue; }
+        if (s.period === prev + 1) { lastPeriod[key] = s.period; continue; }
+        cleared.add(s.id);
       }
       if (cleared.size) {
         ttChanged = true;
