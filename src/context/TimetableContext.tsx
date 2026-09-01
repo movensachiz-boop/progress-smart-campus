@@ -1570,6 +1570,33 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // GLOBAL RULE: a subject may appear only once per class per day, unless the
+    // periods are consecutive (a genuine double/triple block). Any later,
+    // non-adjacent repeat is cleared so the slot stays free instead.
+    {
+      const byKey: Record<string, TimetableSlot[]> = {};
+      slots.forEach(s => {
+        if (s.type !== 'lesson' || !s.subjectId) return;
+        const k = `${s.classId}#${s.day}#${s.subjectId}`;
+        (byKey[k] ||= []).push(s);
+      });
+      const drop = new Set<string>();
+      Object.values(byKey).forEach(group => {
+        if (group.length < 2) return;
+        const sorted = [...group].sort((a, b) => a.period - b.period);
+        let last = sorted[0].period;
+        for (let i = 1; i < sorted.length; i++) {
+          if (sorted[i].period === last + 1) { last = sorted[i].period; continue; }
+          drop.add(sorted[i].id);
+        }
+      });
+      if (drop.size) {
+        slots = slots.map(s => drop.has(s.id)
+          ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
+          : s);
+      }
+    }
+
     const newTimetable: Timetable = { id: v4(), slots, conflicts: [], generatedAt: new Date().toISOString() };
     newTimetable.conflicts = detectConflicts(slots);
     // Auto-rebalance A-level: shift any excess periods on over-allocated
