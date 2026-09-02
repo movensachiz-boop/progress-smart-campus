@@ -305,6 +305,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   // Auto-purge: any subject whose code doesn't end with "A" is not an A-level subject.
   // Strip it from Forms 5 & 6 class allocations and any existing A-level timetable slots.
   useEffect(() => {
+    // While the timetable is locked, no automatic clean-up may alter classes or slots.
+    if (timetableLocked) return;
     const isALevelSubject = (subjectId: string) => {
       const s = subjects.find(x => x.id === subjectId);
       if (!s) return false;
