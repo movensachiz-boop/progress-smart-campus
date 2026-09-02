@@ -71,6 +71,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     }
     return stored;
   });
+  const [timetableLocked, _setTimetableLocked] = useState<boolean>(() => loadLS<boolean>('tt_locked', true));
+  const setTimetableLocked = (locked: boolean) => {
+    _setTimetableLocked(locked);
+    try { localStorage.setItem('tt_locked', JSON.stringify(locked)); } catch {}
+  };
+  const lockedRef = useRef(timetableLocked);
+  useEffect(() => { lockedRef.current = timetableLocked; }, [timetableLocked]);
 
   const [timetable, setTimetable] = useState<Timetable | null>(() => loadLS<Timetable | null>('tt_timetable', null));
   const cloudSaveTimer = useRef<NodeJS.Timeout | null>(null);
