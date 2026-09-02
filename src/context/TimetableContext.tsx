@@ -22,6 +22,9 @@ interface TimetableContextType {
   replaceTimetable: (next: Timetable) => void;
   reassignTeacher: (subjectId: string, classId: string, teacherId: string | null) => void;
   applyClassSubjectChanges: (nextClasses: SchoolClass[], removals: { subjectId: string; classId: string }[]) => void;
+  /** When locked (default), nothing may rewrite the saved timetable except explicit user actions. */
+  timetableLocked: boolean;
+  setTimetableLocked: (locked: boolean) => void;
 }
 
 const TimetableContext = createContext<TimetableContextType | undefined>(undefined);
