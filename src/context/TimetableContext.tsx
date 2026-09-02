@@ -22,6 +22,9 @@ interface TimetableContextType {
   replaceTimetable: (next: Timetable) => void;
   reassignTeacher: (subjectId: string, classId: string, teacherId: string | null) => void;
   applyClassSubjectChanges: (nextClasses: SchoolClass[], removals: { subjectId: string; classId: string }[]) => void;
+  /** When locked (default), nothing may rewrite the saved timetable except explicit user actions. */
+  timetableLocked: boolean;
+  setTimetableLocked: (locked: boolean) => void;
 }
 
 const TimetableContext = createContext<TimetableContextType | undefined>(undefined);
@@ -68,6 +71,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     }
     return stored;
   });
+  const [timetableLocked, _setTimetableLocked] = useState<boolean>(() => loadLS<boolean>('tt_locked', true));
+  const setTimetableLocked = (locked: boolean) => {
+    _setTimetableLocked(locked);
+    try { localStorage.setItem('tt_locked', JSON.stringify(locked)); } catch {}
+  };
+  const lockedRef = useRef(timetableLocked);
+  useEffect(() => { lockedRef.current = timetableLocked; }, [timetableLocked]);
 
   const [timetable, setTimetable] = useState<Timetable | null>(() => loadLS<Timetable | null>('tt_timetable', null));
   const cloudSaveTimer = useRef<NodeJS.Timeout | null>(null);
@@ -253,7 +263,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem('tt_teachers', JSON.stringify(nextTeachers)); } catch {}
 
     let nextTimetable = timetable;
-    if (timetable) {
+    // Timetable lock: editing class/subject details must NEVER rewrite the saved timetable.
+    if (timetable && !lockedRef.current) {
       const slots = timetable.slots.map(s => {
         if (s.type !== 'lesson') return s;
         let out = s;
@@ -294,6 +305,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   // Auto-purge: any subject whose code doesn't end with "A" is not an A-level subject.
   // Strip it from Forms 5 & 6 class allocations and any existing A-level timetable slots.
   useEffect(() => {
+    // While the timetable is locked, no automatic clean-up may alter classes or slots.
+    if (timetableLocked) return;
     const isALevelSubject = (subjectId: string) => {
       const s = subjects.find(x => x.id === subjectId);
       if (!s) return false;
@@ -392,7 +405,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subjects, classes.length]);
+  }, [subjects, classes.length, timetableLocked]);
 
   const isSportsPeriod = useCallback((day: DayOfWeek, period: number) => {
     return config.sportsDays.includes(day) && period >= config.sportsStartPeriod;
@@ -1683,7 +1696,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     <TimetableContext.Provider value={{
       config, setConfig, subjects, setSubjects, teachers, setTeachers,
       classes, setClasses, timetable, generateTimetable, updateSlot, replaceTimetable, reassignTeacher,
-      applyClassSubjectChanges,
+      applyClassSubjectChanges, timetableLocked, setTimetableLocked,
     }}>
       {children}
     </TimetableContext.Provider>

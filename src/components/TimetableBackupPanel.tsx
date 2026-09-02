@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Cloud, CloudUpload, Download, Upload, RotateCcw, Loader2, CheckCircle2 } from 'lucide-react';
+import { Cloud, CloudUpload, Download, Upload, RotateCcw, Loader2, CheckCircle2, Lock, LockOpen } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTimetable } from '@/context/TimetableContext';
 import { toast } from 'sonner';
@@ -15,7 +15,7 @@ interface Snapshot {
 }
 
 export default function TimetableBackupPanel() {
-  const { config, subjects, teachers, classes, timetable, setConfig, setSubjects, setTeachers, setClasses } = useTimetable();
+  const { config, subjects, teachers, classes, timetable, setConfig, setSubjects, setTeachers, setClasses, timetableLocked, setTimetableLocked } = useTimetable();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -126,6 +126,22 @@ export default function TimetableBackupPanel() {
       <div className="flex items-center gap-2 mb-1">
         <Cloud className="w-4 h-4 text-primary" />
         <h3 className="text-base font-semibold">Cloud Backup & Export</h3>
+      </div>
+      <div className={`flex items-start justify-between gap-3 rounded-lg border p-3 mb-4 ${timetableLocked ? 'border-success/40 bg-success/5' : 'border-destructive/40 bg-destructive/5'}`}>
+        <div>
+          <p className="text-sm font-medium flex items-center gap-1.5">
+            {timetableLocked ? <Lock className="w-3.5 h-3.5" /> : <LockOpen className="w-3.5 h-3.5" />}
+            Timetable {timetableLocked ? 'locked' : 'unlocked'}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {timetableLocked
+              ? 'Editing classes, subjects or teachers will not touch the saved timetable. Only you can change it.'
+              : 'Automatic clean-ups may rewrite slots when class or subject details change.'}
+          </p>
+        </div>
+        <Button size="sm" variant={timetableLocked ? 'outline' : 'destructive'} onClick={() => setTimetableLocked(!timetableLocked)}>
+          {timetableLocked ? 'Unlock' : 'Lock'}
+        </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
         Auto-saved to cloud every 10s after changes. Export a JSON file as an extra offline backup.
