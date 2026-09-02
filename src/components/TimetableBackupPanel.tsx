@@ -15,7 +15,7 @@ interface Snapshot {
 }
 
 export default function TimetableBackupPanel() {
-  const { config, subjects, teachers, classes, timetable, setConfig, setSubjects, setTeachers, setClasses } = useTimetable();
+  const { config, subjects, teachers, classes, timetable, setConfig, setSubjects, setTeachers, setClasses, timetableLocked, setTimetableLocked } = useTimetable();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
