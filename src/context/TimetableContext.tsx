@@ -405,7 +405,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subjects, classes.length]);
+  }, [subjects, classes.length, timetableLocked]);
 
   const isSportsPeriod = useCallback((day: DayOfWeek, period: number) => {
     return config.sportsDays.includes(day) && period >= config.sportsStartPeriod;
