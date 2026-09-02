@@ -263,7 +263,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem('tt_teachers', JSON.stringify(nextTeachers)); } catch {}
 
     let nextTimetable = timetable;
-    if (timetable) {
+    // Timetable lock: editing class/subject details must NEVER rewrite the saved timetable.
+    if (timetable && !lockedRef.current) {
       const slots = timetable.slots.map(s => {
         if (s.type !== 'lesson') return s;
         let out = s;
