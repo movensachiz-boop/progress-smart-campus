@@ -591,6 +591,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (per > 0) return clampLen(per);
       return clampLen(isALevelForm(form) ? (dblSettings.aLevelDoubleLength || 2) : (dblSettings.oLevelDoubleLength || 2));
     };
+    // Now that the double rules are known, weekly period counts round up to an even
+    // number for every subject that must be taught in blocks.
+    needsEvenPeriods = (s, form, classId) => {
+      if (isStrictDouble(s)) return true;
+      if (!mustDouble(s, form, classId)) return false;
+      return doubleLength(s, form, classId) === 2;
+    };
+
+
 
     // Practical subjects (Computer Science / ICT / Agriculture) must run as ONE unbroken
     // block on a day — no break, lunch or other subject in between.
