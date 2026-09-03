@@ -1689,21 +1689,21 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
               // Quota full (or nowhere to grow) — borrow a period from a run of 3+
               // on another day so both days keep clean blocks.
-              const donor = slots.find(s =>
-                s.type === 'lesson' && s.subjectId === subjectId && s.classId === cls.id && s.day !== day &&
-                (() => {
-                  const dayRuns = slots
-                    .filter(o => o.type === 'lesson' && o.subjectId === subjectId && o.classId === cls.id && o.day === s.day)
-                    .map(o => o.period).sort((a, b) => a - b);
-                  let run = [dayRuns[0]];
-                  for (let i = 1; i < dayRuns.length; i++) {
-                    if (dayRuns[i] === run[run.length - 1] + 1) run.push(dayRuns[i]);
-                    else run = [dayRuns[i]];
-                    if (run.includes(s.period) && run.length >= 3) return true;
-                  }
-                  return run.includes(s.period) && run.length >= 3;
-                })()
-              );
+              const donor = slots.find(s => {
+                if (s.type !== 'lesson' || s.subjectId !== subjectId || s.classId !== cls.id || s.day === day) return false;
+                const dayPeriods = slots
+                  .filter(o => o.type === 'lesson' && o.subjectId === subjectId && o.classId === cls.id && o.day === s.day)
+                  .map(o => o.period).sort((a, b) => a - b);
+                const dayRuns: number[][] = [];
+                dayPeriods.forEach(p => {
+                  const last = dayRuns[dayRuns.length - 1];
+                  if (last && last[last.length - 1] === p - 1) last.push(p);
+                  else dayRuns.push([p]);
+                });
+                // Only give away the tail of a run of 3+, so the donor day keeps a block.
+                return dayRuns.some(r => r.length >= 3 && r[r.length - 1] === s.period);
+              });
+
               if (donor) {
                 const di = slots.findIndex(s => s.id === donor.id);
                 if (di >= 0) {
