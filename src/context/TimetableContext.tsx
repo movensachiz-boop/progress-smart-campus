@@ -507,31 +507,38 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const STRICT_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO']);
     const isStrictDouble = (s: Subject) => STRICT_DOUBLE_CODES.has((s.code || '').toUpperCase());
+    // Assigned further down, once the admin double-period rules are loaded.
+    // Any subject that must be taught in double blocks gets an EVEN weekly period
+    // count so the last period can never be left as an orphan single.
+    let needsEvenPeriods: (s: Subject, form: number | undefined, classId?: string) => boolean =
+      (s) => isStrictDouble(s);
 
     // NOTE: no hardcoded per-class period overrides. Admin settings (per-class
     // `subjectPeriods`, else the subject's configured periodsPerWeek) are the only source.
     const PPW_OVERRIDES: Array<{ match: (cls: { id: string; form?: number }) => boolean; code: string; periods: number }> = [];
 
     // A-level (forms 5/6) classes get 8 periods/week per subject regardless of the subject's
-    // configured periodsPerWeek. O-level uses the subject's configured value; strict sciences
+    // configured periodsPerWeek. O-level uses the subject's configured value; double subjects
     // are rounded up to an even count so they can never be forced into a single session.
     // Per-class `subjectPeriods` overrides take highest precedence.
     const ppwFor = (subject: Subject, classOrForm?: { id: string; form?: number } | number) => {
       const classForm = typeof classOrForm === 'number' ? classOrForm : classOrForm?.form;
       const classId = typeof classOrForm === 'object' && classOrForm ? classOrForm.id : undefined;
       const code = (subject.code || '').toUpperCase();
+      const even = needsEvenPeriods(subject, classForm, classId);
       if (classId) {
         const cls = classes.find(c => c.id === classId);
         const perClass = cls?.subjectPeriods?.[subject.id];
         if (typeof perClass === 'number' && perClass > 0) {
-          return isStrictDouble(subject) && perClass % 2 === 1 ? perClass + 1 : perClass;
+          return even && perClass % 2 === 1 ? perClass + 1 : perClass;
         }
         const ov = PPW_OVERRIDES.find(o => o.code === code && o.match({ id: classId, form: classForm }));
-        if (ov) return isStrictDouble(subject) && ov.periods % 2 === 1 ? ov.periods + 1 : ov.periods;
+        if (ov) return even && ov.periods % 2 === 1 ? ov.periods + 1 : ov.periods;
       }
       const base = classForm === 6 ? 10 : classForm === 5 ? 8 : subject.periodsPerWeek;
-      return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
+      return even && base % 2 === 1 ? base + 1 : base;
     };
+
     // Admin-configurable double-period rules (Timetable → Settings → Double Periods).
     const dblSettings = loadDoubleSettings();
     const isALevelForm = (form: number | undefined) => form === 5 || form === 6;
