@@ -1623,7 +1623,103 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // FINAL PASS: no orphan single periods for subjects the admin configured as
+    // doubles. Any lone period is extended into an adjacent free period of the same
+    // class (teacher permitting); if the weekly quota is already full, the period is
+    // instead borrowed from a longer run on another day.
+    {
+      const idxOf = new Map<string, number>();
+      slots.forEach((s, i) => { if (s.type === 'lesson') idxOf.set(`${s.classId}|${s.day}|${s.period}`, i); });
+      const teacherBusy = new Set<string>();
+      slots.forEach(s => { if (s.teacherId) teacherBusy.add(`${s.teacherId}|${s.day}|${s.period}`); });
+      const weekCount: Record<string, number> = {};
+      slots.forEach(s => {
+        if (s.type !== 'lesson' || !s.subjectId) return;
+        const k = `${s.classId}|${s.subjectId}`;
+        weekCount[k] = (weekCount[k] || 0) + 1;
+      });
+
+      const freeIndex = (classId: string, day: string, period: number) => {
+        const i = idxOf.get(`${classId}|${day}|${period}`);
+        if (i == null) return -1;
+        const s = slots[i];
+        return s.type === 'lesson' && !s.subjectId ? i : -1;
+      };
+
+      classes.forEach(cls => {
+        DAYS.forEach(day => {
+          // Recompute runs per subject for this class/day each time.
+          const bySubject: Record<string, number[]> = {};
+          slots.forEach(s => {
+            if (s.type !== 'lesson' || !s.subjectId || s.classId !== cls.id || s.day !== day) return;
+            (bySubject[s.subjectId] ||= []).push(s.period);
+          });
+          Object.entries(bySubject).forEach(([subjectId, rawPeriods]) => {
+            const subject = subjects.find(s => s.id === subjectId);
+            if (!subject) return;
+            if (!mustDouble(subject, cls.form, cls.id)) return;
+            const periodsSorted = [...rawPeriods].sort((a, b) => a - b);
+            // Split into consecutive runs.
+            const runs: number[][] = [];
+            periodsSorted.forEach(p => {
+              const last = runs[runs.length - 1];
+              if (last && last[last.length - 1] === p - 1) last.push(p);
+              else runs.push([p]);
+            });
+            runs.filter(r => r.length === 1).forEach(run => {
+              const period = run[0];
+              const srcIdx = idxOf.get(`${cls.id}|${day}|${period}`);
+              if (srcIdx == null) return;
+              const src = slots[srcIdx];
+              const quotaLeft = ppwFor(subject, cls) - (weekCount[`${cls.id}|${subjectId}`] || 0);
+
+              const tryFill = (target: number) => {
+                if (target < 1 || target > totalSlots) return false;
+                if (isNonAcademic(day as DayOfWeek, target)) return false;
+                const ti = freeIndex(cls.id, day, target);
+                if (ti < 0) return false;
+                if (src.teacherId && teacherBusy.has(`${src.teacherId}|${day}|${target}`)) return false;
+                slots[ti] = { ...slots[ti], subjectId, teacherId: src.teacherId };
+                if (src.teacherId) teacherBusy.add(`${src.teacherId}|${day}|${target}`);
+                weekCount[`${cls.id}|${subjectId}`] = (weekCount[`${cls.id}|${subjectId}`] || 0) + 1;
+                return true;
+              };
+
+              if (quotaLeft > 0 && (tryFill(period + 1) || tryFill(period - 1))) return;
+
+              // Quota full (or nowhere to grow) — borrow a period from a run of 3+
+              // on another day so both days keep clean blocks.
+              const donor = slots.find(s =>
+                s.type === 'lesson' && s.subjectId === subjectId && s.classId === cls.id && s.day !== day &&
+                (() => {
+                  const dayRuns = slots
+                    .filter(o => o.type === 'lesson' && o.subjectId === subjectId && o.classId === cls.id && o.day === s.day)
+                    .map(o => o.period).sort((a, b) => a - b);
+                  let run = [dayRuns[0]];
+                  for (let i = 1; i < dayRuns.length; i++) {
+                    if (dayRuns[i] === run[run.length - 1] + 1) run.push(dayRuns[i]);
+                    else run = [dayRuns[i]];
+                    if (run.includes(s.period) && run.length >= 3) return true;
+                  }
+                  return run.includes(s.period) && run.length >= 3;
+                })()
+              );
+              if (donor) {
+                const di = slots.findIndex(s => s.id === donor.id);
+                if (di >= 0) {
+                  slots[di] = { ...slots[di], subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined };
+                  weekCount[`${cls.id}|${subjectId}`] -= 1;
+                  if (tryFill(period + 1) || tryFill(period - 1)) return;
+                }
+              }
+            });
+          });
+        });
+      });
+    }
+
     const newTimetable: Timetable = { id: v4(), slots, conflicts: [], generatedAt: new Date().toISOString() };
+
     newTimetable.conflicts = detectConflicts(slots);
     // Auto-rebalance A-level: shift any excess periods on over-allocated
     // subjects into under-allocated subjects in the same class.
