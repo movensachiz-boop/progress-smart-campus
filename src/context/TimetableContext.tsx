@@ -507,31 +507,38 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     const STRICT_DOUBLE_CODES = new Set(['PHY', 'CHE', 'BIO']);
     const isStrictDouble = (s: Subject) => STRICT_DOUBLE_CODES.has((s.code || '').toUpperCase());
+    // Assigned further down, once the admin double-period rules are loaded.
+    // Any subject that must be taught in double blocks gets an EVEN weekly period
+    // count so the last period can never be left as an orphan single.
+    let needsEvenPeriods: (s: Subject, form: number | undefined, classId?: string) => boolean =
+      (s) => isStrictDouble(s);
 
     // NOTE: no hardcoded per-class period overrides. Admin settings (per-class
     // `subjectPeriods`, else the subject's configured periodsPerWeek) are the only source.
     const PPW_OVERRIDES: Array<{ match: (cls: { id: string; form?: number }) => boolean; code: string; periods: number }> = [];
 
     // A-level (forms 5/6) classes get 8 periods/week per subject regardless of the subject's
-    // configured periodsPerWeek. O-level uses the subject's configured value; strict sciences
+    // configured periodsPerWeek. O-level uses the subject's configured value; double subjects
     // are rounded up to an even count so they can never be forced into a single session.
     // Per-class `subjectPeriods` overrides take highest precedence.
     const ppwFor = (subject: Subject, classOrForm?: { id: string; form?: number } | number) => {
       const classForm = typeof classOrForm === 'number' ? classOrForm : classOrForm?.form;
       const classId = typeof classOrForm === 'object' && classOrForm ? classOrForm.id : undefined;
       const code = (subject.code || '').toUpperCase();
+      const even = needsEvenPeriods(subject, classForm, classId);
       if (classId) {
         const cls = classes.find(c => c.id === classId);
         const perClass = cls?.subjectPeriods?.[subject.id];
         if (typeof perClass === 'number' && perClass > 0) {
-          return isStrictDouble(subject) && perClass % 2 === 1 ? perClass + 1 : perClass;
+          return even && perClass % 2 === 1 ? perClass + 1 : perClass;
         }
         const ov = PPW_OVERRIDES.find(o => o.code === code && o.match({ id: classId, form: classForm }));
-        if (ov) return isStrictDouble(subject) && ov.periods % 2 === 1 ? ov.periods + 1 : ov.periods;
+        if (ov) return even && ov.periods % 2 === 1 ? ov.periods + 1 : ov.periods;
       }
       const base = classForm === 6 ? 10 : classForm === 5 ? 8 : subject.periodsPerWeek;
-      return isStrictDouble(subject) && base % 2 === 1 ? base + 1 : base;
+      return even && base % 2 === 1 ? base + 1 : base;
     };
+
     // Admin-configurable double-period rules (Timetable → Settings → Double Periods).
     const dblSettings = loadDoubleSettings();
     const isALevelForm = (form: number | undefined) => form === 5 || form === 6;
@@ -584,6 +591,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (per > 0) return clampLen(per);
       return clampLen(isALevelForm(form) ? (dblSettings.aLevelDoubleLength || 2) : (dblSettings.oLevelDoubleLength || 2));
     };
+    // Now that the double rules are known, weekly period counts round up to an even
+    // number for every subject that must be taught in blocks.
+    needsEvenPeriods = (s, form, classId) => {
+      if (isStrictDouble(s)) return true;
+      if (!mustDouble(s, form, classId)) return false;
+      return doubleLength(s, form, classId) === 2;
+    };
+
+
 
     // Practical subjects (Computer Science / ICT / Agriculture) must run as ONE unbroken
     // block on a day — no break, lunch or other subject in between.
@@ -1607,7 +1623,103 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // FINAL PASS: no orphan single periods for subjects the admin configured as
+    // doubles. Any lone period is extended into an adjacent free period of the same
+    // class (teacher permitting); if the weekly quota is already full, the period is
+    // instead borrowed from a longer run on another day.
+    {
+      const idxOf = new Map<string, number>();
+      slots.forEach((s, i) => { if (s.type === 'lesson') idxOf.set(`${s.classId}|${s.day}|${s.period}`, i); });
+      const teacherBusy = new Set<string>();
+      slots.forEach(s => { if (s.teacherId) teacherBusy.add(`${s.teacherId}|${s.day}|${s.period}`); });
+      const weekCount: Record<string, number> = {};
+      slots.forEach(s => {
+        if (s.type !== 'lesson' || !s.subjectId) return;
+        const k = `${s.classId}|${s.subjectId}`;
+        weekCount[k] = (weekCount[k] || 0) + 1;
+      });
+
+      const freeIndex = (classId: string, day: string, period: number) => {
+        const i = idxOf.get(`${classId}|${day}|${period}`);
+        if (i == null) return -1;
+        const s = slots[i];
+        return s.type === 'lesson' && !s.subjectId ? i : -1;
+      };
+
+      classes.forEach(cls => {
+        DAYS.forEach(day => {
+          // Recompute runs per subject for this class/day each time.
+          const bySubject: Record<string, number[]> = {};
+          slots.forEach(s => {
+            if (s.type !== 'lesson' || !s.subjectId || s.classId !== cls.id || s.day !== day) return;
+            (bySubject[s.subjectId] ||= []).push(s.period);
+          });
+          Object.entries(bySubject).forEach(([subjectId, rawPeriods]) => {
+            const subject = subjects.find(s => s.id === subjectId);
+            if (!subject) return;
+            if (!mustDouble(subject, cls.form, cls.id)) return;
+            const periodsSorted = [...rawPeriods].sort((a, b) => a - b);
+            // Split into consecutive runs.
+            const runs: number[][] = [];
+            periodsSorted.forEach(p => {
+              const last = runs[runs.length - 1];
+              if (last && last[last.length - 1] === p - 1) last.push(p);
+              else runs.push([p]);
+            });
+            runs.filter(r => r.length === 1).forEach(run => {
+              const period = run[0];
+              const srcIdx = idxOf.get(`${cls.id}|${day}|${period}`);
+              if (srcIdx == null) return;
+              const src = slots[srcIdx];
+              const quotaLeft = ppwFor(subject, cls) - (weekCount[`${cls.id}|${subjectId}`] || 0);
+
+              const tryFill = (target: number) => {
+                if (target < 1 || target > totalSlots) return false;
+                if (isNonAcademic(day as DayOfWeek, target)) return false;
+                const ti = freeIndex(cls.id, day, target);
+                if (ti < 0) return false;
+                if (src.teacherId && teacherBusy.has(`${src.teacherId}|${day}|${target}`)) return false;
+                slots[ti] = { ...slots[ti], subjectId, teacherId: src.teacherId };
+                if (src.teacherId) teacherBusy.add(`${src.teacherId}|${day}|${target}`);
+                weekCount[`${cls.id}|${subjectId}`] = (weekCount[`${cls.id}|${subjectId}`] || 0) + 1;
+                return true;
+              };
+
+              if (quotaLeft > 0 && (tryFill(period + 1) || tryFill(period - 1))) return;
+
+              // Quota full (or nowhere to grow) — borrow a period from a run of 3+
+              // on another day so both days keep clean blocks.
+              const donor = slots.find(s => {
+                if (s.type !== 'lesson' || s.subjectId !== subjectId || s.classId !== cls.id || s.day === day) return false;
+                const dayPeriods = slots
+                  .filter(o => o.type === 'lesson' && o.subjectId === subjectId && o.classId === cls.id && o.day === s.day)
+                  .map(o => o.period).sort((a, b) => a - b);
+                const dayRuns: number[][] = [];
+                dayPeriods.forEach(p => {
+                  const last = dayRuns[dayRuns.length - 1];
+                  if (last && last[last.length - 1] === p - 1) last.push(p);
+                  else dayRuns.push([p]);
+                });
+                // Only give away the tail of a run of 3+, so the donor day keeps a block.
+                return dayRuns.some(r => r.length >= 3 && r[r.length - 1] === s.period);
+              });
+
+              if (donor) {
+                const di = slots.findIndex(s => s.id === donor.id);
+                if (di >= 0) {
+                  slots[di] = { ...slots[di], subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined };
+                  weekCount[`${cls.id}|${subjectId}`] -= 1;
+                  if (tryFill(period + 1) || tryFill(period - 1)) return;
+                }
+              }
+            });
+          });
+        });
+      });
+    }
+
     const newTimetable: Timetable = { id: v4(), slots, conflicts: [], generatedAt: new Date().toISOString() };
+
     newTimetable.conflicts = detectConflicts(slots);
     // Auto-rebalance A-level: shift any excess periods on over-allocated
     // subjects into under-allocated subjects in the same class.
