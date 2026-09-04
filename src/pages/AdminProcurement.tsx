@@ -1023,6 +1023,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                           if (url) setViewImage(url);
                         }}><Eye size={14} /></Button>
                       )}
+                      <Button size="sm" variant="outline" title="Bulk divider — split into a smaller portion" onClick={() => openSplit(r)}><Divide size={14} /></Button>
                       <Button size="sm" variant="outline" onClick={() => downloadPDF(r)}><FileDown size={14} /></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(r)}><Trash2 size={14} /></Button>
                     </div>
