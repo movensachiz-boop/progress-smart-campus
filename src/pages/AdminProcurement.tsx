@@ -486,6 +486,61 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
   const [scanning, setScanning] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
 
+  /* ── Bulk divider: split a bulk requisition into a smaller portion ── */
+  const [splitReq, setSplitReq] = useState<Requisition | null>(null);
+  const [splitBy, setSplitBy] = useState("1");
+  const [splitTake, setSplitTake] = useState("1");
+  const [splitRound, setSplitRound] = useState<"exact" | "up" | "down">("exact");
+  const [splitting, setSplitting] = useState(false);
+
+  const divideQty = (qty: number) => {
+    const by = Math.max(1, Number(splitBy) || 1);
+    const take = Math.max(1, Number(splitTake) || 1);
+    const raw = ((Number(qty) || 0) / by) * take;
+    if (splitRound === "up") return Math.ceil(raw);
+    if (splitRound === "down") return Math.max(0, Math.floor(raw));
+    return Math.round(raw * 100) / 100;
+  };
+
+  const splitPreview: Item[] = (splitReq?.items || []).map((it) => ({
+    ...it,
+    quantity: divideQty(Number(it.quantity) || 0),
+  }));
+
+  const openSplit = (r: Requisition) => {
+    setSplitReq(r);
+    setSplitBy("1");
+    setSplitTake("1");
+    setSplitRound("exact");
+  };
+
+  const createSplit = async () => {
+    if (!splitReq) return;
+    const by = Math.max(1, Number(splitBy) || 1);
+    const take = Math.max(1, Number(splitTake) || 1);
+    const newItems = splitPreview.filter((it) => (Number(it.quantity) || 0) > 0);
+    if (!newItems.length) return toast({ title: "All divided quantities are zero", variant: "destructive" });
+    setSplitting(true);
+    const portion = `Portion ${take}/${by} of ${splitReq.requisition_number}`;
+    const { error } = await supabase.from("requisitions").insert({
+      requested_by: splitReq.requested_by,
+      department: splitReq.department || null,
+      purpose: splitReq.purpose ? `${splitReq.purpose} — ${portion}` : portion,
+      items: newItems as any,
+      total_amount: sumItems(newItems),
+      currency: splitReq.currency,
+      notes: [splitReq.notes, `Split from ${splitReq.requisition_number} (divided by ${by}${take > 1 ? `, taking ${take}` : ""}).`]
+        .filter(Boolean).join("\n"),
+      status: "pending",
+    });
+    setSplitting(false);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Divided requisition created", description: portion });
+    setSplitReq(null);
+    onChange();
+  };
+
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const toggleSel = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleAll = () => setSelected((s) => s.size === data.length ? new Set() : new Set(data.map((r) => r.id)));
