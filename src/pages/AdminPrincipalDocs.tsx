@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { generateTargetsFormBatch, TargetsStudent } from "@/lib/generateTargetsForm";
 import { generateAttendanceRegister } from "@/lib/generateAttendanceRegister";
+import { generateBoardersRegister } from "@/lib/generateBoardersRegister";
 import { generateEnrolmentRequirements } from "@/lib/generateEnrolmentRequirements";
 import { generateApplicationForm } from "@/lib/generateApplicationForm";
 import { generateBusinessLetter } from "@/lib/generateBusinessLetter";
