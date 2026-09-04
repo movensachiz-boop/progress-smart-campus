@@ -1035,6 +1035,76 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           </Table>
         </div>
       </CardContent>
+
+      <Dialog open={!!splitReq} onOpenChange={(v) => !v && setSplitReq(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bulk Divider — {splitReq?.requisition_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Divide every quantity at once. E.g. 20 litres covering 20 weeks → divide by 20, take 1 to get one week's supply.
+              A new pending requisition is created; the original stays unchanged.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label>Divide by (e.g. weeks)</Label>
+                <Input type="number" min={1} value={splitBy} onChange={(e) => setSplitBy(e.target.value)} />
+              </div>
+              <div>
+                <Label>Take (portions)</Label>
+                <Input type="number" min={1} value={splitTake} onChange={(e) => setSplitTake(e.target.value)} />
+              </div>
+              <div>
+                <Label>Rounding</Label>
+                <Select value={splitRound} onValueChange={(v) => setSplitRound(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="exact">Exact (decimals)</SelectItem>
+                    <SelectItem value="up">Round up</SelectItem>
+                    <SelectItem value="down">Round down</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Original</TableHead>
+                    <TableHead className="text-right">Divided</TableHead>
+                    <TableHead className="text-right">Unit Price</TableHead>
+                    <TableHead className="text-right">New Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(splitReq?.items || []).map((it, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{it.description}</TableCell>
+                      <TableCell className="text-right">{Number(it.quantity) || 0} {it.unit || ""}</TableCell>
+                      <TableCell className="text-right font-semibold">{splitPreview[i]?.quantity} {it.unit || ""}</TableCell>
+                      <TableCell className="text-right">{splitReq?.currency} {(Number(it.unit_price) || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        {splitReq?.currency} {(((splitPreview[i]?.quantity as number) || 0) * (Number(it.unit_price) || 0)).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="text-right font-semibold">
+              New total: {splitReq?.currency} {sumItems(splitPreview).toFixed(2)}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSplitReq(null)}>Cancel</Button>
+            <Button onClick={createSplit} disabled={splitting}>
+              {splitting ? <Loader2 size={16} className="animate-spin" /> : <Divide size={16} />} Create divided requisition
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
