@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, ShoppingCart, Pencil, Receipt, Camera, Loader2, Eye, Upload } from "lucide-react";
+import { Plus, Trash2, FileDown, CheckCircle2, FileText, Truck, Package, ShoppingCart, Pencil, Receipt, Camera, Loader2, Eye, Upload, Divide } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { generateProcurementDoc, ProcurementLineItem } from "@/lib/generateProcurementDoc";
@@ -485,6 +485,61 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
   const [phonePairOpen, setPhonePairOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
+
+  /* ── Bulk divider: split a bulk requisition into a smaller portion ── */
+  const [splitReq, setSplitReq] = useState<Requisition | null>(null);
+  const [splitBy, setSplitBy] = useState("1");
+  const [splitTake, setSplitTake] = useState("1");
+  const [splitRound, setSplitRound] = useState<"exact" | "up" | "down">("exact");
+  const [splitting, setSplitting] = useState(false);
+
+  const divideQty = (qty: number) => {
+    const by = Math.max(1, Number(splitBy) || 1);
+    const take = Math.max(1, Number(splitTake) || 1);
+    const raw = ((Number(qty) || 0) / by) * take;
+    if (splitRound === "up") return Math.ceil(raw);
+    if (splitRound === "down") return Math.max(0, Math.floor(raw));
+    return Math.round(raw * 100) / 100;
+  };
+
+  const splitPreview: Item[] = (splitReq?.items || []).map((it) => ({
+    ...it,
+    quantity: divideQty(Number(it.quantity) || 0),
+  }));
+
+  const openSplit = (r: Requisition) => {
+    setSplitReq(r);
+    setSplitBy("1");
+    setSplitTake("1");
+    setSplitRound("exact");
+  };
+
+  const createSplit = async () => {
+    if (!splitReq) return;
+    const by = Math.max(1, Number(splitBy) || 1);
+    const take = Math.max(1, Number(splitTake) || 1);
+    const newItems = splitPreview.filter((it) => (Number(it.quantity) || 0) > 0);
+    if (!newItems.length) return toast({ title: "All divided quantities are zero", variant: "destructive" });
+    setSplitting(true);
+    const portion = `Portion ${take}/${by} of ${splitReq.requisition_number}`;
+    const { error } = await supabase.from("requisitions").insert({
+      requested_by: splitReq.requested_by,
+      department: splitReq.department || null,
+      purpose: splitReq.purpose ? `${splitReq.purpose} — ${portion}` : portion,
+      items: newItems as any,
+      total_amount: sumItems(newItems),
+      currency: splitReq.currency,
+      notes: [splitReq.notes, `Split from ${splitReq.requisition_number} (divided by ${by}${take > 1 ? `, taking ${take}` : ""}).`]
+        .filter(Boolean).join("\n"),
+      status: "pending",
+    });
+    setSplitting(false);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Divided requisition created", description: portion });
+    setSplitReq(null);
+    onChange();
+  };
+
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const toggleSel = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -968,6 +1023,7 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
                           if (url) setViewImage(url);
                         }}><Eye size={14} /></Button>
                       )}
+                      <Button size="sm" variant="outline" title="Bulk divider — split into a smaller portion" onClick={() => openSplit(r)}><Divide size={14} /></Button>
                       <Button size="sm" variant="outline" onClick={() => downloadPDF(r)}><FileDown size={14} /></Button>
                       <Button size="sm" variant="ghost" onClick={() => remove(r)}><Trash2 size={14} /></Button>
                     </div>
@@ -979,6 +1035,76 @@ function RequisitionsTab({ data, onChange }: { data: Requisition[]; onChange: ()
           </Table>
         </div>
       </CardContent>
+
+      <Dialog open={!!splitReq} onOpenChange={(v) => !v && setSplitReq(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bulk Divider — {splitReq?.requisition_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Divide every quantity at once. E.g. 20 litres covering 20 weeks → divide by 20, take 1 to get one week's supply.
+              A new pending requisition is created; the original stays unchanged.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label>Divide by (e.g. weeks)</Label>
+                <Input type="number" min={1} value={splitBy} onChange={(e) => setSplitBy(e.target.value)} />
+              </div>
+              <div>
+                <Label>Take (portions)</Label>
+                <Input type="number" min={1} value={splitTake} onChange={(e) => setSplitTake(e.target.value)} />
+              </div>
+              <div>
+                <Label>Rounding</Label>
+                <Select value={splitRound} onValueChange={(v) => setSplitRound(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="exact">Exact (decimals)</SelectItem>
+                    <SelectItem value="up">Round up</SelectItem>
+                    <SelectItem value="down">Round down</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Original</TableHead>
+                    <TableHead className="text-right">Divided</TableHead>
+                    <TableHead className="text-right">Unit Price</TableHead>
+                    <TableHead className="text-right">New Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(splitReq?.items || []).map((it, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{it.description}</TableCell>
+                      <TableCell className="text-right">{Number(it.quantity) || 0} {it.unit || ""}</TableCell>
+                      <TableCell className="text-right font-semibold">{splitPreview[i]?.quantity} {it.unit || ""}</TableCell>
+                      <TableCell className="text-right">{splitReq?.currency} {(Number(it.unit_price) || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        {splitReq?.currency} {(((splitPreview[i]?.quantity as number) || 0) * (Number(it.unit_price) || 0)).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="text-right font-semibold">
+              New total: {splitReq?.currency} {sumItems(splitPreview).toFixed(2)}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSplitReq(null)}>Cancel</Button>
+            <Button onClick={createSplit} disabled={splitting}>
+              {splitting ? <Loader2 size={16} className="animate-spin" /> : <Divide size={16} />} Create divided requisition
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
