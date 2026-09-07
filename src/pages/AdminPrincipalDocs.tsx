@@ -15,6 +15,7 @@ import { generateEnrolmentRequirements } from "@/lib/generateEnrolmentRequiremen
 import { generateApplicationForm } from "@/lib/generateApplicationForm";
 import { generateBusinessLetter } from "@/lib/generateBusinessLetter";
 import { generateTermCalendar } from "@/lib/generateTermCalendar";
+import { generateMeetingAgenda, AgendaItem } from "@/lib/generateMeetingAgenda";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
