@@ -15,6 +15,7 @@ import { generateEnrolmentRequirements } from "@/lib/generateEnrolmentRequiremen
 import { generateApplicationForm } from "@/lib/generateApplicationForm";
 import { generateBusinessLetter } from "@/lib/generateBusinessLetter";
 import { generateTermCalendar } from "@/lib/generateTermCalendar";
+import { generateMeetingAgenda, AgendaItem } from "@/lib/generateMeetingAgenda";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
@@ -67,6 +68,34 @@ const AdminPrincipalDocs = () => {
   const [calendarTerm, setCalendarTerm] = useState<string>("Term 3");
   const [calendarYear, setCalendarYear] = useState<string>("2026");
   const [generatingCalendar, setGeneratingCalendar] = useState(false);
+
+  // Boarders check in register
+  const [boardersTerm, setBoardersTerm] = useState<string>("Term 3 2026");
+  const [boardersDate, setBoardersDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [boardersRows, setBoardersRows] = useState<string>("30");
+  const [generatingBoarders, setGeneratingBoarders] = useState(false);
+
+  // Meeting programme / agenda
+  const [agendaTitle, setAgendaTitle] = useState<string>("Staff Meeting");
+  const [agendaDate, setAgendaDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [agendaTime, setAgendaTime] = useState<string>("08:00");
+  const [agendaVenue, setAgendaVenue] = useState<string>("School Hall");
+  const [agendaChair, setAgendaChair] = useState<string>("The Principal");
+  const [agendaAttendees, setAgendaAttendees] = useState<string>("");
+  const [agendaNotes, setAgendaNotes] = useState<string>("");
+  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([
+    { time: "08:00", topic: "Opening Prayer", presenter: "" },
+    { time: "08:10", topic: "Welcome Remarks", presenter: "The Principal" },
+    { time: "08:20", topic: "Matters Arising", presenter: "" },
+    { time: "", topic: "Any Other Business", presenter: "" },
+    { time: "", topic: "Closing Prayer", presenter: "" },
+  ]);
+  const [generatingAgenda, setGeneratingAgenda] = useState(false);
+
+  const updateAgendaItem = (idx: number, patch: Partial<AgendaItem>) =>
+    setAgendaItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+
+
 
 
   // Business letter state
@@ -465,7 +494,168 @@ const AdminPrincipalDocs = () => {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ClipboardList size={18} /> Boarders Check In Register</CardTitle>
+            <CardDescription>
+              Blank printable register for boarders checking in. Columns: Name of Learner, Class, Name of Parent / Guardian, Contact No., Signature.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Term</Label>
+                <Input value={boardersTerm} onChange={(e) => setBoardersTerm(e.target.value)} placeholder="e.g. Term 3 2026" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Check In Date</Label>
+                <Input type="date" value={boardersDate} onChange={(e) => setBoardersDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Number of Rows</Label>
+                <Input type="number" min={1} value={boardersRows} onChange={(e) => setBoardersRows(e.target.value)} />
+              </div>
+            </div>
+            <Button
+              className="gap-2"
+              disabled={generatingBoarders}
+              onClick={async () => {
+                setGeneratingBoarders(true);
+                try {
+                  await generateBoardersRegister({
+                    term: boardersTerm,
+                    checkInDate: boardersDate,
+                    rows: Math.max(1, parseInt(boardersRows, 10) || 30),
+                  });
+                  toast.success("Boarders check in register downloaded");
+                } catch (e: any) {
+                  toast.error(e?.message || "Failed to generate register");
+                } finally {
+                  setGeneratingBoarders(false);
+                }
+              }}
+            >
+              {generatingBoarders ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+              Download Boarders Register
+            </Button>
+            <p className="text-xs text-muted-foreground">Blank form — details are filled in by hand at check in.</p>
+          </CardContent>
+        </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><CalendarDays size={18} /> Meeting Programme / Agenda</CardTitle>
+            <CardDescription>
+              Build the programme for a staff, parents or board meeting and download it on the school letterhead.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Meeting Title</Label>
+                <Input value={agendaTitle} onChange={(e) => setAgendaTitle(e.target.value)} placeholder="e.g. Staff Meeting" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Date</Label>
+                <Input type="date" value={agendaDate} onChange={(e) => setAgendaDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Start Time</Label>
+                <Input type="time" value={agendaTime} onChange={(e) => setAgendaTime(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Venue</Label>
+                <Input value={agendaVenue} onChange={(e) => setAgendaVenue(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Chairperson</Label>
+                <Input value={agendaChair} onChange={(e) => setAgendaChair(e.target.value)} />
+              </div>
+              <div className="space-y-1.5 md:col-span-1">
+                <Label>Attendees (optional)</Label>
+                <Input value={agendaAttendees} onChange={(e) => setAgendaAttendees(e.target.value)} placeholder="e.g. All teaching staff" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Agenda Items</Label>
+              {agendaItems.map((item, idx) => (
+                <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                  <Input
+                    className="col-span-3 md:col-span-2"
+                    placeholder="Time"
+                    value={item.time || ""}
+                    onChange={(e) => updateAgendaItem(idx, { time: e.target.value })}
+                  />
+                  <Input
+                    className="col-span-6 md:col-span-6"
+                    placeholder="Agenda item"
+                    value={item.topic}
+                    onChange={(e) => updateAgendaItem(idx, { topic: e.target.value })}
+                  />
+                  <Input
+                    className="col-span-2 md:col-span-3"
+                    placeholder="Led by"
+                    value={item.presenter || ""}
+                    onChange={(e) => updateAgendaItem(idx, { presenter: e.target.value })}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="col-span-1"
+                    onClick={() => setAgendaItems((prev) => prev.filter((_, i) => i !== idx))}
+                  >
+                    ✕
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAgendaItems((prev) => [...prev, { time: "", topic: "", presenter: "" }])}
+              >
+                + Add item
+              </Button>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Notes / Resolutions (optional)</Label>
+              <Textarea rows={3} value={agendaNotes} onChange={(e) => setAgendaNotes(e.target.value)} />
+            </div>
+
+            <Button
+              className="gap-2"
+              disabled={generatingAgenda}
+              onClick={async () => {
+                if (!agendaTitle.trim()) { toast.error("Enter a meeting title"); return; }
+                if (!agendaItems.some((i) => i.topic.trim())) { toast.error("Add at least one agenda item"); return; }
+                setGeneratingAgenda(true);
+                try {
+                  await generateMeetingAgenda({
+                    title: agendaTitle,
+                    date: agendaDate,
+                    time: agendaTime,
+                    venue: agendaVenue,
+                    chairperson: agendaChair,
+                    attendees: agendaAttendees,
+                    items: agendaItems,
+                    notes: agendaNotes,
+                  });
+                  toast.success("Meeting programme downloaded");
+                } catch (e: any) {
+                  toast.error(e?.message || "Failed to generate programme");
+                } finally {
+                  setGeneratingAgenda(false);
+                }
+              }}
+            >
+              {generatingAgenda ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+              Download Meeting Programme
+            </Button>
+          </CardContent>
+        </Card>
 
 
         <Card>
