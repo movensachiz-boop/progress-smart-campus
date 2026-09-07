@@ -68,6 +68,34 @@ const AdminPrincipalDocs = () => {
   const [calendarYear, setCalendarYear] = useState<string>("2026");
   const [generatingCalendar, setGeneratingCalendar] = useState(false);
 
+  // Boarders check in register
+  const [boardersTerm, setBoardersTerm] = useState<string>("Term 3 2026");
+  const [boardersDate, setBoardersDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [boardersRows, setBoardersRows] = useState<string>("30");
+  const [generatingBoarders, setGeneratingBoarders] = useState(false);
+
+  // Meeting programme / agenda
+  const [agendaTitle, setAgendaTitle] = useState<string>("Staff Meeting");
+  const [agendaDate, setAgendaDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [agendaTime, setAgendaTime] = useState<string>("08:00");
+  const [agendaVenue, setAgendaVenue] = useState<string>("School Hall");
+  const [agendaChair, setAgendaChair] = useState<string>("The Principal");
+  const [agendaAttendees, setAgendaAttendees] = useState<string>("");
+  const [agendaNotes, setAgendaNotes] = useState<string>("");
+  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([
+    { time: "08:00", topic: "Opening Prayer", presenter: "" },
+    { time: "08:10", topic: "Welcome Remarks", presenter: "The Principal" },
+    { time: "08:20", topic: "Matters Arising", presenter: "" },
+    { time: "", topic: "Any Other Business", presenter: "" },
+    { time: "", topic: "Closing Prayer", presenter: "" },
+  ]);
+  const [generatingAgenda, setGeneratingAgenda] = useState(false);
+
+  const updateAgendaItem = (idx: number, patch: Partial<AgendaItem>) =>
+    setAgendaItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+
+
+
 
   // Business letter state
   const [letterRecipientName, setLetterRecipientName] = useState("");
