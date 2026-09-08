@@ -423,7 +423,15 @@ export default function AdminSubjects() {
               {/* Classes studying this subject — synced with Teachers section */}
               <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-medium">Classes studying this subject</div>
+                  <div className="text-sm font-medium">
+                    Classes studying this subject
+                    <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                      {selectedClassIds.filter(id => {
+                        const c = classes.find(x => x.id === id);
+                        return c && form.forms.includes(c.form);
+                      }).length} ticked
+                    </span>
+                  </div>
                   {editing && (
                     <Button
                       type="button"
