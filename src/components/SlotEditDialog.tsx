@@ -131,7 +131,7 @@ export default function SlotEditDialog({
     return run;
   }, [slot, classSlots, blockLength]);
 
-  type Suggestion = { day: DayOfWeek; startPeriod: number; targets: TimetableSlot[]; note: string };
+  type Suggestion = { day: DayOfWeek; startPeriod: number; targets: TimetableSlot[]; note: string; clash?: string };
 
   const suggestions = useMemo<Suggestion[]>(() => {
     if (!slot || !cls) return [];
@@ -159,6 +159,24 @@ export default function SlotEditDialog({
           if (busy) continue;
         }
         const freeCount = targets.filter(t => !t.subjectId).length;
+
+        // Would moving the displaced lessons back into the vacated block clash?
+        let clash: string | undefined;
+        targets.forEach((t, i) => {
+          if (clash || !t.teacherId) return;
+          const dest = currentBlock[i];
+          if (!dest) return;
+          const busy = allSlots.find(s =>
+            s.classId !== cls.id && s.id !== t.id &&
+            s.teacherId === t.teacherId && s.day === dest.day && s.period === dest.period
+          );
+          if (busy) {
+            const tch = teachers.find(x => x.id === t.teacherId);
+            const bc = classes.find(c => c.id === busy.classId);
+            clash = `${tch?.name || 'Teacher'} busy with ${bc?.id || 'another class'} on the swap back`;
+          }
+        });
+
         out.push({
           day,
           startPeriod: targets[0].period,
@@ -166,13 +184,19 @@ export default function SlotEditDialog({
           note: freeCount === targets.length
             ? 'Free block'
             : `Swaps with ${Array.from(new Set(targets.map(t => subjects.find(x => x.id === t.subjectId)?.code).filter(Boolean))).join(', ') || 'existing lesson'}`,
+          clash,
         });
         if (out.length >= 40) break;
       }
     }
-    // free blocks first
-    return out.sort((a, b) => (a.note === 'Free block' ? 0 : 1) - (b.note === 'Free block' ? 0 : 1)).slice(0, 8);
-  }, [slot, cls, subjectId, teacherId, classSlots, allSlots, blockLength, currentBlock, subjects]);
+    // clash-free first, then free blocks
+    return out
+      .sort((a, b) =>
+        ((a.clash ? 1 : 0) - (b.clash ? 1 : 0)) ||
+        ((a.note === 'Free block' ? 0 : 1) - (b.note === 'Free block' ? 0 : 1))
+      )
+      .slice(0, 8);
+  }, [slot, cls, subjectId, teacherId, classSlots, allSlots, blockLength, currentBlock, subjects, teachers, classes]);
 
   const applySuggestion = (sg: Suggestion) => {
     if (!slot) return;
@@ -369,13 +393,17 @@ export default function SlotEditDialog({
                       key={`${sg.day}-${sg.startPeriod}`}
                       type="button"
                       onClick={() => applySuggestion(sg)}
-                      className="w-full flex items-center justify-between gap-2 text-left text-xs rounded-md border px-2.5 py-1.5 hover:border-primary hover:bg-primary/5 transition-colors"
+                      className={`w-full flex items-start justify-between gap-2 text-left text-xs rounded-md border px-2.5 py-1.5 transition-colors ${sg.clash ? 'border-destructive/50 bg-destructive/5 hover:border-destructive' : 'hover:border-primary hover:bg-primary/5'}`}
                     >
                       <span className="font-medium">
                         {sg.day} · Period {sg.startPeriod}
                         {blockLength > 1 ? `–${sg.startPeriod + blockLength - 1}` : ''}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">{sg.note}</span>
+                      <span className={`text-[11px] text-right ${sg.clash ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {sg.clash ? (
+                          <span className="flex items-center gap-1 justify-end"><AlertTriangle className="w-3 h-3 shrink-0" />{sg.clash}</span>
+                        ) : sg.note}
+                      </span>
                     </button>
                   ))}
                 </div>
