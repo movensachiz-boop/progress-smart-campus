@@ -221,6 +221,17 @@ export default function AdminSubjects() {
   const lower = filtered.filter(s => s.forms.some(f => f <= 4));
   const upper = filtered.filter(s => s.forms.some(f => f >= 5));
 
+  /** Classes that study a subject — ticked on the class or reached via a teacher allocation. */
+  const classesTaking = (subjectId: string) => {
+    let removedPairs = new Set<string>();
+    try { removedPairs = new Set(JSON.parse(localStorage.getItem('tt_removed_class_subjects') || '[]')); } catch { /* ignore */ }
+    const viaTeacher = teacherClassIdsFor(subjectId);
+    return [...classes]
+      .filter(c => !removedPairs.has(`${subjectId}|${c.id}`))
+      .filter(c => c.subjectIds.includes(subjectId) || viaTeacher.has(c.id))
+      .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream));
+  };
+
   const SubjectCard = ({ s, variant }: { s: Subject; variant: 'primary' | 'accent' }) => (
     <div className="bg-card rounded-xl border p-4 flex items-center justify-between group hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
@@ -245,6 +256,25 @@ export default function AdminSubjects() {
               <span key={f} className="w-5 h-5 text-[10px] rounded bg-muted flex items-center justify-center text-muted-foreground">{f}</span>
             ))}
           </div>
+
+          {/* Classes that actually study this subject */}
+          {(() => {
+            const taking = classesTaking(s.id);
+            return taking.length === 0 ? (
+              <p className="text-[10px] text-destructive mt-1">No classes take this subject yet</p>
+            ) : (
+              <div className="flex flex-wrap gap-1 mt-1 max-w-[16rem]">
+                {taking.slice(0, 6).map(c => (
+                  <span key={c.id} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    {c.form}{c.stream}
+                  </span>
+                ))}
+                {taking.length > 6 && (
+                  <span className="text-[10px] text-muted-foreground">+{taking.length - 6} more</span>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -393,7 +423,15 @@ export default function AdminSubjects() {
               {/* Classes studying this subject — synced with Teachers section */}
               <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-medium">Classes studying this subject</div>
+                  <div className="text-sm font-medium">
+                    Classes studying this subject
+                    <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                      {selectedClassIds.filter(id => {
+                        const c = classes.find(x => x.id === id);
+                        return c && form.forms.includes(c.form);
+                      }).length} ticked
+                    </span>
+                  </div>
                   {editing && (
                     <Button
                       type="button"
