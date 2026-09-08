@@ -148,7 +148,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('tt_classes', JSON.stringify(cleaned));
       }
 
-      if (snapshot.timetable) { setTimetable(snapshot.timetable); localStorage.setItem('tt_timetable', JSON.stringify(snapshot.timetable)); }
+      // Never discard hand-edited periods: if this device edited the timetable
+      // after the cloud snapshot was written, keep the local (edited) version.
+      const localEditedAt = localStorage.getItem('tt_timetable_edited_at');
+      const localIsNewer = !!localEditedAt && !isForcedRestore &&
+        new Date(localEditedAt).getTime() > new Date(data.created_at).getTime() - 3000 &&
+        !!localStorage.getItem('tt_timetable');
+      if (snapshot.timetable && !localIsNewer) { setTimetable(snapshot.timetable); localStorage.setItem('tt_timetable', JSON.stringify(snapshot.timetable)); }
       if (isForcedRestore) {
         _setTimetableLocked(true);
         localStorage.setItem('tt_locked', JSON.stringify(true));
