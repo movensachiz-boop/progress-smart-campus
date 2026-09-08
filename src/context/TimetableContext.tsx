@@ -1725,7 +1725,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Keep user-defined "must happen at the same time" subject blocks in step.
-    const alignedSlots = alignParallelBlocks(slots);
+    const alignedSlots = alignParallelBlocks(slots, undefined, classes);
 
     const newTimetable: Timetable = { id: v4(), slots: alignedSlots, conflicts: [], generatedAt: new Date().toISOString() };
 

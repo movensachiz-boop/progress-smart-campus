@@ -12,7 +12,47 @@ export interface ParallelBlock {
   name: string;
   /** Optional form this group applies to (matching happens per form). */
   form?: number;
+  /** Subjects that must run at the same time in every form and every stream that takes them. */
+  subjectIds?: string[];
   entries: ParallelEntry[];
+}
+
+/** Minimal class shape needed to expand subject pairs into class/subject rows. */
+export interface ClassLike {
+  id: string;
+  form: number;
+  subjectIds: string[];
+}
+
+/**
+ * Turn each configured block into one aligned set per form: a pair (or more) of
+ * subjects is matched across every stream of a form that studies them.
+ */
+export function expandBlocks(blocks: ParallelBlock[], classes: ClassLike[]): { name: string; entries: ParallelEntry[] }[] {
+  const out: { name: string; entries: ParallelEntry[] }[] = [];
+  blocks.forEach(block => {
+    const subjectIds = (block.subjectIds || []).filter(Boolean);
+    if (subjectIds.length >= 2) {
+      const forms = [...new Set(classes.map(c => c.form))]
+        .filter(f => !block.form || f === block.form)
+        .sort((a, b) => a - b);
+      forms.forEach(form => {
+        const entries: ParallelEntry[] = [];
+        classes
+          .filter(c => c.form === form)
+          .forEach(c => {
+            subjectIds.forEach(subjectId => {
+              if (c.subjectIds.includes(subjectId)) entries.push({ classId: c.id, subjectId });
+            });
+          });
+        if (entries.length >= 2) out.push({ name: `${block.name || 'Group'} · Form ${form}`, entries });
+      });
+      return;
+    }
+    const manual = (block.entries || []).filter(e => e.classId && e.subjectId);
+    if (manual.length >= 2) out.push({ name: block.name || 'Untitled group', entries: manual });
+  });
+  return out;
 }
 
 const KEY = 'tt_parallel_blocks';
@@ -52,8 +92,12 @@ function content(s: TimetableSlot) {
  * class/subject pairs so they occupy the same day+period, by swapping periods
  * inside each class only (never changing how many periods a subject gets).
  */
-export function alignParallelBlocks(slots: TimetableSlot[], blocks?: ParallelBlock[]): TimetableSlot[] {
-  const groups = blocks ?? loadParallelBlocks();
+export function alignParallelBlocks(
+  slots: TimetableSlot[],
+  blocks?: ParallelBlock[],
+  classes: ClassLike[] = []
+): TimetableSlot[] {
+  const groups = expandBlocks(blocks ?? loadParallelBlocks(), classes);
   if (!groups.length) return slots;
 
   const out = slots.map(s => ({ ...s }));
@@ -129,8 +173,12 @@ export function alignParallelBlocks(slots: TimetableSlot[], blocks?: ParallelBlo
 }
 
 /** Report block pairs that did not end up in the same periods, for user feedback. */
-export function parallelBlockIssues(slots: TimetableSlot[], blocks?: ParallelBlock[]): string[] {
-  const groups = blocks ?? loadParallelBlocks();
+export function parallelBlockIssues(
+  slots: TimetableSlot[],
+  blocks?: ParallelBlock[],
+  classes: ClassLike[] = []
+): string[] {
+  const groups = expandBlocks(blocks ?? loadParallelBlocks(), classes);
   const issues: string[] = [];
   groups.forEach(block => {
     const entries = (block.entries || []).filter(e => e.classId && e.subjectId);
