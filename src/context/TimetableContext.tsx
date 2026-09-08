@@ -164,11 +164,16 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  const persistTimetable = (v: Timetable | null) => {
+  const persistTimetable = (v: Timetable | null, manualEdit = false) => {
     setTimetable(v);
     try {
-      if (v) localStorage.setItem('tt_timetable', JSON.stringify(v));
-      else localStorage.removeItem('tt_timetable');
+      if (v) {
+        localStorage.setItem('tt_timetable', JSON.stringify(v));
+        if (manualEdit) localStorage.setItem('tt_timetable_edited_at', new Date().toISOString());
+      } else {
+        localStorage.removeItem('tt_timetable');
+        localStorage.removeItem('tt_timetable_edited_at');
+      }
     } catch {}
     scheduleCloudSave({ timetable: v });
   };
