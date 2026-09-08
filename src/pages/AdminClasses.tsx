@@ -24,7 +24,7 @@ interface ClassFormState {
 }
 
 export default function AdminClasses() {
-  const { classes, setClasses, subjects } = useTimetable();
+  const { classes, setClasses, subjects, teachers } = useTimetable();
   const { map: termClassMap, selectedTermId, reload: reloadTermMap } = useTermClassMap();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ClassFormState | null>(null);
