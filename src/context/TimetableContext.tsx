@@ -322,7 +322,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const allowedInClass = (subjectId: string, cls: SchoolClass) => {
       const s = subjects.find(x => x.id === subjectId);
       if (!s) return false;
-      return isSubjectAllowedInALevelArea(s, resolveLearningArea(cls));
+      return isSubjectAllowedInALevelArea(s, resolveLearningArea(cls), cls.form);
     };
     let classesChanged = false;
     const nextClasses = classes.map(c => {
