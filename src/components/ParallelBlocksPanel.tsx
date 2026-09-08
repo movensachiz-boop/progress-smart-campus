@@ -81,13 +81,32 @@ export default function ParallelBlocksPanel() {
       <div className="space-y-4 mt-4">
         {blocks.map(block => (
           <div key={block.id} className="border rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Input
                 value={block.name}
                 onChange={e => updateBlock(block.id, { name: e.target.value })}
                 placeholder="Group name (e.g. A-Level Block A)"
                 className="max-w-xs"
               />
+              <select
+                className="border rounded-md h-9 px-2 text-sm bg-background"
+                value={block.form ?? ''}
+                onChange={e => {
+                  const form = e.target.value ? Number(e.target.value) : undefined;
+                  updateBlock(block.id, {
+                    form,
+                    entries: block.entries.filter(en => {
+                      const c = classes.find(x => x.id === en.classId);
+                      return !form || !c || c.form === form;
+                    }),
+                  });
+                }}
+              >
+                <option value="">All forms</option>
+                {forms.map(f => (
+                  <option key={f} value={f}>Form {f}</option>
+                ))}
+              </select>
               <Button size="sm" variant="ghost" onClick={() => removeBlock(block.id)}>
                 <Trash2 className="w-4 h-4 text-destructive" />
               </Button>
@@ -103,6 +122,7 @@ export default function ParallelBlocksPanel() {
                   >
                     <option value="">Select class…</option>
                     {[...classes]
+                      .filter(c => !block.form || c.form === block.form)
                       .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream))
                       .map(c => (
                         <option key={c.id} value={c.id}>{classLabel(c.id)}</option>
@@ -116,9 +136,20 @@ export default function ParallelBlocksPanel() {
                     onChange={e => updateEntry(block, idx, { subjectId: e.target.value })}
                   >
                     <option value="">Select subject…</option>
-                    {entry.classId && subjectsFor(entry.classId).map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
+                    {entry.classId && (
+                      <>
+                        <optgroup label="Taken by this class">
+                          {subjectsFor(entry.classId).taken.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Other subjects">
+                          {subjectsFor(entry.classId).others.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </optgroup>
+                      </>
+                    )}
                   </select>
 
                   <Button size="sm" variant="ghost" onClick={() => removeEntry(block, idx)}>
