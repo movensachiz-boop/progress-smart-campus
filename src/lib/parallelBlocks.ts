@@ -173,8 +173,12 @@ export function alignParallelBlocks(
 }
 
 /** Report block pairs that did not end up in the same periods, for user feedback. */
-export function parallelBlockIssues(slots: TimetableSlot[], blocks?: ParallelBlock[]): string[] {
-  const groups = blocks ?? loadParallelBlocks();
+export function parallelBlockIssues(
+  slots: TimetableSlot[],
+  blocks?: ParallelBlock[],
+  classes: ClassLike[] = []
+): string[] {
+  const groups = expandBlocks(blocks ?? loadParallelBlocks(), classes);
   const issues: string[] = [];
   groups.forEach(block => {
     const entries = (block.entries || []).filter(e => e.classId && e.subjectId);
