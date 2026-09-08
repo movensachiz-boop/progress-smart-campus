@@ -78,10 +78,11 @@ export function resolveLearningArea(cls: { learningArea?: string; stream?: strin
 }
 
 /** True when the subject may be taught in the given A-level learning area. */
-export function isSubjectAllowedInALevelArea(subject: Subject, area?: string): boolean {
+export function isSubjectAllowedInALevelArea(subject: Subject, area?: string, form?: number): boolean {
   const code = (subject.code || '').trim().toUpperCase();
   if (!code.endsWith('A')) return false;
   if (EXCLUDED_KEYS.has(normKey(subject.code || '')) || EXCLUDED_KEYS.has(normKey(subject.name || ''))) return false;
+  if (isHardBlockedALevel(subject, area, form)) return false;
   if (!area) return true;
   const match = (keys: Set<string>) =>
     keys.has(stripA(subject.code || '')) || keys.has(stripA(subject.name || '')) ||
