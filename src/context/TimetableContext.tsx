@@ -820,12 +820,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // drifted or an unknown subject slipped in.
       if (isALevel) {
         const area = resolveLearningArea(c);
-        // Ensure every Sciences/Commercials A-level stream offers COMP A — but NOT Arts.
-        if (compASubject && area !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
+        // HARD RULE: Computer Science is a Form 5 subject only (Sciences/Commercials),
+        // never Form 6 and never Arts. Geography is never taken by Arts.
+        if (compASubject && c.form === 5 && area !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
         merged = merged.filter(sId => {
           const subj = subjects.find(s => s.id === sId);
           if (!subj) return false;
           if (isExcludedFromALevel(subj)) return false;
+          if (isHardBlockedALevel(subj, area, c.form)) return false;
           if (!area) return true;
           const allowedAreas = aLevelAllowedAreas(subj);
           // Unknown A-level subject (no stream key match, no learningAreas set):
