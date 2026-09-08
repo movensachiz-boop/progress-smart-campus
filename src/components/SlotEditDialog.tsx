@@ -131,7 +131,7 @@ export default function SlotEditDialog({
     return run;
   }, [slot, classSlots, blockLength]);
 
-  type Suggestion = { day: DayOfWeek; startPeriod: number; targets: TimetableSlot[]; note: string };
+  type Suggestion = { day: DayOfWeek; startPeriod: number; targets: TimetableSlot[]; note: string; clash?: string };
 
   const suggestions = useMemo<Suggestion[]>(() => {
     if (!slot || !cls) return [];
@@ -159,6 +159,24 @@ export default function SlotEditDialog({
           if (busy) continue;
         }
         const freeCount = targets.filter(t => !t.subjectId).length;
+
+        // Would moving the displaced lessons back into the vacated block clash?
+        let clash: string | undefined;
+        targets.forEach((t, i) => {
+          if (clash || !t.teacherId) return;
+          const dest = currentBlock[i];
+          if (!dest) return;
+          const busy = allSlots.find(s =>
+            s.classId !== cls.id && s.id !== t.id &&
+            s.teacherId === t.teacherId && s.day === dest.day && s.period === dest.period
+          );
+          if (busy) {
+            const tch = teachers.find(x => x.id === t.teacherId);
+            const bc = classes.find(c => c.id === busy.classId);
+            clash = `${tch?.name || 'Teacher'} busy with ${bc?.id || 'another class'} on the swap back`;
+          }
+        });
+
         out.push({
           day,
           startPeriod: targets[0].period,
@@ -166,12 +184,18 @@ export default function SlotEditDialog({
           note: freeCount === targets.length
             ? 'Free block'
             : `Swaps with ${Array.from(new Set(targets.map(t => subjects.find(x => x.id === t.subjectId)?.code).filter(Boolean))).join(', ') || 'existing lesson'}`,
+          clash,
         });
         if (out.length >= 40) break;
       }
     }
-    // free blocks first
-    return out.sort((a, b) => (a.note === 'Free block' ? 0 : 1) - (b.note === 'Free block' ? 0 : 1)).slice(0, 8);
+    // clash-free first, then free blocks
+    return out
+      .sort((a, b) =>
+        ((a.clash ? 1 : 0) - (b.clash ? 1 : 0)) ||
+        ((a.note === 'Free block' ? 0 : 1) - (b.note === 'Free block' ? 0 : 1))
+      )
+      .slice(0, 8);
   }, [slot, cls, subjectId, teacherId, classSlots, allSlots, blockLength, currentBlock, subjects]);
 
   const applySuggestion = (sg: Suggestion) => {
