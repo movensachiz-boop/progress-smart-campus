@@ -663,7 +663,18 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const classSubjectDayDoubled: Record<string, boolean> = {};
 
     // All compulsory (core) subjects should appear EVERY day for each class.
-    const dailySubjectIds = new Set(subjects.filter(s => s.isCompulsory).map(s => s.id));
+    // Mathematics and English are ALWAYS daily, whether or not they are ticked compulsory.
+    const DAILY_CORE_KEYS = new Set([
+      'MATH', 'MATHS', 'MATHEMATICS', 'MATHA', 'MATHSA', 'PMATH', 'PUREMATH', 'PUREMATHS', 'PUREMATHA',
+      'ENG', 'ENGLISH', 'ENGLISHLANGUAGE', 'ENGLA', 'ENGA',
+    ]);
+    const isDailyCoreSubject = (s: Subject) => {
+      const code = (s.code || '').toUpperCase().replace(/&/g, 'AND').replace(/[^A-Z0-9]+/g, '');
+      const name = (s.name || '').toUpperCase().replace(/&/g, 'AND').replace(/[^A-Z0-9]+/g, '');
+      return DAILY_CORE_KEYS.has(code) || DAILY_CORE_KEYS.has(name);
+    };
+    const dailySubjectIds = new Set(subjects.filter(s => s.isCompulsory || isDailyCoreSubject(s)).map(s => s.id));
+
     const classSubjectDay: Record<string, Set<string>> = {};
     const classSubjectDayCount: Record<string, number> = {};
     const classSubjectDaySection: Record<string, Set<string>> = {};
@@ -1222,7 +1233,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           const preFilteredSubjects = shuffle(
             (classSubjectIds[cls.id] || cls.subjectIds)
               .map(sId => subjects.find(s => s.id === sId)!)
-              .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
+              .filter(s => {
+                if (!s) return false;
+                const quota = isDailyCoreSubject(s) && !isALevelForm(cls.form)
+                  ? Math.max(ppwFor(s, cls), DAYS.length)
+                  : ppwFor(s, cls);
+                return (classSubjectCount[cls.id][s.id] || 0) < quota;
+              })
           )
             .filter(s => !isPracticalSubject(s) || practicalRunAllows(cls.id, day, slot))
             .filter(s => {
