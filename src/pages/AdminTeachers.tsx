@@ -194,7 +194,12 @@ export default function AdminTeachers() {
               {teachers.length} teachers · {verifiedCount} verified · {teachers.length - verifiedCount} left to check
             </p>
           </div>
-          <Button onClick={openNew} size="sm"><Plus className="w-4 h-4 mr-1" /> Add Teacher</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => { generateAllocationReport({ subjects, teachers, classes, view: 'teacher' }); toast.success('PDF downloaded'); }}>
+              <FileDown className="w-4 h-4 mr-1" /> Print PDF
+            </Button>
+            <Button onClick={openNew} size="sm"><Plus className="w-4 h-4 mr-1" /> Add Teacher</Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
