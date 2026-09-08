@@ -1808,8 +1808,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
+    // A-LEVEL HARD RULE: no single periods in Forms 5/6 — repair singles into
+    // doubles and top every subject up to its weekly quota in whole doubles.
+    const aLevelFixed = enforceALevelDoubles(slots, classes, subjects, (cls, subject) => ppwFor(subject, cls));
+
     // Keep user-defined "must happen at the same time" subject blocks in step.
-    const alignedSlots = alignParallelBlocks(slots, undefined, classes);
+    const alignedSlots = alignParallelBlocks(aLevelFixed, undefined, classes);
+
 
     const newTimetable: Timetable = { id: v4(), slots: alignedSlots, conflicts: [], generatedAt: new Date().toISOString() };
 
