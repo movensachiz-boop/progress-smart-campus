@@ -21,15 +21,24 @@ export default function ParallelBlocksPanel() {
     return c ? `Form ${c.form} ${c.stream}` : id;
   };
 
+  const forms = [...new Set(classes.map(c => c.form))].sort((a, b) => a - b);
+
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+
+  /** Subjects taken by the class, plus every other subject so nothing is missing. */
   const subjectsFor = (classId: string) => {
     const c = classes.find(x => x.id === classId);
     const ids = new Set(c?.subjectIds || []);
-    const list = subjects.filter(s => ids.has(s.id));
-    return (list.length ? list : subjects).sort((a, b) => a.name.localeCompare(b.name));
+    const taken = subjects.filter(s => ids.has(s.id)).sort(byName);
+    const others = subjects.filter(s => !ids.has(s.id)).sort(byName);
+    return { taken, others };
   };
 
   const addBlock = () =>
-    setBlocks([...blocks, { id: v4(), name: `Same-time group ${blocks.length + 1}`, entries: [] }]);
+    setBlocks([
+      ...blocks,
+      { id: v4(), name: `Same-time group ${blocks.length + 1}`, form: forms[0], entries: [] },
+    ]);
 
   const updateBlock = (id: string, patch: Partial<ParallelBlock>) =>
     setBlocks(blocks.map(b => (b.id === id ? { ...b, ...patch } : b)));
