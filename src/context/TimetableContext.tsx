@@ -589,7 +589,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     };
     // Per-day block size required when this subject appears on a day.
     // Admin can decide how many consecutive periods make one "double" block.
-    const clampLen = (n: number) => Math.max(2, Math.min(4, Math.round(n) || 2));
+    // HARD RULE: no subject may ever take more than 2 periods in a day.
+    const clampLen = (n: number) => Math.max(2, Math.min(2, Math.round(n) || 2));
     const doubleLength = (s: Subject, form: number | undefined, classId?: string) => {
       // HARD RULE: A-level blocks are exactly 2 continuous periods.
       if (isALevelForm(form)) return 2;
@@ -622,15 +623,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const blockSize = (s: Subject, form: number | undefined, classId?: string) => {
       // A-level always runs in 2-period blocks, practicals included.
       if (isALevelForm(form)) return 2;
-      if (isPracticalSubject(s)) {
-        const per = Number(dblSettings.subjectDoubleLength?.[s.id] || 0);
-        if (per > 0) return clampLen(per);
-        const cls = classId ? classes.find(c => c.id === classId) : undefined;
-        const remaining = cls
-          ? ppwFor(s, cls) - (classSubjectCount[cls.id]?.[s.id] || 0)
-          : 4;
-        return Math.max(2, Math.min(4, remaining));
-      }
+      if (isPracticalSubject(s)) return 2;
       if (mustDouble(s, form, classId)) return doubleLength(s, form, classId);
       return 1;
     };
@@ -1721,6 +1714,54 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                   slots[di] = { ...slots[di], subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined };
                   weekCount[`${cls.id}|${subjectId}`] -= 1;
                   if (tryFill(period + 1) || tryFill(period - 1)) return;
+                }
+              }
+            });
+          });
+        });
+      });
+    }
+
+    // FINAL CAP: a subject may never occupy more than 2 periods in one day for a class.
+    {
+      const busy = new Set<string>();
+      slots.forEach(s => { if (s.type === 'lesson' && s.teacherId) busy.add(`${s.teacherId}|${s.day}|${s.period}`); });
+      const dayCountOf = (classId: string, subjectId: string, day: string) =>
+        slots.filter(s => s.type === 'lesson' && s.classId === classId && s.subjectId === subjectId && s.day === day).length;
+
+      classes.forEach(cls => {
+        DAYS.forEach(day => {
+          const bySubject: Record<string, typeof slots> = {};
+          slots.forEach(s => {
+            if (s.type !== 'lesson' || !s.subjectId || s.classId !== cls.id || s.day !== day) return;
+            (bySubject[s.subjectId] ||= []).push(s);
+          });
+          Object.entries(bySubject).forEach(([subjectId, group]) => {
+            if (group.length <= 2) return;
+            const sorted = [...group].sort((a, b) => a.period - b.period);
+            // Keep the first pair (prefer a consecutive pair), drop the rest.
+            let keepStart = 0;
+            for (let i = 0; i < sorted.length - 1; i++) {
+              if (sorted[i + 1].period === sorted[i].period + 1) { keepStart = i; break; }
+            }
+            const keep = new Set([sorted[keepStart].id, sorted[keepStart + 1]?.id].filter(Boolean) as string[]);
+            sorted.forEach(slot => {
+              if (keep.has(slot.id)) return;
+              const idx = slots.findIndex(s => s.id === slot.id);
+              if (idx < 0) return;
+              const teacherId = slot.teacherId;
+              if (teacherId) busy.delete(`${teacherId}|${slot.day}|${slot.period}`);
+              slots[idx] = { ...slots[idx], subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined };
+              // Try to relocate to another day that has room for this subject.
+              const target = slots.find(s =>
+                s.type === 'lesson' && s.classId === cls.id && !s.subjectId && s.day !== day &&
+                dayCountOf(cls.id, subjectId, s.day) < 2 &&
+                (!teacherId || !busy.has(`${teacherId}|${s.day}|${s.period}`)));
+              if (target) {
+                const ti = slots.findIndex(s => s.id === target.id);
+                if (ti >= 0) {
+                  slots[ti] = { ...slots[ti], subjectId, teacherId };
+                  if (teacherId) busy.add(`${teacherId}|${target.day}|${target.period}`);
                 }
               }
             });
