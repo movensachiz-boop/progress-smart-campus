@@ -92,8 +92,12 @@ function content(s: TimetableSlot) {
  * class/subject pairs so they occupy the same day+period, by swapping periods
  * inside each class only (never changing how many periods a subject gets).
  */
-export function alignParallelBlocks(slots: TimetableSlot[], blocks?: ParallelBlock[]): TimetableSlot[] {
-  const groups = blocks ?? loadParallelBlocks();
+export function alignParallelBlocks(
+  slots: TimetableSlot[],
+  blocks?: ParallelBlock[],
+  classes: ClassLike[] = []
+): TimetableSlot[] {
+  const groups = expandBlocks(blocks ?? loadParallelBlocks(), classes);
   if (!groups.length) return slots;
 
   const out = slots.map(s => ({ ...s }));
