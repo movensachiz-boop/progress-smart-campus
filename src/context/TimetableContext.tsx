@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveLearningArea, isSubjectAllowedInALevelArea, isHardBlockedALevel } from '@/lib/timetableUtils';
 import { loadDoubleSettings, resolveClassRule } from '@/lib/doubleSettings';
 import { alignParallelBlocks } from '@/lib/parallelBlocks';
+import { enforceALevelDoubles } from '@/lib/aLevelDoubles';
+
 
 
 interface TimetableContextType {
