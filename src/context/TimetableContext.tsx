@@ -620,6 +620,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return PRACTICAL_KEYS.some(k => bare(code) === k || bare(name) === k || code.startsWith(k) || name.startsWith(k));
     };
     const blockSize = (s: Subject, form: number | undefined, classId?: string) => {
+      // A-level always runs in 2-period blocks, practicals included.
+      if (isALevelForm(form)) return 2;
       if (isPracticalSubject(s)) {
         const per = Number(dblSettings.subjectDoubleLength?.[s.id] || 0);
         if (per > 0) return clampLen(per);
