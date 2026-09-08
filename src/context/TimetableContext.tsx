@@ -1890,11 +1890,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         return { ...s, combinedClassIds: [] };
       });
     }
-    persistTimetable({ ...timetable, slots: newSlots, conflicts: detectConflicts(newSlots) });
+    persistTimetable({ ...timetable, slots: newSlots, conflicts: detectConflicts(newSlots) }, true);
   }, [timetable, teachers]);
 
   const replaceTimetable = useCallback((next: Timetable) => {
-    persistTimetable({ ...next, conflicts: detectConflicts(next.slots) });
+    persistTimetable({ ...next, conflicts: detectConflicts(next.slots) }, true);
   }, [teachers]);
 
   return (
