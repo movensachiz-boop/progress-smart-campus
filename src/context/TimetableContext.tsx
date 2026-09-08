@@ -931,6 +931,33 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
+    // A-LEVEL OPTION BLOCKS: when 2+ streams of the SAME form (5 or 6) offer the same
+    // subject (e.g. Geography in Form 5 Sciences and Form 5 Commercials), that subject
+    // always runs in the same periods for those streams — even when different teachers
+    // take it. This removes option clashes across streams.
+    ([5, 6] as FormLevel[]).forEach(formLevel => {
+      const formClasses = classes.filter(c => c.form === formLevel);
+      if (formClasses.length < 2) return;
+      subjects.forEach(subj => {
+        const eligible = formClasses.filter(c => (classSubjectIds[c.id] || []).includes(subj.id));
+        if (eligible.length < 2) return;
+        const coverage = teachers
+          .map(t => ({
+            t,
+            covered: eligible.filter(c =>
+              t.assignments.some(a => a.subjectId === subj.id && a.classIds.some(cid => matchesClass(cid, c.id)))
+            ).length,
+          }))
+          .filter(x => x.covered > 0)
+          .sort((a, b) => b.covered - a.covered);
+        const groupIds = eligible.map(c => c.id);
+        groupIds.forEach(cid => {
+          if (!combineGroups[cid]) combineGroups[cid] = {};
+          combineGroups[cid][subj.id] = { teacherId: coverage[0]?.t.id || '', groupClassIds: groupIds, strict: true };
+        });
+      });
+    });
+
     // Per-subject `commonForms`: for each listed form, all streams of that form attend
     // this subject together as a single combined session (same period across streams).
     // Legacy `isCommon` is treated as commonForms = [3, 4].
