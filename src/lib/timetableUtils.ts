@@ -44,8 +44,26 @@ const stripA = (v: string) => {
 
 const SCIENCES_KEYS = new Set(['MATH','MATHS','MATHEMATICS','PHY','PHYSICS','CHE','CHEM','CHEMISTRY','BIO','BIOLOGY','COMP','COMPUTING','COMPUTERSCIENCE','CS','GEO','GEOG','GEOGRAPHY']);
 const COMMERCIALS_KEYS = new Set(['MATH','MATHS','MATHEMATICS','ACC','ACCT','ACCOUNTING','ACCOUNTS','BS','BUS','BUSINESS','BUSINESSSTUDIES','ECO','ECON','ECONOMICS','COMP','COMPUTING','COMPUTERSCIENCE','CS','GEO','GEOG','GEOGRAPHY']);
-const ARTS_KEYS = new Set(['LIT','LITERATURE','LITERATUREINENGLISH','ENGLISHLITERATURE','HIS','HIST','HISTORY','GEO','GEOG','GEOGRAPHY','SHO','SHON','SHONA','NDE','NDEBELE','BIB','BIBLE','BIBLEKNOWLEDGE','BIBLICALSTUDIES','RS','RE','REL','RELIGION','RELIGIOUSSTUDIES','DIVINITY','HER','HEL','HERITAGE','HERITAGESTUDIES','FRS','FRE','FRENCH']);
+// HARD RULE: Arts does NOT do Geography at A-level.
+const ARTS_KEYS = new Set(['LIT','LITERATURE','LITERATUREINENGLISH','ENGLISHLITERATURE','HIS','HIST','HISTORY','SHO','SHON','SHONA','NDE','NDEBELE','BIB','BIBLE','BIBLEKNOWLEDGE','BIBLICALSTUDIES','RS','RE','REL','RELIGION','RELIGIOUSSTUDIES','DIVINITY','HER','HEL','HERITAGE','HERITAGESTUDIES','FRS','FRE','FRENCH']);
 const EXCLUDED_KEYS = new Set(['ENG','ENGLISH','ENGLISHLANGUAGE']);
+const COMPUTER_KEYS = new Set(['COMP','COMPUTING','COMPUTERSCIENCE','CS']);
+const GEO_KEYS = new Set(['GEO','GEOG','GEOGRAPHY']);
+
+/**
+ * Hard-coded A-level rules that override any admin configuration:
+ * - Computer Science is taken in Form 5 only (never Form 6, never Arts).
+ * - Geography is never taken by an Arts stream.
+ */
+export function isHardBlockedALevel(subject: Subject, area?: string, form?: number): boolean {
+  const keys = [stripA(subject.code || ''), stripA(subject.name || ''), normKey(subject.code || ''), normKey(subject.name || '')];
+  const isComp = keys.some(k => COMPUTER_KEYS.has(k));
+  const isGeo = keys.some(k => GEO_KEYS.has(k));
+  if (isComp && (form === 6 || area === 'Arts')) return true;
+  if (isGeo && area === 'Arts') return true;
+  return false;
+}
+
 
 /** Infer a class learning area from its explicit field or its stream label. */
 export function resolveLearningArea(cls: { learningArea?: string; stream?: string } | undefined) {
@@ -60,10 +78,11 @@ export function resolveLearningArea(cls: { learningArea?: string; stream?: strin
 }
 
 /** True when the subject may be taught in the given A-level learning area. */
-export function isSubjectAllowedInALevelArea(subject: Subject, area?: string): boolean {
+export function isSubjectAllowedInALevelArea(subject: Subject, area?: string, form?: number): boolean {
   const code = (subject.code || '').trim().toUpperCase();
   if (!code.endsWith('A')) return false;
   if (EXCLUDED_KEYS.has(normKey(subject.code || '')) || EXCLUDED_KEYS.has(normKey(subject.name || ''))) return false;
+  if (isHardBlockedALevel(subject, area, form)) return false;
   if (!area) return true;
   const match = (keys: Set<string>) =>
     keys.has(stripA(subject.code || '')) || keys.has(stripA(subject.name || '')) ||

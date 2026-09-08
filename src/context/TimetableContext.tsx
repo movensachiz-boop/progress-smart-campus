@@ -3,7 +3,7 @@ import { SchoolConfig, Subject, Teacher, SchoolClass, Timetable, TimetableSlot, 
 import { defaultConfig, defaultSubjects, generateDefaultClasses, generateDefaultTeachers, DAYS } from '@/data/defaults';
 import { v4 } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
+import { resolveLearningArea, isSubjectAllowedInALevelArea, isHardBlockedALevel } from '@/lib/timetableUtils';
 import { loadDoubleSettings, resolveClassRule } from '@/lib/doubleSettings';
 import { alignParallelBlocks } from '@/lib/parallelBlocks';
 
@@ -322,7 +322,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const allowedInClass = (subjectId: string, cls: SchoolClass) => {
       const s = subjects.find(x => x.id === subjectId);
       if (!s) return false;
-      return isSubjectAllowedInALevelArea(s, resolveLearningArea(cls));
+      return isSubjectAllowedInALevelArea(s, resolveLearningArea(cls), cls.form);
     };
     let classesChanged = false;
     const nextClasses = classes.map(c => {
@@ -556,6 +556,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const ruleFor = (classId?: string, form?: number) => resolveClassRule(dblSettings, classId, form);
     const isDoubleEligible = (subjectId: string, classId: string) => {
       const cls = classes.find(c => c.id === classId);
+      // HARD RULE: Forms 5 & 6 are always taught in 2 continuous periods.
+      if (isALevelForm(cls?.form)) return true;
       const rule = ruleFor(classId, cls?.form);
       if (rule) {
         if (!rule.enabled) return false;
@@ -563,9 +565,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
       if (forcedDoubleIds.has(subjectId)) return true;
-      const aLevel = isALevelForm(cls?.form);
-      if (aLevel && !dblSettings.aLevelDoubles) return false;
-      if (!aLevel && !dblSettings.oLevelDoubles) return false;
+      if (!dblSettings.oLevelDoubles) return false;
       if (globalDoubleEligible.has(subjectId)) return true;
       return !!cls?.subjectDoubles?.includes(subjectId);
     };
@@ -576,26 +576,28 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // admin keeps "A-Level doubles" on, so teachers meet each class multiple times per week.
     const mustQuad = (form: number | undefined) => false;
     const mustDouble = (s: Subject, form: number | undefined, classId?: string) => {
+      // HARD RULE: every A-level lesson runs as a 2-period continuous block.
+      if (isALevelForm(form)) return true;
       const rule = ruleFor(classId, form);
       if (rule) {
         if (!rule.enabled) return false;
         if (rule.subjectIds.length > 0) return rule.subjectIds.includes(s.id);
-        if (isALevelForm(form)) return true;
         return forcedDoubleIds.has(s.id) || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
       }
       if (forcedDoubleIds.has(s.id)) return true;
-      if (isALevelForm(form)) return dblSettings.aLevelDoubles;
       return dblSettings.oLevelDoubles && ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
     };
     // Per-day block size required when this subject appears on a day.
     // Admin can decide how many consecutive periods make one "double" block.
     const clampLen = (n: number) => Math.max(2, Math.min(4, Math.round(n) || 2));
     const doubleLength = (s: Subject, form: number | undefined, classId?: string) => {
+      // HARD RULE: A-level blocks are exactly 2 continuous periods.
+      if (isALevelForm(form)) return 2;
       const rule = ruleFor(classId, form);
       if (rule && rule.length > 0) return clampLen(rule.length);
       const per = Number(dblSettings.subjectDoubleLength?.[s.id] || 0);
       if (per > 0) return clampLen(per);
-      return clampLen(isALevelForm(form) ? (dblSettings.aLevelDoubleLength || 2) : (dblSettings.oLevelDoubleLength || 2));
+      return clampLen(dblSettings.oLevelDoubleLength || 2);
     };
     // Now that the double rules are known, weekly period counts round up to an even
     // number for every subject that must be taught in blocks.
@@ -618,6 +620,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       return PRACTICAL_KEYS.some(k => bare(code) === k || bare(name) === k || code.startsWith(k) || name.startsWith(k));
     };
     const blockSize = (s: Subject, form: number | undefined, classId?: string) => {
+      // A-level always runs in 2-period blocks, practicals included.
+      if (isALevelForm(form)) return 2;
       if (isPracticalSubject(s)) {
         const per = Number(dblSettings.subjectDoubleLength?.[s.id] || 0);
         if (per > 0) return clampLen(per);
@@ -713,7 +717,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const A_LEVEL_ARTS_KEYS = new Set([
       'LIT', 'LITERATURE', 'LITERATUREINENGLISH', 'ENGLISHLITERATURE',
       'HIS', 'HIST', 'HISTORY',
-      'GEO', 'GEOG', 'GEOGRAPHY',
       'SHO', 'SHON', 'SHONA',
       'NDE', 'NDEBELE',
       'BIB', 'BIBLE', 'BIBLEKNOWLEDGE', 'BIBLICALSTUDIES',
@@ -821,12 +824,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       // drifted or an unknown subject slipped in.
       if (isALevel) {
         const area = resolveLearningArea(c);
-        // Ensure every Sciences/Commercials A-level stream offers COMP A — but NOT Arts.
-        if (compASubject && area !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
+        // HARD RULE: Computer Science is a Form 5 subject only (Sciences/Commercials),
+        // never Form 6 and never Arts. Geography is never taken by Arts.
+        if (compASubject && c.form === 5 && area !== 'Arts' && !merged.includes(compASubject.id)) merged.push(compASubject.id);
         merged = merged.filter(sId => {
           const subj = subjects.find(s => s.id === sId);
           if (!subj) return false;
           if (isExcludedFromALevel(subj)) return false;
+          if (isHardBlockedALevel(subj, area, c.form)) return false;
           if (!area) return true;
           const allowedAreas = aLevelAllowedAreas(subj);
           // Unknown A-level subject (no stream key match, no learningAreas set):
