@@ -92,6 +92,117 @@ export default function SlotEditDialog({
     setCombined(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
   };
 
+  /* ---------------- Placement suggestions ---------------- */
+
+  // How many consecutive periods this subject needs in this class.
+  const blockLength = useMemo(() => {
+    if (!cls) return 1;
+    const s = loadDoubleSettings();
+    const isALevel = cls.form === 5 || cls.form === 6;
+    if (isALevel) return Math.max(2, s.aLevelDoubleLength || 2);
+    const rule = resolveClassRule(s, cls.id, cls.form);
+    if (rule && !rule.enabled) return 1;
+    if (rule && rule.subjectIds.length && subjectId && !rule.subjectIds.includes(subjectId)) return 1;
+    const perSubject = subjectId ? s.subjectDoubleLength?.[subjectId] : 0;
+    if (rule && rule.length) return Math.max(2, rule.length);
+    if (perSubject) return Math.max(2, perSubject);
+    if (subjectId && s.subjectDoubleIds?.includes(subjectId)) return Math.max(2, s.oLevelDoubleLength || 2);
+    if (cls.subjectDoubles?.includes(subjectId)) return Math.max(2, s.oLevelDoubleLength || 2);
+    if (!s.oLevelDoubles) return 1;
+    return Math.max(2, s.oLevelDoubleLength || 2);
+  }, [cls, subjectId]);
+
+  const classSlots = useMemo(
+    () => allSlots.filter(s => s.classId === slot?.classId),
+    [allSlots, slot?.classId]
+  );
+
+  // The contiguous run of slots currently holding this subject (starting at the edited slot).
+  const currentBlock = useMemo(() => {
+    if (!slot) return [];
+    const day = classSlots.filter(s => s.day === slot.day).sort((a, b) => a.period - b.period);
+    const idx = day.findIndex(s => s.id === slot.id);
+    if (idx < 0) return [slot];
+    const run = [day[idx]];
+    for (let i = idx + 1; i < day.length && run.length < blockLength; i++) {
+      if (day[i].type === 'lesson' && day[i].subjectId === slot.subjectId && slot.subjectId) run.push(day[i]);
+      else break;
+    }
+    return run;
+  }, [slot, classSlots, blockLength]);
+
+  type Suggestion = { day: DayOfWeek; startPeriod: number; targets: TimetableSlot[]; note: string };
+
+  const suggestions = useMemo<Suggestion[]>(() => {
+    if (!slot || !cls) return [];
+    const subj = subjectId && subjectId !== '__none' ? subjectId : undefined;
+    if (!subj) return [];
+    const currentIds = new Set(currentBlock.map(s => s.id));
+    const out: Suggestion[] = [];
+    for (const day of DAYS) {
+      const daySlots = classSlots.filter(s => s.day === day).sort((a, b) => a.period - b.period);
+      // Skip days where this subject already sits outside the block being moved.
+      const alreadyToday = daySlots.some(s => s.subjectId === subj && !currentIds.has(s.id));
+      for (let i = 0; i + blockLength <= daySlots.length; i++) {
+        const targets = daySlots.slice(i, i + blockLength);
+        if (targets.some(t => t.type !== 'lesson')) continue;
+        // consecutive periods only
+        if (targets.some((t, k) => t.period !== targets[0].period + k)) continue;
+        if (targets.every(t => currentIds.has(t.id))) continue;
+        if (targets.some(t => currentIds.has(t.id))) continue;
+        if (alreadyToday) continue;
+        // teacher must be free across the whole block
+        if (teacherId && teacherId !== '__none') {
+          const busy = targets.some(t => allSlots.some(s =>
+            s.classId !== cls.id && s.teacherId === teacherId && s.day === t.day && s.period === t.period
+          ));
+          if (busy) continue;
+        }
+        const freeCount = targets.filter(t => !t.subjectId).length;
+        out.push({
+          day,
+          startPeriod: targets[0].period,
+          targets,
+          note: freeCount === targets.length
+            ? 'Free block'
+            : `Swaps with ${Array.from(new Set(targets.map(t => subjects.find(x => x.id === t.subjectId)?.code).filter(Boolean))).join(', ') || 'existing lesson'}`,
+        });
+        if (out.length >= 40) break;
+      }
+    }
+    // free blocks first
+    return out.sort((a, b) => (a.note === 'Free block' ? 0 : 1) - (b.note === 'Free block' ? 0 : 1)).slice(0, 8);
+  }, [slot, cls, subjectId, teacherId, classSlots, allSlots, blockLength, currentBlock, subjects]);
+
+  const applySuggestion = (sg: Suggestion) => {
+    if (!slot) return;
+    const cleanSubject = subjectId && subjectId !== '__none' ? subjectId : undefined;
+    const cleanTeacher = teacherId && teacherId !== '__none' ? teacherId : undefined;
+    const displaced = sg.targets.map(t => ({ subjectId: t.subjectId, teacherId: t.teacherId }));
+    // Put the subject into the suggested block
+    sg.targets.forEach(t => {
+      onSave(t.id, {
+        subjectId: cleanSubject,
+        teacherId: cleanTeacher,
+        combinedClassIds: [],
+        pairedSubjectId: undefined,
+        pairedTeacherId: undefined,
+      }, []);
+    });
+    // Move whatever was there back into the slots being vacated
+    currentBlock.forEach((s, i) => {
+      const d = displaced[i] || { subjectId: undefined, teacherId: undefined };
+      onSave(s.id, {
+        subjectId: d.subjectId,
+        teacherId: d.teacherId,
+        combinedClassIds: [],
+        pairedSubjectId: undefined,
+        pairedTeacherId: undefined,
+      }, []);
+    });
+    onOpenChange(false);
+  };
+
   // Pending propagation confirmation for A-level subject swaps
   const [pendingPropagation, setPendingPropagation] = useState<{
     fromId: string; toId: string; affected: TimetableSlot[];
