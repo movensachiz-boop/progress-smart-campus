@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveLearningArea, isSubjectAllowedInALevelArea, isHardBlockedALevel } from '@/lib/timetableUtils';
 import { loadDoubleSettings, resolveClassRule } from '@/lib/doubleSettings';
 import { alignParallelBlocks } from '@/lib/parallelBlocks';
+import { enforceALevelDoubles } from '@/lib/aLevelDoubles';
+
 
 
 interface TimetableContextType {
@@ -365,18 +367,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
 
       // A-LEVEL rule: doubles only, and never the same subject twice on the same day.
-      // 1) Any lesson slot without an adjacent same-subject neighbour is an illegal singleton → clear it.
-      // 2) If a subject appears in more than one double on the same day, keep the first, clear the rest.
-      const hasNeighbour = (s: TimetableSlot) =>
-        !!s.subjectId && nextSlots.some(x =>
-          x.classId === s.classId && x.subjectId === s.subjectId && x.day === s.day &&
-          x.id !== s.id && (x.period === s.period - 1 || x.period === s.period + 1)
-        );
+      // Singles are REPAIRED into doubles below (never simply deleted).
       const cleared = new Set<string>();
-      for (const s of nextSlots) {
-        if (!aLevelClassIds.has(s.classId) || !s.subjectId || s.type !== 'lesson') continue;
-        if (!hasNeighbour(s)) cleared.add(s.id);
-      }
       // ALL CLASSES: a subject may repeat in a day only as a consecutive block.
       // Keep the earliest run; clear any later, non-adjacent repeat.
       const lastPeriod: Record<string, number> = {};
@@ -396,6 +388,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           ? { ...s, subjectId: undefined, teacherId: undefined, pairedSubjectId: undefined, pairedTeacherId: undefined }
           : s);
       }
+      // Repair Form 5/6 singles into proper doubles and top up short subjects.
+      if (aLevelClassIds.size) {
+        const repaired = enforceALevelDoubles(
+          nextSlots, classes, subjects,
+          (cls, subject) => cls.subjectPeriods?.[subject.id] ?? (cls.form === 6 ? 10 : 8)
+        );
+        if (JSON.stringify(repaired) !== JSON.stringify(nextSlots)) { nextSlots = repaired; ttChanged = true; }
+      }
+
       // COMP A is a standalone A-level subject taken by ALL A-level streams — it is
       // NEVER paired with another subject. Strip any legacy COMPA↔BIOA pairing.
       const compA = subjects.find(s => /^COMP.*A$/i.test((s.code || '').trim()));
@@ -1808,8 +1809,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
+    // A-LEVEL HARD RULE: no single periods in Forms 5/6 — repair singles into
+    // doubles and top every subject up to its weekly quota in whole doubles.
+    const aLevelFixed = enforceALevelDoubles(slots, classes, subjects, (cls, subject) => ppwFor(subject, cls));
+
     // Keep user-defined "must happen at the same time" subject blocks in step.
-    const alignedSlots = alignParallelBlocks(slots, undefined, classes);
+    const alignedSlots = alignParallelBlocks(aLevelFixed, undefined, classes);
+
 
     const newTimetable: Timetable = { id: v4(), slots: alignedSlots, conflicts: [], generatedAt: new Date().toISOString() };
 
