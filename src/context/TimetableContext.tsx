@@ -142,6 +142,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       if (snapshot.teachers) { _setTeachers(snapshot.teachers); localStorage.setItem('tt_teachers', JSON.stringify(snapshot.teachers)); }
       if (snapshot.classes) {
         const removedPairs = new Set(loadLS<string[]>('tt_removed_class_subjects', []));
+        if (isForcedRestore) {
+          // A restore is the source of truth: any class-subject pair present in the
+          // snapshot must no longer be treated as previously removed.
+          (snapshot.classes as SchoolClass[]).forEach(c => {
+            (c.subjectIds || []).forEach(sId => removedPairs.delete(`${sId}|${c.id}`));
+          });
+          try { localStorage.setItem('tt_removed_class_subjects', JSON.stringify(Array.from(removedPairs))); } catch {}
+        }
         const cleaned = (snapshot.classes as SchoolClass[]).map(c => ({
           ...c,
           subjectIds: (c.subjectIds || []).filter(sId => !removedPairs.has(`${sId}|${c.id}`)),
@@ -149,6 +157,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         _setClasses(cleaned);
         localStorage.setItem('tt_classes', JSON.stringify(cleaned));
       }
+
 
       // Never discard hand-edited periods: if this device edited the timetable
       // after the cloud snapshot was written, keep the local (edited) version.
