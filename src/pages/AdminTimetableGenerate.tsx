@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { DayOfWeek, Teacher, TeacherClassAssignment, FormLevel, Subject } from '@/types/school';
 import TimetableBackupPanel from '@/components/TimetableBackupPanel';
+import ParallelBlocksPanel from '@/components/ParallelBlocksPanel';
 import PhoneCameraPairDialog from '@/components/PhoneCameraPairDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 } from '@/lib/utils';
@@ -518,7 +519,10 @@ export default function AdminTimetableGenerate() {
             </div>
           </div>
 
+          <ParallelBlocksPanel />
+
           <div className="bg-card rounded-xl border p-6 text-center">
+
             <Calendar className="w-12 h-12 text-primary mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Ready to Generate</h3>
             <p className="text-sm text-muted-foreground mb-6">
