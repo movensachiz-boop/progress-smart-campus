@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { Star, Loader2 } from "lucide-react";
+import { Star, Loader2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type Row = {
@@ -11,7 +11,8 @@ type Row = {
   rating: number;
   comment: string | null;
   created_at: string;
-  author?: string;
+  author_name: string | null;
+  author_email: string | null;
 };
 
 const AdminFeedback = () => {
@@ -23,20 +24,9 @@ const AdminFeedback = () => {
       setLoading(true);
       const { data } = await (supabase as any)
         .from("app_feedback")
-        .select("id, user_id, role, rating, comment, created_at")
+        .select("id, user_id, role, rating, comment, created_at, author_name, author_email")
         .order("created_at", { ascending: false });
-      const list = (data || []) as Row[];
-      const uids = Array.from(new Set(list.map(r => r.user_id).filter(Boolean))) as string[];
-      if (uids.length) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("user_id, first_name, last_name")
-          .in("user_id", uids);
-        const nameMap = new Map<string, string>();
-        (profs || []).forEach((p: any) => nameMap.set(p.user_id, `${p.first_name || ""} ${p.last_name || ""}`.trim()));
-        list.forEach(r => { if (r.user_id) r.author = nameMap.get(r.user_id) || ""; });
-      }
-      setRows(list);
+      setRows((data || []) as Row[]);
       setLoading(false);
     })();
   }, []);
@@ -44,6 +34,9 @@ const AdminFeedback = () => {
   const total = rows.length;
   const avg = total ? rows.reduce((s, r) => s + r.rating, 0) / total : 0;
   const dist = [1,2,3,4,5].map(n => rows.filter(r => r.rating === n).length);
+
+  const displayName = (r: Row) =>
+    r.author_name?.trim() || r.author_email || "User";
 
   return (
     <DashboardLayout role="admin">
@@ -105,7 +98,12 @@ const AdminFeedback = () => {
                         <Star key={n} size={14} className={n <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"} />
                       ))}
                     </div>
-                    <span className="text-sm font-medium">{r.author || "Anonymous"}</span>
+                    <span className="text-sm font-medium">{displayName(r)}</span>
+                    {r.author_email && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Mail size={12} /> {r.author_email}
+                      </span>
+                    )}
                     {r.role && <span className="text-xs px-2 py-0.5 rounded bg-secondary capitalize">{r.role}</span>}
                   </div>
                   <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</div>

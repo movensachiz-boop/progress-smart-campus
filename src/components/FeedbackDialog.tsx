@@ -21,11 +21,30 @@ const FeedbackDialog = ({ compact = false }: { compact?: boolean }) => {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSaving(false); return toast.error("You must be signed in"); }
+    // Resolve a human-readable name: prefer the student/staff profile,
+    // otherwise derive a friendly name from the email local part.
+    let authorName: string | null = null;
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, registration_number")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (prof) {
+      authorName = `${prof.first_name || ""} ${prof.last_name || ""}`.trim() || prof.registration_number || null;
+    }
+    if (!authorName) {
+      const local = (user.email || "").split("@")[0] || "";
+      if (local) {
+        authorName = local.replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+    }
     const { error } = await (supabase as any).from("app_feedback").insert({
       user_id: user.id,
       role: role || null,
       rating,
       comment: comment.trim() || null,
+      author_name: authorName || null,
+      author_email: user.email || null,
     });
     setSaving(false);
     if (error) return toast.error(error.message);
