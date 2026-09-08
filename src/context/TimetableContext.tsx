@@ -5,6 +5,7 @@ import { v4 } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
 import { loadDoubleSettings, resolveClassRule } from '@/lib/doubleSettings';
+import { alignParallelBlocks } from '@/lib/parallelBlocks';
 
 
 interface TimetableContextType {
