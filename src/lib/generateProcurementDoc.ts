@@ -253,5 +253,7 @@ export const generateProcurementDoc = async (data: ProcurementDocData) => {
     );
   }
 
-  doc.save(`${data.docType.replace(/\s+/g, "_")}_${data.number}.pdf`);
+  const safe = (s: string) => s.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  const deptPart = data.department?.trim() ? `${safe(data.department)}_` : "";
+  doc.save(`${deptPart}${safe(data.docType)}_${safe(data.number || "")}.pdf`);
 };
