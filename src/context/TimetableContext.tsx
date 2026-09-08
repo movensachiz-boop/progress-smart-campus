@@ -589,7 +589,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     };
     // Per-day block size required when this subject appears on a day.
     // Admin can decide how many consecutive periods make one "double" block.
-    const clampLen = (n: number) => Math.max(2, Math.min(4, Math.round(n) || 2));
+    // HARD RULE: no subject may ever take more than 2 periods in a day.
+    const clampLen = (n: number) => Math.max(2, Math.min(2, Math.round(n) || 2));
     const doubleLength = (s: Subject, form: number | undefined, classId?: string) => {
       // HARD RULE: A-level blocks are exactly 2 continuous periods.
       if (isALevelForm(form)) return 2;
