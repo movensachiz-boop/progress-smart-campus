@@ -148,7 +148,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('tt_classes', JSON.stringify(cleaned));
       }
 
-      if (snapshot.timetable) { setTimetable(snapshot.timetable); localStorage.setItem('tt_timetable', JSON.stringify(snapshot.timetable)); }
+      // Never discard hand-edited periods: if this device edited the timetable
+      // after the cloud snapshot was written, keep the local (edited) version.
+      const localEditedAt = localStorage.getItem('tt_timetable_edited_at');
+      const localIsNewer = !!localEditedAt && !isForcedRestore &&
+        new Date(localEditedAt).getTime() > new Date(data.created_at).getTime() - 3000 &&
+        !!localStorage.getItem('tt_timetable');
+      if (snapshot.timetable && !localIsNewer) { setTimetable(snapshot.timetable); localStorage.setItem('tt_timetable', JSON.stringify(snapshot.timetable)); }
       if (isForcedRestore) {
         _setTimetableLocked(true);
         localStorage.setItem('tt_locked', JSON.stringify(true));
@@ -158,11 +164,16 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  const persistTimetable = (v: Timetable | null) => {
+  const persistTimetable = (v: Timetable | null, manualEdit = false) => {
     setTimetable(v);
     try {
-      if (v) localStorage.setItem('tt_timetable', JSON.stringify(v));
-      else localStorage.removeItem('tt_timetable');
+      if (v) {
+        localStorage.setItem('tt_timetable', JSON.stringify(v));
+        if (manualEdit) localStorage.setItem('tt_timetable_edited_at', new Date().toISOString());
+      } else {
+        localStorage.removeItem('tt_timetable');
+        localStorage.removeItem('tt_timetable_edited_at');
+      }
     } catch {}
     scheduleCloudSave({ timetable: v });
   };
@@ -1879,11 +1890,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         return { ...s, combinedClassIds: [] };
       });
     }
-    persistTimetable({ ...timetable, slots: newSlots, conflicts: detectConflicts(newSlots) });
+    persistTimetable({ ...timetable, slots: newSlots, conflicts: detectConflicts(newSlots) }, true);
   }, [timetable, teachers]);
 
   const replaceTimetable = useCallback((next: Timetable) => {
-    persistTimetable({ ...next, conflicts: detectConflicts(next.slots) });
+    persistTimetable({ ...next, conflicts: detectConflicts(next.slots) }, true);
   }, [teachers]);
 
   return (
