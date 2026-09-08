@@ -120,16 +120,17 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id);
-      const isFullTimetableEditor = (roles || []).some((r: any) => r.role === 'admin' || r.role === 'owner');
-      const hasLocalSetup = localStorage.getItem('tt_teachers') || localStorage.getItem('tt_classes') || localStorage.getItem('tt_subjects');
-      if (isFullTimetableEditor && hasLocalSetup) return;
       const { data, error } = await supabase
         .from('timetable_snapshots')
-        .select('snapshot_data,created_at')
+        .select('name,snapshot_data,created_at')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (cancelled || error || !data?.snapshot_data) return;
+      const isFullTimetableEditor = (roles || []).some((r: any) => r.role === 'admin' || r.role === 'owner');
+      const hasLocalSetup = localStorage.getItem('tt_teachers') || localStorage.getItem('tt_classes') || localStorage.getItem('tt_subjects');
+      const isForcedRestore = data.name.startsWith('RESTORED —');
+      if (isFullTimetableEditor && hasLocalSetup && !isForcedRestore) return;
       const lastApplied = localStorage.getItem('tt_cloud_snapshot_at');
       if (lastApplied === data.created_at) return;
       const snapshot = data.snapshot_data as any;
@@ -147,6 +148,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (snapshot.timetable) { setTimetable(snapshot.timetable); localStorage.setItem('tt_timetable', JSON.stringify(snapshot.timetable)); }
+      if (isForcedRestore) {
+        _setTimetableLocked(true);
+        localStorage.setItem('tt_locked', JSON.stringify(true));
+      }
       localStorage.setItem('tt_cloud_snapshot_at', data.created_at);
     })();
     return () => { cancelled = true; };
