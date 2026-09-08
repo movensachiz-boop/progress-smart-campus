@@ -245,6 +245,25 @@ export default function AdminSubjects() {
               <span key={f} className="w-5 h-5 text-[10px] rounded bg-muted flex items-center justify-center text-muted-foreground">{f}</span>
             ))}
           </div>
+
+          {/* Classes that actually study this subject */}
+          {(() => {
+            const taking = classesTaking(s.id);
+            return taking.length === 0 ? (
+              <p className="text-[10px] text-destructive mt-1">No classes take this subject yet</p>
+            ) : (
+              <div className="flex flex-wrap gap-1 mt-1 max-w-[16rem]">
+                {taking.slice(0, 6).map(c => (
+                  <span key={c.id} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    {c.form}{c.stream}
+                  </span>
+                ))}
+                {taking.length > 6 && (
+                  <span className="text-[10px] text-muted-foreground">+{taking.length - 6} more</span>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
