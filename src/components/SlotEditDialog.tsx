@@ -393,13 +393,17 @@ export default function SlotEditDialog({
                       key={`${sg.day}-${sg.startPeriod}`}
                       type="button"
                       onClick={() => applySuggestion(sg)}
-                      className="w-full flex items-center justify-between gap-2 text-left text-xs rounded-md border px-2.5 py-1.5 hover:border-primary hover:bg-primary/5 transition-colors"
+                      className={`w-full flex items-start justify-between gap-2 text-left text-xs rounded-md border px-2.5 py-1.5 transition-colors ${sg.clash ? 'border-destructive/50 bg-destructive/5 hover:border-destructive' : 'hover:border-primary hover:bg-primary/5'}`}
                     >
                       <span className="font-medium">
                         {sg.day} · Period {sg.startPeriod}
                         {blockLength > 1 ? `–${sg.startPeriod + blockLength - 1}` : ''}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">{sg.note}</span>
+                      <span className={`text-[11px] text-right ${sg.clash ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {sg.clash ? (
+                          <span className="flex items-center gap-1 justify-end"><AlertTriangle className="w-3 h-3 shrink-0" />{sg.clash}</span>
+                        ) : sg.note}
+                      </span>
                     </button>
                   ))}
                 </div>
