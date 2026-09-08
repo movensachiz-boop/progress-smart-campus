@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Pencil, Trash2, School, Check, RefreshCw, Users, CheckCircle2, RotateCcw, Eye, EyeOff, ArrowRightLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, School, Check, RefreshCw, Users, CheckCircle2, RotateCcw, Eye, EyeOff, ArrowRightLeft, FileDown } from 'lucide-react';
+import { generateAllocationReport } from '@/lib/generateAllocationReport';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useTermClassMap, upsertStudentClassesForTerm } from '@/hooks/useTermClassMap';
@@ -23,7 +24,7 @@ interface ClassFormState {
 }
 
 export default function AdminClasses() {
-  const { classes, setClasses, subjects } = useTimetable();
+  const { classes, setClasses, subjects, teachers } = useTimetable();
   const { map: termClassMap, selectedTermId, reload: reloadTermMap } = useTermClassMap();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ClassFormState | null>(null);
@@ -432,6 +433,9 @@ export default function AdminClasses() {
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={syncFromRegistrations} disabled={syncing}>
               <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? 'animate-spin' : ''}`} /> Sync from Registrations
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { generateAllocationReport({ subjects, teachers, classes, view: 'class' }); toast.success('PDF downloaded'); }}>
+              <FileDown className="w-4 h-4 mr-1" /> Print PDF
             </Button>
             <Button size="sm" onClick={openAdd}><Plus className="w-4 h-4 mr-1" /> Add Class</Button>
           </div>
