@@ -351,6 +351,37 @@ export default function SlotEditDialog({
               <AlertTriangle className="w-4 h-4 shrink-0" /><span>{conflict}</span>
             </div>
           )}
+
+          {subjectId && subjectId !== '__none' && (
+            <div className="space-y-2 border-t pt-3">
+              <Label className="flex items-center gap-1.5"><Wand2 className="w-3.5 h-3.5" /> Where else this can go</Label>
+              <p className="text-[11px] text-muted-foreground">
+                {blockLength > 1
+                  ? `Needs ${blockLength} continuous periods (double lesson).`
+                  : 'Single period — no double required for this class.'}
+              </p>
+              {suggestions.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">No other suitable position found for this subject.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {suggestions.map(sg => (
+                    <button
+                      key={`${sg.day}-${sg.startPeriod}`}
+                      type="button"
+                      onClick={() => applySuggestion(sg)}
+                      className="w-full flex items-center justify-between gap-2 text-left text-xs rounded-md border px-2.5 py-1.5 hover:border-primary hover:bg-primary/5 transition-colors"
+                    >
+                      <span className="font-medium">
+                        {sg.day} · Period {sg.startPeriod}
+                        {blockLength > 1 ? `–${sg.startPeriod + blockLength - 1}` : ''}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">{sg.note}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
