@@ -576,26 +576,28 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     // admin keeps "A-Level doubles" on, so teachers meet each class multiple times per week.
     const mustQuad = (form: number | undefined) => false;
     const mustDouble = (s: Subject, form: number | undefined, classId?: string) => {
+      // HARD RULE: every A-level lesson runs as a 2-period continuous block.
+      if (isALevelForm(form)) return true;
       const rule = ruleFor(classId, form);
       if (rule) {
         if (!rule.enabled) return false;
         if (rule.subjectIds.length > 0) return rule.subjectIds.includes(s.id);
-        if (isALevelForm(form)) return true;
         return forcedDoubleIds.has(s.id) || ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
       }
       if (forcedDoubleIds.has(s.id)) return true;
-      if (isALevelForm(form)) return dblSettings.aLevelDoubles;
       return dblSettings.oLevelDoubles && ALWAYS_DOUBLE_CODES.has((s.code || '').toUpperCase());
     };
     // Per-day block size required when this subject appears on a day.
     // Admin can decide how many consecutive periods make one "double" block.
     const clampLen = (n: number) => Math.max(2, Math.min(4, Math.round(n) || 2));
     const doubleLength = (s: Subject, form: number | undefined, classId?: string) => {
+      // HARD RULE: A-level blocks are exactly 2 continuous periods.
+      if (isALevelForm(form)) return 2;
       const rule = ruleFor(classId, form);
       if (rule && rule.length > 0) return clampLen(rule.length);
       const per = Number(dblSettings.subjectDoubleLength?.[s.id] || 0);
       if (per > 0) return clampLen(per);
-      return clampLen(isALevelForm(form) ? (dblSettings.aLevelDoubleLength || 2) : (dblSettings.oLevelDoubleLength || 2));
+      return clampLen(dblSettings.oLevelDoubleLength || 2);
     };
     // Now that the double rules are known, weekly period counts round up to an even
     // number for every subject that must be taught in blocks.
