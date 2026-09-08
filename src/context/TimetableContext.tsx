@@ -556,6 +556,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const ruleFor = (classId?: string, form?: number) => resolveClassRule(dblSettings, classId, form);
     const isDoubleEligible = (subjectId: string, classId: string) => {
       const cls = classes.find(c => c.id === classId);
+      // HARD RULE: Forms 5 & 6 are always taught in 2 continuous periods.
+      if (isALevelForm(cls?.form)) return true;
       const rule = ruleFor(classId, cls?.form);
       if (rule) {
         if (!rule.enabled) return false;
@@ -563,9 +565,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
       if (forcedDoubleIds.has(subjectId)) return true;
-      const aLevel = isALevelForm(cls?.form);
-      if (aLevel && !dblSettings.aLevelDoubles) return false;
-      if (!aLevel && !dblSettings.oLevelDoubles) return false;
+      if (!dblSettings.oLevelDoubles) return false;
       if (globalDoubleEligible.has(subjectId)) return true;
       return !!cls?.subjectDoubles?.includes(subjectId);
     };
