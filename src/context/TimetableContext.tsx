@@ -713,7 +713,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const A_LEVEL_ARTS_KEYS = new Set([
       'LIT', 'LITERATURE', 'LITERATUREINENGLISH', 'ENGLISHLITERATURE',
       'HIS', 'HIST', 'HISTORY',
-      'GEO', 'GEOG', 'GEOGRAPHY',
       'SHO', 'SHON', 'SHONA',
       'NDE', 'NDEBELE',
       'BIB', 'BIBLE', 'BIBLEKNOWLEDGE', 'BIBLICALSTUDIES',
