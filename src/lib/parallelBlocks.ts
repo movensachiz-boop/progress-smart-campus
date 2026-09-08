@@ -41,12 +41,18 @@ export function expandBlocks(blocks: ParallelBlock[], classes: ClassLike[]): { n
         classes
           .filter(c => c.form === form)
           .forEach(c => {
-            subjectIds.forEach(subjectId => {
-              if (c.subjectIds.includes(subjectId)) entries.push({ classId: c.id, subjectId });
-            });
+            const taken = subjectIds.filter(id => c.subjectIds.includes(id));
+            // A class that takes more than one subject of the pair cannot sit in
+            // two lessons at once, so it is skipped — the pair only aligns across
+            // classes that take exactly one of the subjects (no clash possible).
+            if (taken.length === 1) entries.push({ classId: c.id, subjectId: taken[0] });
           });
-        if (entries.length >= 2) out.push({ name: `${block.name || 'Group'} · Form ${form}`, entries });
+        const distinctSubjects = new Set(entries.map(e => e.subjectId));
+        if (entries.length >= 2 && distinctSubjects.size >= 2) {
+          out.push({ name: `${block.name || 'Group'} · Form ${form}`, entries });
+        }
       });
+
       return;
     }
     const manual = (block.entries || []).filter(e => e.classId && e.subjectId);
