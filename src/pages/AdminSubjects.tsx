@@ -221,6 +221,17 @@ export default function AdminSubjects() {
   const lower = filtered.filter(s => s.forms.some(f => f <= 4));
   const upper = filtered.filter(s => s.forms.some(f => f >= 5));
 
+  /** Classes that study a subject — ticked on the class or reached via a teacher allocation. */
+  const classesTaking = (subjectId: string) => {
+    let removedPairs = new Set<string>();
+    try { removedPairs = new Set(JSON.parse(localStorage.getItem('tt_removed_class_subjects') || '[]')); } catch { /* ignore */ }
+    const viaTeacher = teacherClassIdsFor(subjectId);
+    return [...classes]
+      .filter(c => !removedPairs.has(`${subjectId}|${c.id}`))
+      .filter(c => c.subjectIds.includes(subjectId) || viaTeacher.has(c.id))
+      .sort((a, b) => a.form - b.form || a.stream.localeCompare(b.stream));
+  };
+
   const SubjectCard = ({ s, variant }: { s: Subject; variant: 'primary' | 'accent' }) => (
     <div className="bg-card rounded-xl border p-4 flex items-center justify-between group hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
