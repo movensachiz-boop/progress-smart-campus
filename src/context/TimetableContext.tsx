@@ -1233,7 +1233,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           const preFilteredSubjects = shuffle(
             (classSubjectIds[cls.id] || cls.subjectIds)
               .map(sId => subjects.find(s => s.id === sId)!)
-              .filter(s => s && (classSubjectCount[cls.id][s.id] || 0) < ppwFor(s, cls))
+              .filter(s => {
+                if (!s) return false;
+                const quota = isDailyCoreSubject(s) && !isALevelForm(cls.form)
+                  ? Math.max(ppwFor(s, cls), DAYS.length)
+                  : ppwFor(s, cls);
+                return (classSubjectCount[cls.id][s.id] || 0) < quota;
+              })
           )
             .filter(s => !isPracticalSubject(s) || practicalRunAllows(cls.id, day, slot))
             .filter(s => {
