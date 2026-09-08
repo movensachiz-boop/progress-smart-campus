@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, BookOpen, Search, AlertTriangle, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateSubjectStaffingReport } from '@/lib/generateSubjectStaffingReport';
+import { generateAllocationReport } from '@/lib/generateAllocationReport';
 
 const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -271,6 +272,13 @@ export default function AdminSubjects() {
               }}
             >
               <FileDown className="w-4 h-4 mr-1" /> Staffing Report
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { generateAllocationReport({ subjects, teachers, classes, view: 'subject' }); toast.success('PDF downloaded'); }}
+            >
+              <FileDown className="w-4 h-4 mr-1" /> Print PDF
             </Button>
             <Button onClick={openNew} size="sm"><Plus className="w-4 h-4 mr-1" /> Add Subject</Button>
           </div>
