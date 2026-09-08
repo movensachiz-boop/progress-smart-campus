@@ -196,7 +196,7 @@ export default function SlotEditDialog({
         ((a.note === 'Free block' ? 0 : 1) - (b.note === 'Free block' ? 0 : 1))
       )
       .slice(0, 8);
-  }, [slot, cls, subjectId, teacherId, classSlots, allSlots, blockLength, currentBlock, subjects]);
+  }, [slot, cls, subjectId, teacherId, classSlots, allSlots, blockLength, currentBlock, subjects, teachers, classes]);
 
   const applySuggestion = (sg: Suggestion) => {
     if (!slot) return;
