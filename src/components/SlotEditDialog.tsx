@@ -3,9 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, Users } from 'lucide-react';
-import { TimetableSlot, Subject, Teacher, SchoolClass } from '@/types/school';
+import { AlertTriangle, Users, Wand2 } from 'lucide-react';
+import { TimetableSlot, Subject, Teacher, SchoolClass, DayOfWeek } from '@/types/school';
 import { formatSubjectName, resolveLearningArea, isSubjectAllowedInALevelArea } from '@/lib/timetableUtils';
+import { loadDoubleSettings, resolveClassRule } from '@/lib/doubleSettings';
+import { DAYS } from '@/data/defaults';
 
 interface SlotEditDialogProps {
   slot: TimetableSlot | null;
