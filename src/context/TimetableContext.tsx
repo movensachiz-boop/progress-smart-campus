@@ -1723,9 +1723,12 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    const newTimetable: Timetable = { id: v4(), slots, conflicts: [], generatedAt: new Date().toISOString() };
+    // Keep user-defined "must happen at the same time" subject blocks in step.
+    const alignedSlots = alignParallelBlocks(slots);
 
-    newTimetable.conflicts = detectConflicts(slots);
+    const newTimetable: Timetable = { id: v4(), slots: alignedSlots, conflicts: [], generatedAt: new Date().toISOString() };
+
+    newTimetable.conflicts = detectConflicts(alignedSlots);
     // Auto-rebalance A-level: shift any excess periods on over-allocated
     // subjects into under-allocated subjects in the same class.
     try {
