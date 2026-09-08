@@ -10,6 +10,8 @@ export interface ParallelEntry {
 export interface ParallelBlock {
   id: string;
   name: string;
+  /** Optional form this group applies to (matching happens per form). */
+  form?: number;
   entries: ParallelEntry[];
 }
 
