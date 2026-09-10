@@ -35,48 +35,61 @@ export const generateStaffDirectory = async (opts: StaffDirectoryOptions) => {
   const pageH = doc.internal.pageSize.getHeight();
   const logo = await loadLogo();
 
+  const margin = 10;
+
   const drawHeader = () => {
-    if (logo) doc.addImage(logo, "PNG", pageW / 2 - 9, 5, 18, 18);
+    if (logo) doc.addImage(logo, "PNG", pageW / 2 - 12, 5, 24, 24);
 
     doc.setFillColor(0, 51, 102);
-    doc.rect(0, 27, pageW, 24, "F");
+    doc.rect(0, 32, pageW, 28, "F");
     doc.setTextColor(255, 215, 0);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text("PROGRESS CHRISTIAN COLLEGE", pageW / 2, 34, { align: "center" });
+    doc.setFontSize(18);
+    doc.text("PROGRESS CHRISTIAN COLLEGE", pageW / 2, 41, { align: "center" });
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8.5);
-    doc.text("BONNYVALE, GWERU  |  +263 77 400 0143", pageW / 2, 40, { align: "center" });
-    doc.setTextColor(255, 215, 0);
     doc.setFontSize(11);
-    doc.text(opts.title.toUpperCase(), pageW / 2, 47, { align: "center" });
+    doc.text("BONNYVALE, GWERU  |  +263 77 400 0143", pageW / 2, 48, { align: "center" });
+    doc.setTextColor(255, 215, 0);
+    doc.setFontSize(14);
+    doc.text(opts.title.toUpperCase(), pageW / 2, 56, { align: "center" });
   };
 
   drawHeader();
   const body = opts.rows
     .filter((row) => opts.columns.some((column) => row[column.key]?.trim()))
-    .map((row) => opts.columns.map((column) => row[column.key]?.trim() || ""));
+    .map((row) => opts.columns.map((column) => {
+      const value = row[column.key]?.trim() || "";
+      // Render multi-line cell values (e.g. department subjects) with line breaks
+      return value.split("\n").filter(Boolean);
+    }));
 
+  const startTop = 66;
   autoTable(doc, {
-    startY: 59,
+    startY: startTop,
     head: [opts.columns.map((column) => column.header.toUpperCase())],
     body,
     theme: "grid",
-    margin: { left: 14, right: 14, top: 59, bottom: 18 },
+    margin: { left: margin, right: margin, top: startTop, bottom: 18 },
+    tableWidth: pageW - margin * 2,
     styles: {
       font: "helvetica",
-      fontSize: 10,
-      cellPadding: 3.2,
+      fontSize: 15,
+      cellPadding: 6,
+      minCellHeight: 16,
       valign: "middle",
+      overflow: "linebreak",
       textColor: [30, 41, 59],
       lineColor: [185, 196, 211],
-      lineWidth: 0.2,
+      lineWidth: 0.25,
     },
     headStyles: {
       fillColor: [0, 51, 102],
       textColor: [255, 215, 0],
       fontStyle: "bold",
+      fontSize: 16,
       halign: "left",
+      cellPadding: 7,
+      minCellHeight: 18,
     },
     alternateRowStyles: { fillColor: [237, 242, 249] },
     didDrawPage: (data) => {
@@ -89,11 +102,11 @@ export const generateStaffDirectory = async (opts: StaffDirectoryOptions) => {
     doc.setPage(page);
     doc.setDrawColor(255, 215, 0);
     doc.setLineWidth(0.6);
-    doc.line(14, pageH - 14, pageW - 14, pageH - 14);
+    doc.line(margin, pageH - 14, pageW - margin, pageH - 14);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
+    doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Progress Christian College  |  Page ${page} of ${pageCount}`, pageW / 2, pageH - 8, { align: "center" });
+    doc.text(`Progress Christian College  |  Page ${page} of ${pageCount}`, pageW / 2, pageH - 7, { align: "center" });
   }
 
   doc.save(opts.fileName);
