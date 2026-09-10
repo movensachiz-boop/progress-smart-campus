@@ -131,20 +131,23 @@ const AdminPrincipalDocs = () => {
   const updateAgendaItem = (idx: number, patch: Partial<AgendaItem>) =>
     setAgendaItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
 
-  const downloadStaffDocument = async (
+  const downloadStaffDocument = async <T extends object>(
     key: string,
     title: string,
-    columns: { header: string; key: string }[],
-    rows: Record<string, string>[],
+    columns: { header: string; key: keyof T & string }[],
+    rows: T[],
     fileName: string,
   ) => {
-    if (!rows.some((row) => Object.values(row).some((value) => value.trim()))) {
+    if (!rows.some((row) => Object.values(row).some((value) => typeof value === "string" && value.trim()))) {
       toast.error("Add at least one completed row");
       return;
     }
     setGeneratingStaffDoc(key);
     try {
-      await generateStaffDirectory({ title, columns, rows, fileName });
+      const printableRows = rows.map((row) => Object.fromEntries(
+        columns.map((column) => [column.key, String(row[column.key] || "")]),
+      ));
+      await generateStaffDirectory({ title, columns, rows: printableRows, fileName });
       toast.success(`${title} document downloaded`);
     } catch (error: any) {
       toast.error(error?.message || "Failed to generate document");
