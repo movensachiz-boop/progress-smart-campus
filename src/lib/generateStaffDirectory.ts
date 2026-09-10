@@ -102,11 +102,11 @@ export const generateStaffDirectory = async (opts: StaffDirectoryOptions) => {
     doc.setPage(page);
     doc.setDrawColor(255, 215, 0);
     doc.setLineWidth(0.6);
-    doc.line(14, pageH - 14, pageW - 14, pageH - 14);
+    doc.line(margin, pageH - 14, pageW - margin, pageH - 14);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
+    doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Progress Christian College  |  Page ${page} of ${pageCount}`, pageW / 2, pageH - 8, { align: "center" });
+    doc.text(`Progress Christian College  |  Page ${page} of ${pageCount}`, pageW / 2, pageH - 7, { align: "center" });
   }
 
   doc.save(opts.fileName);
