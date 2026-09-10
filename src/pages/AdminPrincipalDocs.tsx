@@ -16,10 +16,11 @@ import { generateApplicationForm } from "@/lib/generateApplicationForm";
 import { generateBusinessLetter } from "@/lib/generateBusinessLetter";
 import { generateTermCalendar } from "@/lib/generateTermCalendar";
 import { generateMeetingAgenda, AgendaItem } from "@/lib/generateMeetingAgenda";
+import { generateStaffDirectory } from "@/lib/generateStaffDirectory";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimetable } from "@/context/TimetableContext";
-import { FileDown, Users, Loader2, ClipboardList, FileText, Mail, Sparkles, CalendarDays } from "lucide-react";
+import { FileDown, Users, Loader2, ClipboardList, FileText, Mail, Sparkles, CalendarDays, Building2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface StudentRow {
@@ -32,6 +33,35 @@ interface StudentRow {
   guardian_name?: string | null;
   guardian_phone?: string | null;
 }
+
+interface AdministrationRow { office: string; name: string; }
+interface DepartmentRow { department: string; hod: string; subjects: string; }
+interface ClassTeacherRow { className: string; teacher: string; }
+
+const INITIAL_ADMINISTRATION: AdministrationRow[] = [
+  { office: "Principal", name: "Mapfumo H" },
+  { office: "Deputy Principal", name: "Chuchu CE" },
+  { office: "Senior Master", name: "Kufa W\nMapunga BM" },
+  { office: "Senior Woman", name: "Chatindo E\nMarecha A\nPavazhira M" },
+];
+
+const INITIAL_DEPARTMENTS: DepartmentRow[] = [
+  { department: "Languages", hod: "Marecha A", subjects: "English Language\nLiterature in English\nShona Language\nFrench Language" },
+  { department: "Commercials", hod: "Mangena M", subjects: "Accounting\nBusiness Studies\nEconomics\nComputer Science" },
+  { department: "Sciences", hod: "Pavazhira M", subjects: "Mathematics\nBiology\nPhysics\nChemistry\nAgriculture\nCombined Science" },
+  { department: "Humanities", hod: "Nyahwai K", subjects: "Geography\nHeritage Studies\nReligious Studies\nBiblical Studies\nHistory" },
+];
+
+const INITIAL_CLASS_TEACHERS: ClassTeacherRow[] = [
+  { className: "1 Pluto", teacher: "Chingono BH" },
+  { className: "1 Neptune", teacher: "Mabedhla C" },
+  { className: "1 Jupiter", teacher: "Chimwise G" },
+  { className: "2 Orange", teacher: "Murisi T" },
+  { className: "3 Leo", teacher: "Mirisau CT" },
+  { className: "4 Shark", teacher: "Malandu N" },
+  { className: "Lower 6", teacher: "Chuchu CE" },
+  { className: "Upper 6", teacher: "Manhungu E" },
+];
 
 const ALL_FORMS = [
   { value: "1", label: "Form 1" },
@@ -92,8 +122,39 @@ const AdminPrincipalDocs = () => {
   ]);
   const [generatingAgenda, setGeneratingAgenda] = useState(false);
 
+  // Editable staffing documents, pre-filled from the supplied lists
+  const [administrationRows, setAdministrationRows] = useState<AdministrationRow[]>(INITIAL_ADMINISTRATION);
+  const [departmentRows, setDepartmentRows] = useState<DepartmentRow[]>(INITIAL_DEPARTMENTS);
+  const [classTeacherRows, setClassTeacherRows] = useState<ClassTeacherRow[]>(INITIAL_CLASS_TEACHERS);
+  const [generatingStaffDoc, setGeneratingStaffDoc] = useState<string | null>(null);
+
   const updateAgendaItem = (idx: number, patch: Partial<AgendaItem>) =>
     setAgendaItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+
+  const downloadStaffDocument = async <T extends object>(
+    key: string,
+    title: string,
+    columns: { header: string; key: keyof T & string }[],
+    rows: T[],
+    fileName: string,
+  ) => {
+    if (!rows.some((row) => Object.values(row).some((value) => typeof value === "string" && value.trim()))) {
+      toast.error("Add at least one completed row");
+      return;
+    }
+    setGeneratingStaffDoc(key);
+    try {
+      const printableRows = rows.map((row) => Object.fromEntries(
+        columns.map((column) => [column.key, String(row[column.key] || "")]),
+      ));
+      await generateStaffDirectory({ title, columns, rows: printableRows, fileName });
+      toast.success(`${title} document downloaded`);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to generate document");
+    } finally {
+      setGeneratingStaffDoc(null);
+    }
+  };
 
 
 
@@ -233,6 +294,98 @@ const AdminPrincipalDocs = () => {
             Generate official school documents. Student details and subjects are auto-filled from registration and the Subjects module.
           </p>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Building2 size={18} /> School Staff Lists</CardTitle>
+            <CardDescription>
+              Edit the supplied administration, department and class teacher details, then download branded PDFs.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-8">
+            <section className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-foreground">Administration</h3>
+                  <p className="text-xs text-muted-foreground">Office and staff member names</p>
+                </div>
+                <Button
+                  onClick={() => downloadStaffDocument("administration", "Administration", [{ header: "Office", key: "office" }, { header: "Name", key: "name" }], administrationRows, "PCC_Administration.pdf")}
+                  disabled={generatingStaffDoc !== null}
+                  className="gap-2"
+                >
+                  {generatingStaffDoc === "administration" ? <Loader2 className="animate-spin" /> : <FileDown />}
+                  Download PDF
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {administrationRows.map((row, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-2 items-start">
+                    <Input className="col-span-4" value={row.office} aria-label={`Administration office ${index + 1}`} onChange={(e) => setAdministrationRows((prev) => prev.map((item, i) => i === index ? { ...item, office: e.target.value } : item))} placeholder="Office" />
+                    <Textarea className="col-span-7 min-h-10" rows={1} value={row.name} aria-label={`Administration names ${index + 1}`} onChange={(e) => setAdministrationRows((prev) => prev.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="Name — one per line" />
+                    <Button type="button" variant="ghost" size="icon" aria-label={`Remove administration row ${index + 1}`} onClick={() => setAdministrationRows((prev) => prev.filter((_, i) => i !== index))}><Trash2 /></Button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setAdministrationRows((prev) => [...prev, { office: "", name: "" }])}><Plus /> Add row</Button>
+            </section>
+
+            <section className="space-y-3 border-t pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-foreground">Heads of Departments</h3>
+                  <p className="text-xs text-muted-foreground">Enter subjects on separate lines</p>
+                </div>
+                <Button
+                  onClick={() => downloadStaffDocument("departments", "Heads of Departments", [{ header: "Department", key: "department" }, { header: "HOD", key: "hod" }, { header: "Subjects", key: "subjects" }], departmentRows, "PCC_Heads_of_Departments.pdf")}
+                  disabled={generatingStaffDoc !== null}
+                  className="gap-2"
+                >
+                  {generatingStaffDoc === "departments" ? <Loader2 className="animate-spin" /> : <FileDown />}
+                  Download PDF
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {departmentRows.map((row, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-2 items-start">
+                    <Input className="col-span-3" value={row.department} aria-label={`Department ${index + 1}`} onChange={(e) => setDepartmentRows((prev) => prev.map((item, i) => i === index ? { ...item, department: e.target.value } : item))} placeholder="Department" />
+                    <Input className="col-span-3" value={row.hod} aria-label={`Head of department ${index + 1}`} onChange={(e) => setDepartmentRows((prev) => prev.map((item, i) => i === index ? { ...item, hod: e.target.value } : item))} placeholder="HOD" />
+                    <Textarea className="col-span-5 min-h-20" rows={3} value={row.subjects} aria-label={`Department subjects ${index + 1}`} onChange={(e) => setDepartmentRows((prev) => prev.map((item, i) => i === index ? { ...item, subjects: e.target.value } : item))} placeholder="Subjects — one per line" />
+                    <Button type="button" variant="ghost" size="icon" aria-label={`Remove department row ${index + 1}`} onClick={() => setDepartmentRows((prev) => prev.filter((_, i) => i !== index))}><Trash2 /></Button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDepartmentRows((prev) => [...prev, { department: "", hod: "", subjects: "" }])}><Plus /> Add department</Button>
+            </section>
+
+            <section className="space-y-3 border-t pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-foreground">Class Teachers</h3>
+                  <p className="text-xs text-muted-foreground">Class and assigned teacher</p>
+                </div>
+                <Button
+                  onClick={() => downloadStaffDocument("class-teachers", "Class Teachers", [{ header: "Class", key: "className" }, { header: "Teacher", key: "teacher" }], classTeacherRows, "PCC_Class_Teachers.pdf")}
+                  disabled={generatingStaffDoc !== null}
+                  className="gap-2"
+                >
+                  {generatingStaffDoc === "class-teachers" ? <Loader2 className="animate-spin" /> : <FileDown />}
+                  Download PDF
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {classTeacherRows.map((row, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-2 items-center">
+                    <Input className="col-span-5" value={row.className} aria-label={`Class ${index + 1}`} onChange={(e) => setClassTeacherRows((prev) => prev.map((item, i) => i === index ? { ...item, className: e.target.value } : item))} placeholder="Class" />
+                    <Input className="col-span-6" value={row.teacher} aria-label={`Class teacher ${index + 1}`} onChange={(e) => setClassTeacherRows((prev) => prev.map((item, i) => i === index ? { ...item, teacher: e.target.value } : item))} placeholder="Teacher" />
+                    <Button type="button" variant="ghost" size="icon" aria-label={`Remove class teacher row ${index + 1}`} onClick={() => setClassTeacherRows((prev) => prev.filter((_, i) => i !== index))}><Trash2 /></Button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setClassTeacherRows((prev) => [...prev, { className: "", teacher: "" }])}><Plus /> Add class</Button>
+            </section>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
