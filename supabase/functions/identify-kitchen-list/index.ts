@@ -42,7 +42,12 @@ JSON shape:
   ]
 }
 
-Mapping hints: bottle->ml/L (L if >=1L), tin->tin, packet/sachet->pkt, bag of rice/sugar->bag or kg, eggs->tray, single item->pcs. If a quantity like "2x500g" appears, set quantity=2 and put "500g pack" into notes.`;
+Mapping hints: bottle->ml/L (L if >=1L), tin->tin, packet/sachet->pkt, bag of rice/sugar->bag or kg, eggs->tray, single item->pcs, "units"->pcs unless the product clearly implies another unit. If a quantity like "2x500g" appears, set quantity=2 and put "500g pack" into notes.
+
+Quantity rules:
+- If a number is crossed out / struck through and another number is written next to it, use ONLY the final (not crossed out) number and mention the correction in notes.
+- If two numbers are added with "+", sum them and record the original parts in notes.
+- Ignore page headings, column titles and totals lines as items.`;
 
     const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
