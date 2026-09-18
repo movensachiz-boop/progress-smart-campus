@@ -776,19 +776,34 @@ export default function AdminKitchen() {
                   <div className="font-medium flex items-center gap-1"><Sparkles size={12} /> Extract from photo</div>
                   <div className="text-muted-foreground">Snap a handwritten or printed list — AI fills the CSV below.</div>
                 </div>
-                <label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={bulkAiBusy}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) handleBulkPhoto(f); e.target.value = ""; }}
-                  />
-                  <span className={`inline-flex items-center gap-1 cursor-pointer border rounded-md px-3 py-1.5 text-xs ${bulkAiBusy ? "opacity-50 pointer-events-none" : "hover:bg-accent"}`}>
-                    {bulkAiBusy ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
-                    {bulkAiBusy ? "Reading list..." : "Upload list photo"}
-                  </span>
-                </label>
+                <div className="flex items-center gap-2">
+                  <label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      disabled={bulkAiBusy}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleBulkPhoto(f); e.target.value = ""; }}
+                    />
+                    <span className={`inline-flex items-center gap-1 cursor-pointer border rounded-md px-3 py-1.5 text-xs ${bulkAiBusy ? "opacity-50 pointer-events-none" : "hover:bg-accent"}`}>
+                      {bulkAiBusy ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                      {bulkAiBusy ? "Reading list..." : "Take photo"}
+                    </span>
+                  </label>
+                  <label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={bulkAiBusy}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleBulkPhoto(f); e.target.value = ""; }}
+                    />
+                    <span className={`inline-flex items-center gap-1 cursor-pointer border rounded-md px-3 py-1.5 text-xs ${bulkAiBusy ? "opacity-50 pointer-events-none" : "hover:bg-accent"}`}>
+                      <Sparkles size={12} /> Upload image
+                    </span>
+                  </label>
+                </div>
               </div>
               {bulkAiPreview && (
                 <img src={bulkAiPreview} alt="List preview" className="max-h-40 rounded border object-contain" />
