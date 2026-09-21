@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   generateKitchenReport, KitchenStockRow, KitchenReceiptRow, KitchenIssueRow, KitchenMealRow,
 } from "@/lib/generateKitchenReport";
+import { bestFuzzyMatch, nameKey } from "@/lib/normalize";
 
 interface Item {
   id: string; name: string; category: string; unit: string;
@@ -75,6 +76,15 @@ export default function AdminKitchen() {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkAiBusy, setBulkAiBusy] = useState(false);
   const [bulkAiPreview, setBulkAiPreview] = useState<string | null>(null);
+
+  // Quick issue (to chefs) — photo or typed "name, quantity" list
+  const [qiDlg, setQiDlg] = useState(false);
+  const [qiText, setQiText] = useState("");
+  const [qiDate, setQiDate] = useState(new Date().toISOString().split("T")[0]);
+  const [qiPurpose, setQiPurpose] = useState("");
+  const [qiAiBusy, setQiAiBusy] = useState(false);
+  const [qiPreview, setQiPreview] = useState<string | null>(null);
+  const [qiSaving, setQiSaving] = useState(false);
 
   // AI photo identification
   const [aiIdentifying, setAiIdentifying] = useState(false);
@@ -300,6 +310,86 @@ export default function AdminKitchen() {
     toast.success("Stock issued"); setIssDlg(false); fetchAll();
   };
 
+  // ─── Quick issue to chefs ───
+  const openQuickIssue = () => {
+    setQiText(""); setQiPreview(null); setQiPurpose("");
+    setQiDate(new Date().toISOString().split("T")[0]);
+    setQiDlg(true);
+  };
+
+  const handleQuickIssuePhoto = async (file: File) => {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) return toast.error("Image must be under 8MB");
+    try {
+      setQiAiBusy(true);
+      const dataUrl = await fileToDataUrl(file);
+      setQiPreview(dataUrl);
+      const { data, error } = await supabase.functions.invoke("identify-kitchen-list", { body: { image: dataUrl } });
+      if (error) throw error;
+      if (!data || (data as any).error) throw new Error((data as any)?.error || "AI failed");
+      const list: any[] = Array.isArray((data as any).items) ? (data as any).items : [];
+      if (list.length === 0) return toast.error("No items detected — try a clearer photo");
+      const lines = list.map(i => `${i.name}, ${Number(i.quantity) || 0}`).join("\n");
+      setQiText(prev => prev ? `${prev.replace(/\s+$/, "")}\n${lines}` : lines);
+      toast.success(`Read ${list.length} item(s) — check quantities before saving`);
+    } catch (e) {
+      toast.error((e as Error).message || "Could not read list");
+    } finally {
+      setQiAiBusy(false);
+    }
+  };
+
+  const parseQuickIssue = (text: string) => {
+    return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(line => {
+      let name = line, qtyStr = "";
+      if (line.includes(",")) {
+        const parts = line.split(",").map(p => p.trim());
+        name = parts[0];
+        qtyStr = parts[1] || "";
+      } else {
+        const m = line.match(/^(.*?)[\s\u00d7x]+(\d+(?:[.,]\d+)?)\s*([a-zA-Z]*)$/);
+        if (m) { name = m[1].trim(); qtyStr = m[2]; }
+      }
+      const quantity = Number(String(qtyStr).replace(",", ".")) || 0;
+      const match = items.find(i => nameKey(i.name) === nameKey(name))
+        || bestFuzzyMatch(name, items, i => i.name, 3);
+      return { raw: line, name, quantity, match: match || null };
+    });
+  };
+  const qiRows = useMemo(() => parseQuickIssue(qiText), [qiText, items]);
+
+  const saveQuickIssue = async () => {
+    const rows = qiRows;
+    if (rows.length === 0) return toast.error("Add at least one item");
+    const valid = rows.filter(r => r.match && r.quantity > 0);
+    if (valid.length === 0) return toast.error("No matching items with a quantity");
+    const unmatched = rows.filter(r => !r.match);
+    const noQty = rows.filter(r => r.match && r.quantity <= 0);
+    if (unmatched.length || noQty.length) {
+      const msg = [
+        unmatched.length ? `${unmatched.length} unknown item(s): ${unmatched.map(r => r.name).join(", ")}` : "",
+        noQty.length ? `${noQty.length} line(s) with no quantity` : "",
+      ].filter(Boolean).join("\n");
+      if (!confirm(`${msg}\n\nIssue the other ${valid.length} item(s) anyway?`)) return;
+    }
+    setQiSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("kitchen_issues").insert(
+      valid.map(r => ({
+        item_id: r.match!.id,
+        quantity: r.quantity,
+        purpose: qiPurpose.trim() || "Issued to kitchen staff",
+        issue_date: qiDate,
+        notes: null,
+        issued_by: user?.id || null,
+      })) as any
+    );
+    setQiSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(`${valid.length} item(s) issued and deducted from stock`);
+    setQiDlg(false); fetchAll();
+  };
+
   // ─── Meals ───
   const openMeal = () => {
     setMealForm({ meal_name: "", meal_type: "lunch", meal_date: new Date().toISOString().split("T")[0], portions_served: 0, notes: "" });
@@ -397,6 +487,7 @@ export default function AdminKitchen() {
             <Button variant="outline" onClick={openBulk} className="gap-2"><ListPlus size={16} /> Bulk Add</Button>
             <Button variant="outline" onClick={openReceipt} className="gap-2"><PackagePlus size={16} /> Receive</Button>
             <Button variant="outline" onClick={openIssue} className="gap-2"><PackageMinus size={16} /> Issue</Button>
+            <Button variant="outline" onClick={openQuickIssue} className="gap-2"><Sparkles size={16} /> Quick Issue</Button>
             <Button onClick={openMeal} className="gap-2"><Utensils size={16} /> Record Meal</Button>
           </div>
         </div>
@@ -827,6 +918,88 @@ export default function AdminKitchen() {
             <Button variant="outline" onClick={() => setBulkDlg(false)} disabled={bulkSaving}>Cancel</Button>
             <Button onClick={saveBulk} disabled={bulkSaving} className="gap-2">
               {bulkSaving ? "Saving..." : <><ListPlus size={14} /> Add Items</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Quick Issue Dialog */}
+      <Dialog open={qiDlg} onOpenChange={setQiDlg}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Quick Issue to Chefs</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md border border-dashed p-3 space-y-2 bg-muted/30">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-xs">
+                  <div className="font-medium flex items-center gap-1"><Sparkles size={12} /> Take a picture of the issuing list</div>
+                  <div className="text-muted-foreground">Names and quantities are read for you — just check and save.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label>
+                    <input type="file" accept="image/*" capture="environment" className="hidden" disabled={qiAiBusy}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleQuickIssuePhoto(f); e.target.value = ""; }} />
+                    <span className={`inline-flex items-center gap-1 cursor-pointer border rounded-md px-3 py-1.5 text-xs ${qiAiBusy ? "opacity-50 pointer-events-none" : "hover:bg-accent"}`}>
+                      {qiAiBusy ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                      {qiAiBusy ? "Reading list..." : "Take photo"}
+                    </span>
+                  </label>
+                  <label>
+                    <input type="file" accept="image/*" className="hidden" disabled={qiAiBusy}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleQuickIssuePhoto(f); e.target.value = ""; }} />
+                    <span className={`inline-flex items-center gap-1 cursor-pointer border rounded-md px-3 py-1.5 text-xs ${qiAiBusy ? "opacity-50 pointer-events-none" : "hover:bg-accent"}`}>
+                      <Sparkles size={12} /> Upload image
+                    </span>
+                  </label>
+                </div>
+              </div>
+              {qiPreview && <img src={qiPreview} alt="Issuing list" className="max-h-40 rounded border object-contain" />}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Date</Label><Input type="date" value={qiDate} onChange={e => setQiDate(e.target.value)} /></div>
+              <div><Label>Purpose</Label><Input placeholder="e.g. Lunch — Monday" value={qiPurpose} onChange={e => setQiPurpose(e.target.value)} /></div>
+            </div>
+
+            <div>
+              <Label>Products and quantities</Label>
+              <Textarea
+                rows={8}
+                placeholder={`Rice, 10\nCooking Oil, 4\nTomatoes 6`}
+                value={qiText}
+                onChange={e => setQiText(e.target.value)}
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground mt-1">One product per line: name then quantity.</p>
+            </div>
+
+            {qiRows.length > 0 && (
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Qty</TableHead><TableHead>In stock</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {qiRows.map((r, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-sm">
+                          {r.match ? r.match.name : <span className="text-destructive">{r.name || r.raw} — not in stock list</span>}
+                        </TableCell>
+                        <TableCell className="text-sm">{r.quantity > 0 ? `${r.quantity} ${r.match?.unit || ""}` : <span className="text-destructive">—</span>}</TableCell>
+                        <TableCell className="text-sm">
+                          {r.match ? (
+                            <Badge variant={Number(r.match.stock_quantity) < r.quantity ? "destructive" : "secondary"}>
+                              {Number(r.match.stock_quantity)} {r.match.unit}
+                            </Badge>
+                          ) : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQiDlg(false)} disabled={qiSaving}>Cancel</Button>
+            <Button onClick={saveQuickIssue} disabled={qiSaving} className="gap-2">
+              {qiSaving ? "Saving..." : <><PackageMinus size={14} /> Issue & Deduct Stock</>}
             </Button>
           </DialogFooter>
         </DialogContent>
