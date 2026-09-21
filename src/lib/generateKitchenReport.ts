@@ -121,8 +121,22 @@ export const generateKitchenReport = async (args: GenArgs) => {
     });
     foot = [[{ content: "TOTAL DELIVERIES", colSpan: 7, styles: { halign: "right", fontStyle: "bold" } }, { content: fmtMoney(total), styles: { fontStyle: "bold" } }, "", ""]];
   } else if (args.kind === "issues") {
-    head = [["#", "KIS #", "Date", "Item", "Qty", "Unit", "Purpose"]];
-    body = (args.rows as KitchenIssueRow[]).map((r, i) => [i + 1, r.issue_number, r.date, r.item, fmtQty(r.quantity), r.unit, r.purpose || "—"]);
+    head = [["#", "KIS #", "Date", "Item", "Qty", "Unit", "Stock left", "% left", "Purpose"]];
+    let totQty = 0;
+    body = (args.rows as KitchenIssueRow[]).map((r, i) => {
+      totQty += Number(r.quantity || 0);
+      const pct = r.percent_left;
+      const pctCell = pct === undefined || pct === null
+        ? "—"
+        : { content: `${pct.toFixed(1)}%`, styles: { textColor: (pct <= 20 ? [200, 30, 30] : pct <= 50 ? [190, 120, 0] : [20, 120, 50]) as [number, number, number], fontStyle: (pct <= 20 ? "bold" : "normal") as any } };
+      return [
+        i + 1, r.issue_number, r.date, r.item, fmtQty(r.quantity), r.unit,
+        r.stock_left === undefined || r.stock_left === null ? "—" : fmtQty(r.stock_left),
+        pctCell,
+        r.purpose || "—",
+      ];
+    });
+    foot = [[{ content: "TOTAL ISSUED", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } }, { content: fmtQty(totQty), styles: { fontStyle: "bold" } }, "", "", "", ""]];
   } else if (args.kind === "meals") {
     head = [["#", "Meal #", "Date", "Meal", "Type", "Portions", "Total Cost", "Cost / portion"]];
     let totCost = 0, totPort = 0;
