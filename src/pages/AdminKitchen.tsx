@@ -47,6 +47,7 @@ const MEAL_TYPES = ["breakfast", "lunch", "supper", "snack"];
 export default function AdminKitchen() {
   const [tab, setTab] = useState("items");
   const [items, setItems] = useState<Item[]>([]);
+  const [itemSearch, setItemSearch] = useState("");
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -117,6 +118,16 @@ export default function AdminKitchen() {
   useEffect(() => { fetchAll(); }, []);
 
   const itemMap = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
+  const filteredItems = useMemo(() => {
+    const q = itemSearch.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(i =>
+      i.name.toLowerCase().includes(q) ||
+      i.category.toLowerCase().includes(q) ||
+      (i.supplier || "").toLowerCase().includes(q) ||
+      i.unit.toLowerCase().includes(q)
+    );
+  }, [items, itemSearch]);
 
   // ─── Items ───
   const openAddItem = () => {
