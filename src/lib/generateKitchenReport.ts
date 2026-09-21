@@ -15,6 +15,7 @@ export interface KitchenReceiptRow {
 export interface KitchenIssueRow {
   issue_number: string; date: string; item: string; unit: string;
   quantity: number; purpose?: string | null;
+  stock_left?: number; percent_left?: number;
 }
 export interface KitchenMealRow {
   meal_number: string; date: string; meal_name: string; meal_type: string;
@@ -120,8 +121,22 @@ export const generateKitchenReport = async (args: GenArgs) => {
     });
     foot = [[{ content: "TOTAL DELIVERIES", colSpan: 7, styles: { halign: "right", fontStyle: "bold" } }, { content: fmtMoney(total), styles: { fontStyle: "bold" } }, "", ""]];
   } else if (args.kind === "issues") {
-    head = [["#", "KIS #", "Date", "Item", "Qty", "Unit", "Purpose"]];
-    body = (args.rows as KitchenIssueRow[]).map((r, i) => [i + 1, r.issue_number, r.date, r.item, fmtQty(r.quantity), r.unit, r.purpose || "—"]);
+    head = [["#", "KIS #", "Date", "Item", "Qty", "Unit", "Stock left", "% left", "Purpose"]];
+    let totQty = 0;
+    body = (args.rows as KitchenIssueRow[]).map((r, i) => {
+      totQty += Number(r.quantity || 0);
+      const pct = r.percent_left;
+      const pctCell = pct === undefined || pct === null
+        ? "—"
+        : { content: `${pct.toFixed(1)}%`, styles: { textColor: (pct <= 20 ? [200, 30, 30] : pct <= 50 ? [190, 120, 0] : [20, 120, 50]) as [number, number, number], fontStyle: (pct <= 20 ? "bold" : "normal") as any } };
+      return [
+        i + 1, r.issue_number, r.date, r.item, fmtQty(r.quantity), r.unit,
+        r.stock_left === undefined || r.stock_left === null ? "—" : fmtQty(r.stock_left),
+        pctCell,
+        r.purpose || "—",
+      ];
+    });
+    foot = [[{ content: "TOTAL ISSUED", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } }, { content: fmtQty(totQty), styles: { fontStyle: "bold" } }, "", "", "", ""]];
   } else if (args.kind === "meals") {
     head = [["#", "Meal #", "Date", "Meal", "Type", "Portions", "Total Cost", "Cost / portion"]];
     let totCost = 0, totPort = 0;
@@ -154,6 +169,49 @@ export const generateKitchenReport = async (args: GenArgs) => {
       doc.text("Progress Christian College — Kitchen Stock Report", margin, ph - 10);
     },
   });
+
+  if (args.kind === "issues") {
+    // Per-item usage summary with remaining stock and % left
+    const map = new Map<string, { item: string; unit: string; used: number; left?: number; pct?: number }>();
+    (args.rows as KitchenIssueRow[]).forEach((r) => {
+      const key = r.item;
+      const cur = map.get(key) || { item: r.item, unit: r.unit, used: 0, left: r.stock_left, pct: r.percent_left };
+      cur.used += Number(r.quantity || 0);
+      if (r.stock_left !== undefined && r.stock_left !== null) cur.left = r.stock_left;
+      if (r.percent_left !== undefined && r.percent_left !== null) cur.pct = r.percent_left;
+      map.set(key, cur);
+    });
+    const sumRows = Array.from(map.values()).sort((a, b) => b.used - a.used);
+    if (sumRows.length) {
+      const prevY = (doc as any).lastAutoTable?.finalY ?? y;
+      autoTable(doc, {
+        head: [["#", "Item", "Unit", "Total used", "Stock left", "% left"]],
+        body: sumRows.map((r, i) => [
+          i + 1, r.item, r.unit, fmtQty(r.used),
+          r.left === undefined || r.left === null ? "—" : fmtQty(r.left),
+          r.pct === undefined || r.pct === null
+            ? "—"
+            : { content: `${r.pct.toFixed(1)}%`, styles: { textColor: (r.pct <= 20 ? [200, 30, 30] : r.pct <= 50 ? [190, 120, 0] : [20, 120, 50]) as [number, number, number], fontStyle: (r.pct <= 20 ? "bold" : "normal") as any } },
+        ]),
+        startY: prevY + 10,
+        margin: { left: margin, right: margin, bottom: 18 },
+        styles: { fontSize: 8.5, cellPadding: 2 },
+        headStyles: { fillColor: primary, textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [245, 248, 252] },
+        didDrawPage: () => {
+          const total = (doc as any).internal.getNumberOfPages();
+          doc.setFontSize(8); doc.setTextColor(120);
+          doc.text(`Page ${(doc as any).internal.getCurrentPageInfo().pageNumber} of ${total}`, pw - margin, ph - 10, { align: "right" });
+          doc.text("Progress Christian College — Kitchen Stock Report", margin, ph - 10);
+        },
+        willDrawCell: (d: any) => {
+          if (d.section === "head" && d.column.index === 0 && d.row.index === 0 && d.cursor.y === d.table.startY) {
+            doc.setFont("helvetica", "bold");
+          }
+        },
+      });
+    }
+  }
 
   doc.save(`Kitchen_${args.kind}_${new Date().toISOString().split("T")[0]}.pdf`);
 };

@@ -394,7 +394,23 @@ export default function AdminKitchen() {
     const qty = Number(String(qiQty).replace(",", "."));
     if (!it) { qiNameRef.current?.focus(); return toast.error("Choose a product first"); }
     if (!qty || qty <= 0) return toast.error("Enter a quantity");
-    setQiText(prev => (prev ? `${prev.replace(/\s+$/, "")}\n` : "") + `${it.name}, ${qty}`);
+    // If the same product is entered again, add the quantities together on one line
+    setQiText(prev => {
+      const lines = prev.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      let merged = false;
+      const out = lines.map(line => {
+        const parts = line.split(",");
+        const lineName = (parts[0] || "").trim();
+        if (!merged && nameKey(lineName) === nameKey(it.name)) {
+          const existing = Number(String(parts[1] || "").replace(",", ".")) || 0;
+          merged = true;
+          return `${it.name}, ${existing + qty}`;
+        }
+        return line;
+      });
+      if (!merged) out.push(`${it.name}, ${qty}`);
+      return out.join("\n");
+    });
     setQiPicked(null); setQiSearch(""); setQiQty("");
     setTimeout(() => qiNameRef.current?.focus(), 0);
   };
@@ -405,7 +421,16 @@ export default function AdminKitchen() {
   const saveQuickIssue = async () => {
     const rows = qiRows;
     if (rows.length === 0) return toast.error("Add at least one item");
-    const valid = rows.filter(r => r.match && r.quantity > 0);
+    const matchedRows = rows.filter(r => r.match && r.quantity > 0);
+    // Combine repeated products into one line by adding their quantities
+    const combined = new Map<string, { match: Item; quantity: number }>();
+    matchedRows.forEach(r => {
+      const key = r.match!.id;
+      const cur = combined.get(key);
+      if (cur) cur.quantity += r.quantity;
+      else combined.set(key, { match: r.match as Item, quantity: r.quantity });
+    });
+    const valid = Array.from(combined.values());
     if (valid.length === 0) return toast.error("No matching items with a quantity");
     const unmatched = rows.filter(r => !r.match);
     const noQty = rows.filter(r => r.match && r.quantity <= 0);
@@ -499,11 +524,22 @@ export default function AdminKitchen() {
     await generateKitchenReport({ kind: "receipts", title: "Kitchen Stock Receipts (Deliveries In)", rows });
   };
   const exportIssues = async () => {
-    const rows: KitchenIssueRow[] = issues.map(r => ({
-      issue_number: r.issue_number, date: r.issue_date,
-      item: itemMap.get(r.item_id)?.name || "—", unit: itemMap.get(r.item_id)?.unit || "",
-      quantity: Number(r.quantity), purpose: r.purpose,
-    }));
+    // Total issued per item, so we can show what is left and the % of stock remaining
+    const usedByItem = new Map<string, number>();
+    issues.forEach(r => usedByItem.set(r.item_id, (usedByItem.get(r.item_id) || 0) + Number(r.quantity || 0)));
+    const rows: KitchenIssueRow[] = issues.map(r => {
+      const it = itemMap.get(r.item_id);
+      const left = it ? Number(it.stock_quantity) : undefined;
+      const used = usedByItem.get(r.item_id) || 0;
+      const opening = (left ?? 0) + used;
+      return {
+        issue_number: r.issue_number, date: r.issue_date,
+        item: it?.name || "—", unit: it?.unit || "",
+        quantity: Number(r.quantity), purpose: r.purpose,
+        stock_left: left,
+        percent_left: left === undefined || opening <= 0 ? undefined : (left / opening) * 100,
+      };
+    });
     await generateKitchenReport({ kind: "issues", title: "Kitchen Stock Usage (Issues Out)", rows });
   };
   const exportMeals = async () => {
