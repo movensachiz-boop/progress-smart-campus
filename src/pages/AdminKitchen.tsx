@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,12 @@ export default function AdminKitchen() {
   const [qiAiBusy, setQiAiBusy] = useState(false);
   const [qiPreview, setQiPreview] = useState<string | null>(null);
   const [qiSaving, setQiSaving] = useState(false);
+  // Fast keyboard entry: search name -> Enter -> quantity -> Enter -> next
+  const [qiSearch, setQiSearch] = useState("");
+  const [qiPicked, setQiPicked] = useState<Item | null>(null);
+  const [qiQty, setQiQty] = useState("");
+  const qiNameRef = useRef<HTMLInputElement | null>(null);
+  const qiQtyRef = useRef<HTMLInputElement | null>(null);
 
   // AI photo identification
   const [aiIdentifying, setAiIdentifying] = useState(false);
@@ -314,7 +320,9 @@ export default function AdminKitchen() {
   const openQuickIssue = () => {
     setQiText(""); setQiPreview(null); setQiPurpose("");
     setQiDate(new Date().toISOString().split("T")[0]);
+    setQiSearch(""); setQiPicked(null); setQiQty("");
     setQiDlg(true);
+    setTimeout(() => qiNameRef.current?.focus(), 150);
   };
 
   const handleQuickIssuePhoto = async (file: File) => {
@@ -357,6 +365,42 @@ export default function AdminKitchen() {
     });
   };
   const qiRows = useMemo(() => parseQuickIssue(qiText), [qiText, items]);
+
+  // Suggestions for the fast search box
+  const qiMatches = useMemo(() => {
+    const q = qiSearch.trim();
+    if (!q) return [] as Item[];
+    const k = nameKey(q);
+    return items
+      .filter(i => i.is_active !== false)
+      .filter(i => nameKey(i.name).includes(k))
+      .slice(0, 6);
+  }, [qiSearch, items]);
+
+  const pickQiItem = (it: Item) => {
+    setQiPicked(it); setQiSearch(it.name);
+    setTimeout(() => qiQtyRef.current?.focus(), 0);
+  };
+  const qiNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const exact = items.find(i => nameKey(i.name) === nameKey(qiSearch));
+    const pick = exact || qiMatches[0] || bestFuzzyMatch(qiSearch, items, i => i.name, 3);
+    if (!pick) return toast.error("No matching product in stock");
+    pickQiItem(pick as Item);
+  };
+  const commitQiLine = () => {
+    const it = qiPicked;
+    const qty = Number(String(qiQty).replace(",", "."));
+    if (!it) { qiNameRef.current?.focus(); return toast.error("Choose a product first"); }
+    if (!qty || qty <= 0) return toast.error("Enter a quantity");
+    setQiText(prev => (prev ? `${prev.replace(/\s+$/, "")}\n` : "") + `${it.name}, ${qty}`);
+    setQiPicked(null); setQiSearch(""); setQiQty("");
+    setTimeout(() => qiNameRef.current?.focus(), 0);
+  };
+  const qiQtyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); commitQiLine(); }
+  };
 
   const saveQuickIssue = async () => {
     const rows = qiRows;
@@ -957,6 +1001,48 @@ export default function AdminKitchen() {
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Date</Label><Input type="date" value={qiDate} onChange={e => setQiDate(e.target.value)} /></div>
               <div><Label>Purpose</Label><Input placeholder="e.g. Lunch — Monday" value={qiPurpose} onChange={e => setQiPurpose(e.target.value)} /></div>
+            </div>
+
+            <div className="rounded-md border p-3 space-y-2">
+              <Label>Fast entry — type name, press Enter, type quantity, press Enter</Label>
+              <div className="grid grid-cols-[1fr_120px] gap-2">
+                <div className="relative">
+                  <Input
+                    ref={qiNameRef}
+                    placeholder="Search product name..."
+                    value={qiSearch}
+                    onChange={e => { setQiSearch(e.target.value); setQiPicked(null); }}
+                    onKeyDown={qiNameKeyDown}
+                  />
+                  {!qiPicked && qiMatches.length > 0 && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-44 overflow-y-auto">
+                      {qiMatches.map(m => (
+                        <button type="button" key={m.id}
+                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent flex justify-between gap-2"
+                          onClick={() => pickQiItem(m)}>
+                          <span>{m.name}</span>
+                          <span className="text-muted-foreground text-xs">{Number(m.stock_quantity)} {m.unit}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Input
+                  ref={qiQtyRef}
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder={qiPicked ? `Qty (${qiPicked.unit})` : "Qty"}
+                  value={qiQty}
+                  onChange={e => setQiQty(e.target.value)}
+                  onKeyDown={qiQtyKeyDown}
+                />
+              </div>
+              {qiPicked && (
+                <p className="text-xs text-muted-foreground">
+                  {qiPicked.name} — in stock {Number(qiPicked.stock_quantity)} {qiPicked.unit}. Press Enter to add and search the next product.
+                </p>
+              )}
             </div>
 
             <div>
