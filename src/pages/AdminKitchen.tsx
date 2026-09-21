@@ -524,11 +524,22 @@ export default function AdminKitchen() {
     await generateKitchenReport({ kind: "receipts", title: "Kitchen Stock Receipts (Deliveries In)", rows });
   };
   const exportIssues = async () => {
-    const rows: KitchenIssueRow[] = issues.map(r => ({
-      issue_number: r.issue_number, date: r.issue_date,
-      item: itemMap.get(r.item_id)?.name || "—", unit: itemMap.get(r.item_id)?.unit || "",
-      quantity: Number(r.quantity), purpose: r.purpose,
-    }));
+    // Total issued per item, so we can show what is left and the % of stock remaining
+    const usedByItem = new Map<string, number>();
+    issues.forEach(r => usedByItem.set(r.item_id, (usedByItem.get(r.item_id) || 0) + Number(r.quantity || 0)));
+    const rows: KitchenIssueRow[] = issues.map(r => {
+      const it = itemMap.get(r.item_id);
+      const left = it ? Number(it.stock_quantity) : undefined;
+      const used = usedByItem.get(r.item_id) || 0;
+      const opening = (left ?? 0) + used;
+      return {
+        issue_number: r.issue_number, date: r.issue_date,
+        item: it?.name || "—", unit: it?.unit || "",
+        quantity: Number(r.quantity), purpose: r.purpose,
+        stock_left: left,
+        percent_left: left === undefined || opening <= 0 ? undefined : (left / opening) * 100,
+      };
+    });
     await generateKitchenReport({ kind: "issues", title: "Kitchen Stock Usage (Issues Out)", rows });
   };
   const exportMeals = async () => {
