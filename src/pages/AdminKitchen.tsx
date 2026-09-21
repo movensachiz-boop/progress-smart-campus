@@ -421,7 +421,16 @@ export default function AdminKitchen() {
   const saveQuickIssue = async () => {
     const rows = qiRows;
     if (rows.length === 0) return toast.error("Add at least one item");
-    const valid = rows.filter(r => r.match && r.quantity > 0);
+    const matchedRows = rows.filter(r => r.match && r.quantity > 0);
+    // Combine repeated products into one line by adding their quantities
+    const combined = new Map<string, { match: Item; quantity: number }>();
+    matchedRows.forEach(r => {
+      const key = r.match!.id;
+      const cur = combined.get(key);
+      if (cur) cur.quantity += r.quantity;
+      else combined.set(key, { match: r.match as Item, quantity: r.quantity });
+    });
+    const valid = Array.from(combined.values());
     if (valid.length === 0) return toast.error("No matching items with a quantity");
     const unmatched = rows.filter(r => !r.match);
     const noQty = rows.filter(r => r.match && r.quantity <= 0);
