@@ -85,6 +85,12 @@ export default function AdminKitchen() {
   const [qiAiBusy, setQiAiBusy] = useState(false);
   const [qiPreview, setQiPreview] = useState<string | null>(null);
   const [qiSaving, setQiSaving] = useState(false);
+  // Fast keyboard entry: search name -> Enter -> quantity -> Enter -> next
+  const [qiSearch, setQiSearch] = useState("");
+  const [qiPicked, setQiPicked] = useState<Item | null>(null);
+  const [qiQty, setQiQty] = useState("");
+  const qiNameRef = useRef<HTMLInputElement | null>(null);
+  const qiQtyRef = useRef<HTMLInputElement | null>(null);
 
   // AI photo identification
   const [aiIdentifying, setAiIdentifying] = useState(false);
