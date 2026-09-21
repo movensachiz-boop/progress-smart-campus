@@ -523,11 +523,27 @@ export default function AdminKitchen() {
     }));
     await generateKitchenReport({ kind: "receipts", title: "Kitchen Stock Receipts (Deliveries In)", rows });
   };
+  // Same product issued more than once on the same day (and for the same purpose)
+  // is always shown as one line with the quantities added together.
+  const mergedIssues = useMemo(() => {
+    const map = new Map<string, Issue>();
+    issues.forEach(r => {
+      const key = `${r.item_id}|${r.issue_date}|${(r.purpose || "").trim().toLowerCase()}`;
+      const cur = map.get(key);
+      if (cur) {
+        cur.quantity = Number(cur.quantity || 0) + Number(r.quantity || 0);
+      } else {
+        map.set(key, { ...r, quantity: Number(r.quantity || 0) });
+      }
+    });
+    return Array.from(map.values());
+  }, [issues]);
+
   const exportIssues = async () => {
     // Total issued per item, so we can show what is left and the % of stock remaining
     const usedByItem = new Map<string, number>();
     issues.forEach(r => usedByItem.set(r.item_id, (usedByItem.get(r.item_id) || 0) + Number(r.quantity || 0)));
-    const rows: KitchenIssueRow[] = issues.map(r => {
+    const rows: KitchenIssueRow[] = mergedIssues.map(r => {
       const it = itemMap.get(r.item_id);
       const left = it ? Number(it.stock_quantity) : undefined;
       const used = usedByItem.get(r.item_id) || 0;
@@ -591,7 +607,7 @@ export default function AdminKitchen() {
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="items">Items ({items.length})</TabsTrigger>
             <TabsTrigger value="receipts">Deliveries ({receipts.length})</TabsTrigger>
-            <TabsTrigger value="issues">Usage ({issues.length})</TabsTrigger>
+            <TabsTrigger value="issues">Usage ({mergedIssues.length})</TabsTrigger>
             <TabsTrigger value="meals">Meals ({meals.length})</TabsTrigger>
           </TabsList>
 
@@ -679,8 +695,8 @@ export default function AdminKitchen() {
                   <TableHead>Qty</TableHead><TableHead>Purpose</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {issues.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No issues recorded</TableCell></TableRow> :
-                    issues.map(r => {
+                  {mergedIssues.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No issues recorded</TableCell></TableRow> :
+                    mergedIssues.map(r => {
                       const it = itemMap.get(r.item_id);
                       return (
                         <TableRow key={r.id}>
