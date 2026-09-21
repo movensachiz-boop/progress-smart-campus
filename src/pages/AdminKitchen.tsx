@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChefHat, Plus, Pencil, Trash2, FileDown, PackagePlus, PackageMinus, Utensils, ListPlus, Camera, Sparkles, Loader2 } from "lucide-react";
+import { ChefHat, Plus, Pencil, Trash2, FileDown, PackagePlus, PackageMinus, Utensils, ListPlus, Camera, Sparkles, Loader2, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   generateKitchenReport, KitchenStockRow, KitchenReceiptRow, KitchenIssueRow, KitchenMealRow,
