@@ -1003,6 +1003,48 @@ export default function AdminKitchen() {
               <div><Label>Purpose</Label><Input placeholder="e.g. Lunch — Monday" value={qiPurpose} onChange={e => setQiPurpose(e.target.value)} /></div>
             </div>
 
+            <div className="rounded-md border p-3 space-y-2">
+              <Label>Fast entry — type name, press Enter, type quantity, press Enter</Label>
+              <div className="grid grid-cols-[1fr_120px] gap-2">
+                <div className="relative">
+                  <Input
+                    ref={qiNameRef}
+                    placeholder="Search product name..."
+                    value={qiSearch}
+                    onChange={e => { setQiSearch(e.target.value); setQiPicked(null); }}
+                    onKeyDown={qiNameKeyDown}
+                  />
+                  {!qiPicked && qiMatches.length > 0 && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-44 overflow-y-auto">
+                      {qiMatches.map(m => (
+                        <button type="button" key={m.id}
+                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent flex justify-between gap-2"
+                          onClick={() => pickQiItem(m)}>
+                          <span>{m.name}</span>
+                          <span className="text-muted-foreground text-xs">{Number(m.stock_quantity)} {m.unit}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Input
+                  ref={qiQtyRef}
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder={qiPicked ? `Qty (${qiPicked.unit})` : "Qty"}
+                  value={qiQty}
+                  onChange={e => setQiQty(e.target.value)}
+                  onKeyDown={qiQtyKeyDown}
+                />
+              </div>
+              {qiPicked && (
+                <p className="text-xs text-muted-foreground">
+                  {qiPicked.name} — in stock {Number(qiPicked.stock_quantity)} {qiPicked.unit}. Press Enter to add and search the next product.
+                </p>
+              )}
+            </div>
+
             <div>
               <Label>Products and quantities</Label>
               <Textarea
