@@ -366,6 +366,42 @@ export default function AdminKitchen() {
   };
   const qiRows = useMemo(() => parseQuickIssue(qiText), [qiText, items]);
 
+  // Suggestions for the fast search box
+  const qiMatches = useMemo(() => {
+    const q = qiSearch.trim();
+    if (!q) return [] as Item[];
+    const k = nameKey(q);
+    return items
+      .filter(i => i.is_active !== false)
+      .filter(i => nameKey(i.name).includes(k))
+      .slice(0, 6);
+  }, [qiSearch, items]);
+
+  const pickQiItem = (it: Item) => {
+    setQiPicked(it); setQiSearch(it.name);
+    setTimeout(() => qiQtyRef.current?.focus(), 0);
+  };
+  const qiNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const exact = items.find(i => nameKey(i.name) === nameKey(qiSearch));
+    const pick = exact || qiMatches[0] || bestFuzzyMatch(qiSearch, items, i => i.name, 3);
+    if (!pick) return toast.error("No matching product in stock");
+    pickQiItem(pick as Item);
+  };
+  const commitQiLine = () => {
+    const it = qiPicked;
+    const qty = Number(String(qiQty).replace(",", "."));
+    if (!it) { qiNameRef.current?.focus(); return toast.error("Choose a product first"); }
+    if (!qty || qty <= 0) return toast.error("Enter a quantity");
+    setQiText(prev => (prev ? `${prev.replace(/\s+$/, "")}\n` : "") + `${it.name}, ${qty}`);
+    setQiPicked(null); setQiSearch(""); setQiQty("");
+    setTimeout(() => qiNameRef.current?.focus(), 0);
+  };
+  const qiQtyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); commitQiLine(); }
+  };
+
   const saveQuickIssue = async () => {
     const rows = qiRows;
     if (rows.length === 0) return toast.error("Add at least one item");
