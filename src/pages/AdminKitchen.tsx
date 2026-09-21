@@ -607,7 +607,7 @@ export default function AdminKitchen() {
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="items">Items ({items.length})</TabsTrigger>
             <TabsTrigger value="receipts">Deliveries ({receipts.length})</TabsTrigger>
-            <TabsTrigger value="issues">Usage ({issues.length})</TabsTrigger>
+            <TabsTrigger value="issues">Usage ({mergedIssues.length})</TabsTrigger>
             <TabsTrigger value="meals">Meals ({meals.length})</TabsTrigger>
           </TabsList>
 
