@@ -320,7 +320,9 @@ export default function AdminKitchen() {
   const openQuickIssue = () => {
     setQiText(""); setQiPreview(null); setQiPurpose("");
     setQiDate(new Date().toISOString().split("T")[0]);
+    setQiSearch(""); setQiPicked(null); setQiQty("");
     setQiDlg(true);
+    setTimeout(() => qiNameRef.current?.focus(), 150);
   };
 
   const handleQuickIssuePhoto = async (file: File) => {
