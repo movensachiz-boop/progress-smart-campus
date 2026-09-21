@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChefHat, Plus, Pencil, Trash2, FileDown, PackagePlus, PackageMinus, Utensils, ListPlus, Camera, Sparkles, Loader2 } from "lucide-react";
+import { ChefHat, Plus, Pencil, Trash2, FileDown, PackagePlus, PackageMinus, Utensils, ListPlus, Camera, Sparkles, Loader2, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   generateKitchenReport, KitchenStockRow, KitchenReceiptRow, KitchenIssueRow, KitchenMealRow,
@@ -47,6 +47,7 @@ const MEAL_TYPES = ["breakfast", "lunch", "supper", "snack"];
 export default function AdminKitchen() {
   const [tab, setTab] = useState("items");
   const [items, setItems] = useState<Item[]>([]);
+  const [itemSearch, setItemSearch] = useState("");
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -117,6 +118,16 @@ export default function AdminKitchen() {
   useEffect(() => { fetchAll(); }, []);
 
   const itemMap = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
+  const filteredItems = useMemo(() => {
+    const q = itemSearch.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(i =>
+      i.name.toLowerCase().includes(q) ||
+      i.category.toLowerCase().includes(q) ||
+      (i.supplier || "").toLowerCase().includes(q) ||
+      i.unit.toLowerCase().includes(q)
+    );
+  }, [items, itemSearch]);
 
   // ─── Items ───
   const openAddItem = () => {
@@ -613,9 +624,23 @@ export default function AdminKitchen() {
 
           <TabsContent value="items">
             <Card><CardContent className="p-3">
-              <div className="flex justify-end mb-2">
+              <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                <div className="relative w-full max-w-xs">
+                  <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search items, category, supplier…"
+                    value={itemSearch}
+                    onChange={e => setItemSearch(e.target.value)}
+                    className="pl-8 h-9"
+                  />
+                </div>
                 <Button size="sm" variant="outline" onClick={exportStock} className="gap-2"><FileDown size={14} /> Stock PDF</Button>
               </div>
+              {itemSearch.trim() && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  Showing {filteredItems.length} of {items.length} item{filteredItems.length === 1 ? "" : "s"}
+                </p>
+              )}
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Item</TableHead><TableHead>Category</TableHead><TableHead>Unit</TableHead>
@@ -625,7 +650,8 @@ export default function AdminKitchen() {
                 <TableBody>
                   {loading ? <TableRow><TableCell colSpan={8} className="text-center py-6">Loading...</TableCell></TableRow> :
                     items.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No items yet</TableCell></TableRow> :
-                    items.map(i => {
+                    filteredItems.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No items match "{itemSearch}"</TableCell></TableRow> :
+                    filteredItems.map(i => {
                       const low = Number(i.stock_quantity) <= Number(i.low_stock_threshold);
                       return (
                         <TableRow key={i.id}>
