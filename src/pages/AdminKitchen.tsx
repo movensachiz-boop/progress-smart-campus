@@ -394,7 +394,23 @@ export default function AdminKitchen() {
     const qty = Number(String(qiQty).replace(",", "."));
     if (!it) { qiNameRef.current?.focus(); return toast.error("Choose a product first"); }
     if (!qty || qty <= 0) return toast.error("Enter a quantity");
-    setQiText(prev => (prev ? `${prev.replace(/\s+$/, "")}\n` : "") + `${it.name}, ${qty}`);
+    // If the same product is entered again, add the quantities together on one line
+    setQiText(prev => {
+      const lines = prev.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      let merged = false;
+      const out = lines.map(line => {
+        const parts = line.split(",");
+        const lineName = (parts[0] || "").trim();
+        if (!merged && nameKey(lineName) === nameKey(it.name)) {
+          const existing = Number(String(parts[1] || "").replace(",", ".")) || 0;
+          merged = true;
+          return `${it.name}, ${existing + qty}`;
+        }
+        return line;
+      });
+      if (!merged) out.push(`${it.name}, ${qty}`);
+      return out.join("\n");
+    });
     setQiPicked(null); setQiSearch(""); setQiQty("");
     setTimeout(() => qiNameRef.current?.focus(), 0);
   };
