@@ -15,6 +15,7 @@ export interface KitchenReceiptRow {
 export interface KitchenIssueRow {
   issue_number: string; date: string; item: string; unit: string;
   quantity: number; purpose?: string | null;
+  stock_left?: number; percent_left?: number;
 }
 export interface KitchenMealRow {
   meal_number: string; date: string; meal_name: string; meal_type: string;
