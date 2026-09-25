@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.search_staff_for_calls(text) FROM anon, public;
