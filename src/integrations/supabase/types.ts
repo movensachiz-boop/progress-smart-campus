@@ -1805,6 +1805,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      search_staff_for_calls: {
+        Args: { p_term: string }
+        Returns: {
+          name: string
+          role: string
+          user_id: string
+        }[]
+      }
       verify_document_fingerprint: {
         Args: {
           p_amount: string
