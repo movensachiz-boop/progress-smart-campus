@@ -45,8 +45,8 @@ const StudentProfile = () => {
         contentType: "image/jpeg", upsert: true,
       });
       if (error) throw error;
-      const { data } = await supabase.storage.from("student-photos").createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
-      const url = (data as any)?.signedUrl || path;
+      const { data } = supabase.storage.from("student-photos").getPublicUrl(path);
+      const url = data.publicUrl;
       await supabase.from("profiles").update({ selfie_url: url }).eq("id", p.id);
       setP({ ...p, selfie_url: url });
       toast({ title: "Profile photo updated" });
