@@ -61,6 +61,7 @@ import InstallPrompt from "./components/InstallPrompt";
 import AdminFeedback from "./pages/AdminFeedback";
 import AdminPositions from "./pages/AdminPositions";
 import TeacherPositions from "./pages/TeacherPositions";
+import { CallProvider } from "./context/CallContext";
 
 
 // Sub-roles
@@ -78,6 +79,7 @@ const App = () => (
       <TermProvider>
       <TimetableProvider>
         <BrowserRouter>
+          <CallProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -136,6 +138,7 @@ const App = () => (
             <Route path="/phone-scan/:sessionId" element={<PhoneScan />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </CallProvider>
         </BrowserRouter>
       </TimetableProvider>
       </TermProvider>
