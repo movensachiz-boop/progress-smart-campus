@@ -12,6 +12,8 @@ import {
 import pccLogo from "@/assets/pcc-logo.png";
 import FeedbackDialog from "@/components/FeedbackDialog";
 import AnnouncementPopup from "@/components/AnnouncementPopup";
+import { useCalls } from "@/context/CallContext";
+import { Phone } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -77,6 +79,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { role: actualRole } = useUserRole();
+  const calls = useCalls();
   let links =
     role === "admin" ? adminLinks
     : role === "teacher" ? teacherLinks
@@ -200,6 +203,9 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
             <h1 className="text-lg font-bold text-foreground capitalize">{role} Portal</h1>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="rounded-full" aria-label="Voice and video calls" onClick={() => calls?.setDirectoryOpen(true)}>
+              <Phone size={18} />
+            </Button>
             <FeedbackDialog compact />
             <Button variant="ghost" size="icon" className="relative rounded-full">
               <Bell size={18} />
