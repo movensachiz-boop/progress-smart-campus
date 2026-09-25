@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import pccLogo from "@/assets/pcc-logo.png";
 import FeedbackDialog from "@/components/FeedbackDialog";
+import AnnouncementPopup from "@/components/AnnouncementPopup";
 
 interface DashboardLayoutProps {
   children: ReactNode;
