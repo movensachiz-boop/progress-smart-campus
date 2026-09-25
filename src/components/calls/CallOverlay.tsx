@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff, UserPlus, Search, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const VideoTile = ({ stream, name, muted, mirror, showVideo }: { stream: MediaStream | null; name: string; muted?: boolean; mirror?: boolean; showVideo: boolean }) => {
   const ref = useRef<HTMLVideoElement>(null);
@@ -30,24 +31,49 @@ export const PeoplePicker = ({ exclude = [], onPick, actions }: { exclude?: stri
   const calls = useCalls()!;
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<string[]>([]);
-  const list = useMemo(
-    () => calls.online.filter((u) => !exclude.includes(u.user_id) && (u.name + " " + u.role).toLowerCase().includes(q.toLowerCase())),
-    [calls.online, q, exclude],
-  );
+  const [found, setFound] = useState<{ user_id: string; name: string; role: string }[]>([]);
+  const term = q.trim().toLowerCase();
+  useEffect(() => {
+    if (term.length < 2) { setFound([]); return; }
+    const t = setTimeout(async () => {
+      const like = `%${term}%`;
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, first_name, last_name, registration_number, form, stream")
+        .not("user_id", "is", null)
+        .or(`first_name.ilike.${like},last_name.ilike.${like},registration_number.ilike.${like}`)
+        .limit(30);
+      setFound((data || []).map((p: any) => ({
+        user_id: p.user_id,
+        name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.registration_number,
+        role: [p.form, p.stream].filter(Boolean).join(" ") || "student",
+      })));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [term]);
+  const onlineIds = new Set(calls.online.map((u) => u.user_id));
+  const list = useMemo(() => {
+    const words = term.split(/\s+/).filter(Boolean);
+    const match = (s: string) => words.every((w) => s.toLowerCase().includes(w));
+    const on = calls.online.filter((u) => !exclude.includes(u.user_id) && match(`${u.name || ""} ${u.role || ""}`));
+    const off = found.filter((u) => !exclude.includes(u.user_id) && !onlineIds.has(u.user_id) && u.user_id !== calls.me?.user_id);
+    return [...on.map((u) => ({ ...u, isOn: true })), ...off.map((u) => ({ ...u, isOn: false }))];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calls.online, found, term, exclude]);
   return (
     <div className="space-y-3">
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people online…" className="pl-8" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or reg number…" className="pl-8" />
       </div>
       <div className="max-h-72 overflow-y-auto border rounded-lg divide-y">
-        {list.length === 0 && <p className="text-sm text-muted-foreground p-6 text-center">Nobody else is online right now. People appear here when they have the app open.</p>}
+        {list.length === 0 && <p className="text-sm text-muted-foreground p-6 text-center">{term ? "No one found with that name." : "Nobody else is online right now. Type a name to search everyone."}</p>}
         {list.map((u) => (
           <label key={u.user_id} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/50">
             <Checkbox checked={sel.includes(u.user_id)} onCheckedChange={(v) => setSel((s) => (v ? [...s, u.user_id] : s.filter((x) => x !== u.user_id)))} />
-            <span className="w-2 h-2 rounded-full bg-primary" />
-            <span className="flex-1 text-sm font-medium">{u.name}</span>
-            <span className="text-xs text-muted-foreground capitalize">{u.role.replace("_", " ")}</span>
+            <span className={cn("w-2 h-2 rounded-full", u.isOn ? "bg-primary" : "bg-muted-foreground/40")} />
+            <span className="flex-1 text-sm font-medium">{u.name}{!u.isOn && <span className="ml-1 text-xs text-muted-foreground">(offline)</span>}</span>
+            <span className="text-xs text-muted-foreground capitalize">{(u.role || "").replace("_", " ")}</span>
           </label>
         ))}
       </div>
