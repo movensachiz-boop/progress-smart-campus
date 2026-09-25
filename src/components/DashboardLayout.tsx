@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import pccLogo from "@/assets/pcc-logo.png";
 import FeedbackDialog from "@/components/FeedbackDialog";
+import AnnouncementPopup from "@/components/AnnouncementPopup";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -102,6 +103,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen flex bg-background">
+      <AnnouncementPopup role={role} />
       {/* Sidebar */}
       <aside
         className={cn(
