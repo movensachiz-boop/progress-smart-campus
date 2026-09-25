@@ -37,17 +37,27 @@ export const PeoplePicker = ({ exclude = [], onPick, actions }: { exclude?: stri
     if (term.length < 2) { setFound([]); return; }
     const t = setTimeout(async () => {
       const like = `%${term}%`;
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, first_name, last_name, registration_number, form, stream")
-        .not("user_id", "is", null)
-        .or(`first_name.ilike.${like},last_name.ilike.${like},registration_number.ilike.${like}`)
-        .limit(30);
-      setFound((data || []).map((p: any) => ({
-        user_id: p.user_id,
-        name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.registration_number,
-        role: [p.form, p.stream].filter(Boolean).join(" ") || "student",
-      })));
+      const [{ data: students }, { data: staff }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("user_id, first_name, last_name, registration_number, form, stream")
+          .not("user_id", "is", null)
+          .or(`first_name.ilike.${like},last_name.ilike.${like},registration_number.ilike.${like}`)
+          .limit(30),
+        supabase.rpc("search_staff_for_calls", { p_term: term }),
+      ]);
+      const merged = new Map<string, { user_id: string; name: string; role: string }>();
+      (staff || []).forEach((s: any) => {
+        if (s.user_id) merged.set(s.user_id, { user_id: s.user_id, name: s.name || "Staff", role: s.role || "staff" });
+      });
+      (students || []).forEach((p: any) => {
+        if (p.user_id && !merged.has(p.user_id)) merged.set(p.user_id, {
+          user_id: p.user_id,
+          name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.registration_number,
+          role: [p.form, p.stream].filter(Boolean).join(" ") || "student",
+        });
+      });
+      setFound(Array.from(merged.values()));
     }, 300);
     return () => clearTimeout(t);
   }, [term]);
