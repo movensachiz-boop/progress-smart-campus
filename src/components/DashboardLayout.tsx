@@ -103,6 +103,7 @@ const DashboardLayout = ({ children, role }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen flex bg-background">
+      <AnnouncementPopup role={role} />
       {/* Sidebar */}
       <aside
         className={cn(
