@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
+import { resolvePhotoUrl } from "@/lib/photoUrl";
 
 const PURPLE = "#7c3aed";
 const PURPLE_DARK = "#4c1d95";
@@ -29,6 +30,9 @@ const StudentProfile = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { navigate("/login"); return; }
     const { data } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
+    if (data?.selfie_url) {
+      data.selfie_url = await resolvePhotoUrl(data.selfie_url);
+    }
     setP(data);
     setLoading(false);
   };
@@ -45,10 +49,8 @@ const StudentProfile = () => {
         contentType: "image/jpeg", upsert: true,
       });
       if (error) throw error;
-      const { data } = supabase.storage.from("student-photos").getPublicUrl(path);
-      const url = data.publicUrl;
-      await supabase.from("profiles").update({ selfie_url: url }).eq("id", p.id);
-      setP({ ...p, selfie_url: url });
+      await supabase.from("profiles").update({ selfie_url: path }).eq("id", p.id);
+      setP({ ...p, selfie_url: dataUrl });
       toast({ title: "Profile photo updated" });
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
