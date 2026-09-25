@@ -66,10 +66,8 @@ const StudentCompleteProfile = () => {
         contentType: "image/jpeg", upsert: true,
       });
       if (error) throw error;
-      const { data } = supabase.storage.from("student-photos").createSignedUrl
-        ? await supabase.storage.from("student-photos").createSignedUrl(path, 60 * 60 * 24 * 365 * 5)
-        : ({ data: null } as any);
-      setSelfie((data as any)?.signedUrl || path);
+      const { data } = supabase.storage.from("student-photos").getPublicUrl(path);
+      setSelfie(data.publicUrl);
       toast({ title: "Selfie captured" });
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
