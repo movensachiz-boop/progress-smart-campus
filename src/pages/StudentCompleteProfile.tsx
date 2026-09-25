@@ -10,6 +10,7 @@ import { Loader2, Save, Camera, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
+import { extractPhotoPath, resolvePhotoUrl } from "@/lib/photoUrl";
 import pccLogo from "@/assets/pcc-logo.png";
 
 type F = Record<string, string>;
@@ -28,6 +29,7 @@ const StudentCompleteProfile = () => {
   const [profileId, setProfileId] = useState<string>("");
   const [studentName, setStudentName] = useState("");
   const [selfie, setSelfie] = useState<string>("");
+  const [selfiePath, setSelfiePath] = useState<string>("");
   const [camOpen, setCamOpen] = useState(false);
   const [f, setF] = useState<F>({});
 
@@ -43,7 +45,8 @@ const StudentCompleteProfile = () => {
       if (any.profile_completed) { navigate("/student"); return; }
       setProfileId(any.id);
       setStudentName(`${any.first_name || ""} ${any.last_name || ""}`.trim());
-      setSelfie(any.selfie_url || "");
+      setSelfiePath(extractPhotoPath(any.selfie_url));
+      setSelfie(await resolvePhotoUrl(any.selfie_url));
       const init: F = {};
       [
         "date_of_birth","nationality","national_id","home_address","phone","email",
@@ -66,8 +69,8 @@ const StudentCompleteProfile = () => {
         contentType: "image/jpeg", upsert: true,
       });
       if (error) throw error;
-      const { data } = supabase.storage.from("student-photos").getPublicUrl(path);
-      setSelfie(data.publicUrl);
+      setSelfiePath(path);
+      setSelfie(dataUrl);
       toast({ title: "Selfie captured" });
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
@@ -81,12 +84,12 @@ const StudentCompleteProfile = () => {
       toast({ title: "Missing required fields", description: missing.join(", "), variant: "destructive" });
       return;
     }
-    if (!selfie) {
+    if (!selfiePath) {
       toast({ title: "Selfie required", description: "Please capture your selfie.", variant: "destructive" });
       return;
     }
     setSaving(true);
-    const payload: any = { ...f, selfie_url: selfie, profile_completed: true };
+    const payload: any = { ...f, selfie_url: selfiePath, profile_completed: true };
     if (!payload.date_of_birth) delete payload.date_of_birth;
     const { error } = await supabase.from("profiles").update(payload).eq("id", profileId);
     setSaving(false);
