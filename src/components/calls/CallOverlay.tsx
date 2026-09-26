@@ -8,13 +8,38 @@ import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff, UserPlus, Search, Users 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
+const RemoteAudio = ({ stream }: { stream: MediaStream | null }) => {
+  const ref = useRef<HTMLAudioElement>(null);
+  const [blocked, setBlocked] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !stream) return;
+    el.srcObject = stream;
+    const play = () => el.play().then(() => setBlocked(false)).catch(() => setBlocked(true));
+    play();
+    stream.addEventListener("addtrack", play);
+    return () => stream.removeEventListener("addtrack", play);
+  }, [stream]);
+  return (
+    <>
+      <audio ref={ref} autoPlay playsInline />
+      {blocked && (
+        <Button size="sm" className="absolute top-2 right-2 z-10" onClick={() => ref.current?.play().then(() => setBlocked(false)).catch(() => {})}>
+          Tap to hear
+        </Button>
+      )}
+    </>
+  );
+};
+
 const VideoTile = ({ stream, name, muted, mirror, showVideo }: { stream: MediaStream | null; name: string; muted?: boolean; mirror?: boolean; showVideo: boolean }) => {
   const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => { if (ref.current && stream) ref.current.srcObject = stream; }, [stream]);
+  useEffect(() => { if (ref.current && stream) { ref.current.srcObject = stream; ref.current.play().catch(() => {}); } }, [stream]);
   const hasVideo = showVideo && !!stream?.getVideoTracks().some((t) => t.enabled);
   return (
     <div className="relative rounded-xl overflow-hidden bg-sidebar aspect-video flex items-center justify-center">
-      <video ref={ref} autoPlay playsInline muted={muted} className={cn("w-full h-full object-cover", !hasVideo && "hidden", mirror && "-scale-x-100")} />
+      {!muted && <RemoteAudio stream={stream} />}
+      <video ref={ref} autoPlay playsInline muted className={cn("w-full h-full object-cover", !hasVideo && "hidden", mirror && "-scale-x-100")} />
       {!hasVideo && (
         <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">
           {name.charAt(0).toUpperCase()}
