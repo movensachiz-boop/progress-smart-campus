@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff, UserPlus, Search, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { CallMinutes, fmtElapsed } from "./CallMinutes";
+import { NotebookPen, Timer } from "lucide-react";
 
 const RemoteAudio = ({ stream }: { stream: MediaStream | null }) => {
   const ref = useRef<HTMLAudioElement>(null);
@@ -120,6 +122,15 @@ export const PeoplePicker = ({ exclude = [], onPick, actions }: { exclude?: stri
 const CallOverlay = () => {
   const c = useCalls()!;
   const [addOpen, setAddOpen] = useState(false);
+  const [minutesOpen, setMinutesOpen] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!c.inCall) { setStartedAt(null); return; }
+    setStartedAt((s) => s ?? Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [c.inCall]);
 
   return (
     <>
@@ -168,16 +179,24 @@ const CallOverlay = () => {
             <Users size={18} className="text-primary" />
             <span className="font-semibold">{c.video ? "Video" : "Voice"} call</span>
             <span className="text-sm text-muted-foreground">· {c.peers.length + 1} in call</span>
+            {startedAt && <span className="flex items-center gap-1 text-sm font-mono text-primary ml-2"><Timer size={14} />{fmtElapsed(now - startedAt)}</span>}
             {c.ringingTo.length > 0 && (
               <span className="ml-auto text-sm text-muted-foreground animate-pulse">
                 Ringing {c.ringingTo.map((id) => c.online.find((u) => u.user_id === id)?.name || "…").join(", ")}
               </span>
             )}
           </div>
+          <div className="flex-1 flex min-h-0">
           <div className={cn("flex-1 overflow-y-auto p-4 grid gap-3 content-center",
             c.peers.length === 0 ? "grid-cols-1 max-w-xl mx-auto w-full" : c.peers.length === 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-2 lg:grid-cols-3")}>
             <VideoTile stream={c.localStream} name={`${c.me?.name || "You"} (you)`} muted mirror showVideo={c.video && c.camOn} />
             {c.peers.map((p) => <VideoTile key={p.userId} stream={p.stream} name={p.name} showVideo={c.video} />)}
+          </div>
+          {minutesOpen && startedAt && (
+            <div className="w-full sm:w-96 absolute sm:static inset-x-0 bottom-20 top-14 sm:inset-auto">
+              <CallMinutes startedAt={startedAt} participants={[c.me?.name || "Me", ...c.peers.map((p) => p.name)]} onClose={() => setMinutesOpen(false)} />
+            </div>
+          )}
           </div>
           <div className="p-4 border-t flex justify-center gap-3">
             <Button size="lg" variant={c.micOn ? "outline" : "secondary"} className="rounded-full" onClick={c.toggleMic} aria-label="Toggle microphone">
@@ -188,6 +207,9 @@ const CallOverlay = () => {
                 {c.camOn ? <Video size={20} /> : <VideoOff size={20} />}
               </Button>
             )}
+            <Button size="lg" variant="outline" className="rounded-full" onClick={() => setMinutesOpen((v) => !v)} aria-label="Meeting minutes">
+              <NotebookPen size={20} />
+            </Button>
             <Button size="lg" variant="outline" className="rounded-full" onClick={() => setAddOpen(true)} aria-label="Add people">
               <UserPlus size={20} />
             </Button>
