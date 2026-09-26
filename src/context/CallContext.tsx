@@ -2,6 +2,8 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, u
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import CallOverlay from "@/components/calls/CallOverlay";
+import { enableCallAlerts, registerSW, sendCallPush, pushSupported } from "@/lib/callPush";
+import { startRing, stopRing } from "@/lib/ringtone";
 
 export interface OnlineUser { user_id: string; name: string; role: string }
 export interface IncomingCall { roomId: string; from: string; fromName: string; video: boolean }
@@ -28,6 +30,9 @@ interface CallCtx {
   hangUp: () => void;
   toggleMic: () => void;
   toggleCam: () => void;
+  alertsOn: boolean;
+  alertsSupported: boolean;
+  enableAlerts: () => Promise<void>;
 }
 
 const Ctx = createContext<CallCtx | null>(null);
@@ -63,6 +68,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [directoryOpen, setDirectoryOpen] = useState(false);
+  const [alertsOn, setAlertsOn] = useState(false);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const pcs = useRef(new Map<string, RTCPeerConnection>());
@@ -97,6 +103,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       let name = prof ? `${prof.first_name} ${prof.last_name}`.trim() : "";
       if (!name) name = (email || "User").split("@")[0].replace(/[._]/g, " ");
       setMe({ user_id: uid, name, role });
+      registerSW().then(() => enableCallAlerts(uid, false)).then(setAlertsOn).catch(() => {});
     };
     supabase.auth.getUser().then(({ data }) => load(data.user?.id, data.user?.email));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
@@ -250,10 +257,11 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     const m = meRef.current;
     if (!rid || !m || userIds.length === 0) return;
     send("invite", { roomId: rid, to: userIds, fromName: m.name, video });
+    sendCallPush(userIds, "call", rid, m.name, video);
     setRingingTo((r) => Array.from(new Set([...r, ...userIds])));
     userIds.forEach((uid) => window.setTimeout(() => {
       setRingingTo((r) => {
-        if (r.includes(uid)) { send("cancel", { roomId: rid, to: uid }); return r.filter((x) => x !== uid); }
+        if (r.includes(uid)) { send("cancel", { roomId: rid, to: uid }); sendCallPush([uid], "cancel", rid, m.name, video); return r.filter((x) => x !== uid); }
         return r;
       });
     }, 45000));
@@ -269,9 +277,10 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     setDirectoryOpen(false);
     const m = meRef.current!;
     send("invite", { roomId: rid, to: userIds, fromName: m.name, video: withVideo });
+    sendCallPush(userIds, "call", rid, m.name, withVideo);
     setRingingTo(userIds);
     ringTimer.current = window.setTimeout(() => {
-      setRingingTo((r) => { if (r.length) send("cancel", { roomId: rid }); return []; });
+      setRingingTo((r) => { if (r.length) { send("cancel", { roomId: rid }); sendCallPush(r, "cancel", rid, m.name, withVideo); } return []; });
     }, 45000);
   }, [send]);
 
@@ -296,9 +305,10 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     if (roomRef.current) {
       send("leave", { roomId: roomRef.current });
       if (peers.length === 0) send("cancel", { roomId: roomRef.current });
+      if (ringingTo.length) sendCallPush(ringingTo, "cancel", roomRef.current, meRef.current?.name || "", video);
     }
     cleanup();
-  }, [send, cleanup, peers.length]);
+  }, [send, cleanup, peers.length, ringingTo, video]);
 
   // When everyone else leaves after connecting, end the call automatically
   const hadPeers = useRef(false);
@@ -322,6 +332,41 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [roomId, peers.length, ringingTo.length, cleanup]);
 
+  // Opened from a call notification (URL params or message from the service worker)
+  useEffect(() => {
+    if (!me) return;
+    const take = (d: any) => {
+      if (!d?.roomId || roomRef.current) return;
+      setIncoming({ roomId: d.roomId, from: d.from, fromName: d.fromName || "Someone", video: !!d.video });
+    };
+    const sp = new URLSearchParams(location.search);
+    if (sp.get("call")) {
+      take({ roomId: sp.get("call"), from: sp.get("from"), fromName: sp.get("name"), video: sp.get("video") === "1" });
+      ["call", "from", "name", "video"].forEach((k) => sp.delete(k));
+      const q = sp.toString();
+      history.replaceState(null, "", location.pathname + (q ? "?" + q : "") + location.hash);
+    }
+    const onMsg = (e: MessageEvent) => { if (e.data?.type === "incoming-call") take(e.data); };
+    navigator.serviceWorker?.addEventListener("message", onMsg);
+    return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
+  }, [me]);
+
+  // Ringing tones
+  useEffect(() => {
+    if (incoming) startRing("incoming");
+    else if (roomId && ringingTo.length > 0 && peers.length === 0) startRing("outgoing");
+    else stopRing();
+    return () => stopRing();
+  }, [incoming, roomId, ringingTo.length, peers.length]);
+
+  const enableAlerts = async () => {
+    if (!me) return;
+    const ok = await enableCallAlerts(me.user_id, true);
+    setAlertsOn(ok);
+    toast(ok ? { title: "Call alerts on", description: "Your phone will ring for calls even when the app is closed." }
+      : { title: "Couldn't turn on call alerts", description: "Allow notifications for this app in your phone settings. On iPhone, install the app to your Home Screen first.", variant: "destructive" });
+  };
+
   const toggleMic = () => {
     const t = localRef.current?.getAudioTracks()[0];
     if (t) { t.enabled = !t.enabled; setMicOn(t.enabled); }
@@ -339,7 +384,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
 
   const value: CallCtx = {
     me, online, incoming, inCall: !!roomId, roomId, video, localStream, peers, ringingTo, micOn, camOn,
-    directoryOpen, setDirectoryOpen, startCall, invite, accept, decline, hangUp, toggleMic, toggleCam,
+    directoryOpen, setDirectoryOpen, alertsOn, alertsSupported: pushSupported(), enableAlerts, startCall, invite, accept, decline, hangUp, toggleMic, toggleCam,
   };
 
   return (
