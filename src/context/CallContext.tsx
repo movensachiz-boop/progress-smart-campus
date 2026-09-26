@@ -37,6 +37,15 @@ const ICE: RTCConfiguration = {
   iceServers: [
     { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
     { urls: "stun:stun.cloudflare.com:3478" },
+    {
+      urls: [
+        "turn:openrelay.metered.ca:80",
+        "turn:openrelay.metered.ca:443",
+        "turn:openrelay.metered.ca:443?transport=tcp",
+      ],
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
   ],
 };
 
@@ -128,8 +137,10 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     pc.onicecandidate = (e) => {
       if (e.candidate) send("ice", { roomId: roomRef.current, to: uid, candidate: e.candidate.toJSON() });
     };
+    const fallback = new MediaStream();
     pc.ontrack = (e) => {
-      const stream = e.streams[0];
+      let stream = e.streams[0];
+      if (!stream) { fallback.addTrack(e.track); stream = fallback; }
       setPeers((p) => {
         const exists = p.find((x) => x.userId === uid);
         if (exists) return p.map((x) => (x.userId === uid ? { ...x, stream } : x));
