@@ -130,6 +130,11 @@ const CallOverlay = () => {
             <DialogTitle className="flex items-center gap-2"><Phone size={18} /> Calls</DialogTitle>
             <DialogDescription>Tick one person for a private call, or several for a group call.</DialogDescription>
           </DialogHeader>
+          {c.alertsSupported && !c.alertsOn && (
+            <Button variant="secondary" size="sm" onClick={c.enableAlerts} className="w-full">
+              Turn on call alerts (ring when the app is closed)
+            </Button>
+          )}
           <PeoplePicker actions={(ids) => (
             <>
               <Button variant="outline" disabled={!ids.length} onClick={() => c.startCall(ids, false)} className="gap-2"><Phone size={14} /> Voice call</Button>
