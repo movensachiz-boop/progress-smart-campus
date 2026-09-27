@@ -132,8 +132,32 @@ const CallOverlay = () => {
     return () => clearInterval(t);
   }, [c.inCall]);
 
+  const [askAlerts, setAskAlerts] = useState(false);
+  useEffect(() => {
+    if (!c.alertsSupported || c.alertsOn) { setAskAlerts(false); return; }
+    if (typeof Notification !== "undefined" && Notification.permission === "denied") return;
+    const t = setTimeout(() => {
+      const last = Number(localStorage.getItem("pcc_alerts_asked") || 0);
+      if (Date.now() - last > 12 * 3600 * 1000) setAskAlerts(true);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [c.alertsSupported, c.alertsOn]);
+  const closeAsk = () => { localStorage.setItem("pcc_alerts_asked", String(Date.now())); setAskAlerts(false); };
+
   return (
     <>
+      <Dialog open={askAlerts && !c.inCall && !c.incoming} onOpenChange={(v) => { if (!v) closeAsk(); }}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle className="text-center flex items-center justify-center gap-2"><Phone size={18} /> Receive calls when the app is closed</DialogTitle>
+            <DialogDescription className="text-center">Turn on call alerts so your phone rings and shows the call even when this app is closed. Tap Allow when your phone asks.</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center gap-3 pt-2">
+            <Button variant="outline" onClick={closeAsk}>Later</Button>
+            <Button onClick={async () => { await c.enableAlerts(); closeAsk(); }}>Turn on call alerts</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Directory */}
       <Dialog open={c.directoryOpen && !c.inCall} onOpenChange={c.setDirectoryOpen}>
         <DialogContent className="max-w-md">
