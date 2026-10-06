@@ -56,6 +56,18 @@ const ICE: RTCConfiguration = {
 
 const genId = () => crypto.randomUUID?.() || Math.random().toString(36).slice(2) + Date.now().toString(36);
 
+// Relay servers let a computer on Wi-Fi reach a phone on mobile data.
+let iceConfig: RTCConfiguration = ICE;
+let iceLoadedAt = 0;
+const loadIce = async () => {
+  if (Date.now() - iceLoadedAt < 30 * 60 * 1000) return;
+  try {
+    const { data } = await supabase.functions.invoke("turn-credentials");
+    const extra = (data?.iceServers || []) as RTCIceServer[];
+    if (extra.length) { iceConfig = { iceServers: [...extra, ...ICE.iceServers!] }; iceLoadedAt = Date.now(); }
+  } catch { /* keep defaults */ }
+};
+
 export const CallProvider = ({ children }: { children: ReactNode }) => {
   const [me, setMe] = useState<OnlineUser | null>(null);
   const [online, setOnline] = useState<OnlineUser[]>([]);
