@@ -248,3 +248,15 @@ export const generateSeparateInvoices = async (students: InvoiceStudent[], opts:
     await new Promise(r => setTimeout(r, 350));
   }
 };
+
+/** Build a single student invoice as base64 (for sending, no download). */
+export const buildStudentInvoiceBase64 = async (s: InvoiceStudent, opts: InvoiceOptions) => {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const logo = await loadLogo();
+  renderInvoice(doc, s, opts, logo);
+  const dataUri = doc.output("datauristring");
+  return {
+    base64: dataUri.split(",")[1],
+    filename: `Invoice_${s.regNo}_${opts.termLabel.replace(/\s+/g, "_")}.pdf`,
+  };
+};

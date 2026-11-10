@@ -19,7 +19,8 @@ import { FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { upsertStudentClassForTerm, upsertStudentClassesForTerm } from "@/hooks/useTermClassMap";
-import { useTerm } from "@/context/TermContext";
+import { useTerm, termLabel } from "@/context/TermContext";
+import { buildStudentInvoiceBase64 } from "@/lib/generateInvoices";
 import CameraCaptureDialog from "@/components/CameraCaptureDialog";
 import PhoneCameraPairDialog from "@/components/PhoneCameraPairDialog";
 import { Smartphone } from "lucide-react";
@@ -58,7 +59,7 @@ interface ExtractedStudent {
 
 const AdminStudents = () => {
   const { toast } = useToast();
-  const { selectedTermId } = useTerm();
+  const { selectedTermId, terms, currentTerm } = useTerm();
   const [students, setStudents] = useState<Student[]>([]);
   const [profileDrawerId, setProfileDrawerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -592,6 +593,19 @@ const AdminStudents = () => {
         return;
       }
       const s: any = student;
+      let invoice: { base64: string; filename: string } | null = null;
+      try {
+        const activeTerm = terms.find((t: any) => t.id === selectedTermId) || currentTerm || null;
+        const cls = [s.form ? `Form ${s.form}` : "", s.stream || ""].join(" ").trim() || "Unassigned";
+        invoice = await buildStudentInvoiceBase64({
+          name: `${student.first_name} ${student.last_name}`,
+          regNo: student.registration_number,
+          className: cls,
+          residency: s.residency,
+          totalFees: Number(s.total_fees) || 0,
+          totalPaid: Number(s.total_paid) || 0,
+        }, { termLabel: termLabel(activeTerm) });
+      } catch (e) { console.error("Invoice build failed", e); }
       const { data, error } = await supabase.functions.invoke("send-notification", {
         body: {
           channel: "whatsapp",
@@ -599,6 +613,8 @@ const AdminStudents = () => {
           studentName: `${student.first_name} ${student.last_name}`,
           registrationNumber: student.registration_number,
           password,
+          invoicePdfBase64: invoice?.base64,
+          invoiceFilename: invoice?.filename,
           details: {
             form: s.form, stream: s.stream, gender: s.gender, residency: s.residency, status: s.status,
             guardianName: s.guardian_name, totalFees: s.total_fees, totalPaid: s.total_paid, balance: s.computed_balance,
@@ -613,6 +629,9 @@ const AdminStudents = () => {
           description: data?.fallback
             ? `WhatsApp is still approving the school's message format, so this only arrives if the guardian messaged the school in the last 24 hours. New password: ${password}`
             : `Details and new password sent to ${student.guardian_phone}.`,
+        });
+        if (invoice && data?.invoiceSent === false) toast({
+          title: "Invoice PDF not sent", description: data?.invoiceError || "Could not attach the invoice.", variant: "destructive",
         });
       }
     } catch {

@@ -104,13 +104,39 @@ Deno.serve(async (req) => {
             { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: String(body.password) }] },
           ] } });
       }
+      // Optional: attach the student's PDF invoice as a WhatsApp document
+      let invoiceSent: boolean | undefined;
+      let invoiceError: string | undefined;
+      const sendInvoice = async () => {
+        if (!body.invoicePdfBase64) return;
+        try {
+          const b64 = String(body.invoicePdfBase64).replace(/^data:[^,]*,/, "");
+          if (b64.length > 20_000_000) throw new Error("Invoice too large");
+          const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+          const safeName = String(body.invoiceFilename || `Invoice_${registrationNumber || "student"}.pdf`).replace(/[^\w.\-]+/g, "_");
+          const path = `${String(registrationNumber || "student").replace(/[^\w\-]+/g, "_")}/${Date.now()}_${safeName}`;
+          const up = await supabaseAdmin.storage.from("invoices").upload(path, bytes, { contentType: "application/pdf", upsert: true });
+          if (up.error) throw new Error(up.error.message);
+          const signed = await supabaseAdmin.storage.from("invoices").createSignedUrl(path, 60 * 60 * 24 * 7);
+          if (signed.error || !signed.data?.signedUrl) throw new Error(signed.error?.message || "Could not create link");
+          const r = await send({ type: "document", document: { link: signed.data.signedUrl, filename: safeName, caption: `Invoice for ${studentName} – Progress Christian College` } });
+          invoiceSent = r.ok;
+          if (!r.ok) invoiceError = r.msg;
+        } catch (e) {
+          invoiceSent = false;
+          invoiceError = e instanceof Error ? e.message : String(e);
+          console.error("Invoice attach failed:", invoiceError);
+        }
+      };
       if (!t1.ok || !t2.ok) {
         // Fallback: free-form text (only delivered if guardian messaged the school in the last 24h)
         const f = await send({ type: "text", text: { body: text } });
         if (!f.ok) return new Response(JSON.stringify({ error: `WhatsApp: ${f.msg}` }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        return new Response(JSON.stringify({ success: true, channel: "whatsapp", fallback: true, templateError: t1.ok ? t2.msg : t1.msg }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        await sendInvoice();
+        return new Response(JSON.stringify({ success: true, channel: "whatsapp", fallback: true, invoiceSent, invoiceError, templateError: t1.ok ? t2.msg : t1.msg }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      return new Response(JSON.stringify({ success: true, channel: "whatsapp" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      await sendInvoice();
+      return new Response(JSON.stringify({ success: true, channel: "whatsapp", invoiceSent, invoiceError }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (!guardianPhone || !studentName) {
