@@ -608,7 +608,12 @@ const AdminStudents = () => {
       if (error || data?.error) {
         toast({ title: "WhatsApp not sent", description: `${data?.error || "Could not send message."} New password: ${password}`, variant: "destructive" });
       } else {
-        toast({ title: "WhatsApp Sent", description: `Details and new password sent to ${student.guardian_phone}.` });
+        toast({
+          title: data?.fallback ? "WhatsApp sent (may not arrive)" : "WhatsApp Sent",
+          description: data?.fallback
+            ? `WhatsApp is still approving the school's message format, so this only arrives if the guardian messaged the school in the last 24 hours. New password: ${password}`
+            : `Details and new password sent to ${student.guardian_phone}.`,
+        });
       }
     } catch {
       toast({ title: "Error", description: "Failed to send notification.", variant: "destructive" });

@@ -80,16 +80,35 @@ Deno.serve(async (req) => {
         line("Username", registrationNumber) +
         line("Password", body.password) +
         `Portal: https://progresschristiansys.com/login\n\nPlease keep this password private.\n- PCC School`;
-      const r = await fetch("https://connector-gateway.lovable.dev/whatsapp/messages", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "X-Connection-Api-Key": WHATSAPP_API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ messaging_product: "whatsapp", to: digits, type: "text", text: { body: text } }),
-      });
-      const rt = await r.text();
-      if (!r.ok) {
-        console.error(`WhatsApp send failed [${r.status}]: ${rt}`);
-        let msg = rt; try { msg = JSON.parse(rt)?.error?.message || rt; } catch { /* keep */ }
-        return new Response(JSON.stringify({ error: `WhatsApp: ${msg}` }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const send = async (payload: Record<string, unknown>) => {
+        const r = await fetch("https://connector-gateway.lovable.dev/whatsapp/messages", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "X-Connection-Api-Key": WHATSAPP_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ messaging_product: "whatsapp", to: digits, ...payload }),
+        });
+        const t = await r.text();
+        if (!r.ok) console.error(`WhatsApp send failed [${r.status}]: ${t}`);
+        let msg = t; try { msg = JSON.parse(t)?.error?.message || t; } catch { /* keep */ }
+        return { ok: r.ok, msg };
+      };
+      const cls = [d.form ? `Form ${d.form}` : "", d.stream || ""].join(" ").trim() || "N/A";
+      const bal = d.balance !== undefined && d.balance !== null ? `$${Number(d.balance).toFixed(2)}` : "N/A";
+      // Approved templates reach guardians even if they never messaged the school.
+      const t1 = await send({ type: "template", template: { name: "student_details_update", language: { code: "en" },
+        components: [{ type: "body", parameters: [studentName, registrationNumber || "N/A", cls, bal].map((x) => ({ type: "text", text: String(x) })) }] } });
+      let t2 = { ok: true, msg: "" };
+      if (body.password) {
+        t2 = await send({ type: "template", template: { name: "portal_password_code", language: { code: "en" },
+          components: [
+            { type: "body", parameters: [{ type: "text", text: String(body.password) }] },
+            { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: String(body.password) }] },
+          ] } });
+      }
+      if (!t1.ok || !t2.ok) {
+        // Fallback: free-form text (only delivered if guardian messaged the school in the last 24h)
+        const f = await send({ type: "text", text: { body: text } });
+        if (!f.ok) return new Response(JSON.stringify({ error: `WhatsApp: ${f.msg}` }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: true, channel: "whatsapp", fallback: true, templateError: t1.ok ? t2.msg : t1.msg }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify({ success: true, channel: "whatsapp" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
