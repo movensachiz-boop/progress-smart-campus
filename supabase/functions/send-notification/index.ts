@@ -12,10 +12,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const PINGRAM_API_KEY = Deno.env.get("PINGRAM_API_KEY");
-    if (!PINGRAM_API_KEY) {
-      throw new Error("PINGRAM_API_KEY is not configured");
-    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -55,7 +51,48 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { type, guardianPhone, studentName, registrationNumber, amount, receiptNumber, method, customMessage } = await req.json();
+    const body = await req.json();
+    const { type, guardianPhone, studentName, registrationNumber, amount, receiptNumber, method, customMessage } = body;
+
+    if (body.channel === "whatsapp") {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      const WHATSAPP_API_KEY = Deno.env.get("WHATSAPP_API_KEY");
+      if (!LOVABLE_API_KEY || !WHATSAPP_API_KEY) throw new Error("WhatsApp is not configured");
+      if (!guardianPhone || !studentName) {
+        return new Response(JSON.stringify({ error: "Missing guardianPhone or studentName" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      let digits = String(guardianPhone).replace(/\D/g, "");
+      if (digits.startsWith("0")) digits = "263" + digits.slice(1);
+      const d = body.details || {};
+      const line = (k: string, v: unknown) => (v !== undefined && v !== null && String(v).trim() !== "" ? `${k}: ${v}\n` : "");
+      const text =
+        `*Progress Christian College*\nStudent Portal Details\n\n` +
+        line("Name", studentName) +
+        line("Registration No", registrationNumber) +
+        line("Form", d.form) + line("Stream", d.stream) +
+        line("Gender", d.gender) + line("Residency", d.residency) +
+        line("Status", d.status) +
+        line("Guardian", d.guardianName) +
+        line("Fees owed", d.totalFees !== undefined ? `$${d.totalFees}` : "") +
+        line("Fees paid", d.totalPaid !== undefined ? `$${d.totalPaid}` : "") +
+        line("Balance", d.balance !== undefined ? `$${d.balance}` : "") +
+        `\n*Login*\n` +
+        line("Username", registrationNumber) +
+        line("Password", body.password) +
+        `Portal: https://progresschristiansys.com/login\n\nPlease keep this password private.\n- PCC School`;
+      const r = await fetch("https://connector-gateway.lovable.dev/whatsapp/messages", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "X-Connection-Api-Key": WHATSAPP_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ messaging_product: "whatsapp", to: digits, type: "text", text: { body: text } }),
+      });
+      const rt = await r.text();
+      if (!r.ok) {
+        console.error(`WhatsApp send failed [${r.status}]: ${rt}`);
+        let msg = rt; try { msg = JSON.parse(rt)?.error?.message || rt; } catch { /* keep */ }
+        return new Response(JSON.stringify({ error: `WhatsApp: ${msg}` }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ success: true, channel: "whatsapp" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     if (!guardianPhone || !studentName) {
       return new Response(JSON.stringify({ error: "Missing required fields: guardianPhone, studentName" }), {
@@ -88,6 +125,8 @@ Deno.serve(async (req) => {
       message = `Dear Guardian,\n\nThis is a notification regarding ${studentName} at Progress Christian Centre.\n\nRegistration Number: ${registrationNumber || "N/A"}\n\nThank you.\n- PCC School`;
     }
 
+    const PINGRAM_API_KEY = Deno.env.get("PINGRAM_API_KEY");
+    if (!PINGRAM_API_KEY) throw new Error("PINGRAM_API_KEY is not configured");
     // Send via Pingram REST API - POST /send with Bearer auth
     const pingramResponse = await fetch("https://api.pingram.io/send", {
       method: "POST",

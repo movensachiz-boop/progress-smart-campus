@@ -577,20 +577,38 @@ const AdminStudents = () => {
       toast({ title: "No Phone Number", description: "This student has no guardian phone number on file.", variant: "destructive" });
       return;
     }
+    if (!window.confirm(`This will set a NEW portal password for ${student.first_name} ${student.last_name} and send their details by WhatsApp to ${student.guardian_phone}. Continue?`)) return;
     setSendingNotification(student.id);
     try {
+      const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+      const arr = new Uint32Array(8);
+      crypto.getRandomValues(arr);
+      const password = Array.from(arr, (n) => chars[n % chars.length]).join("");
+      const { data: rp, error: rpErr } = await supabase.functions.invoke("manage-students", {
+        body: { action: "reset_password", registrationNumber: student.registration_number, newPassword: password },
+      });
+      if (rpErr || rp?.error) {
+        toast({ title: "Password not set", description: rp?.error || "Could not set a new password.", variant: "destructive" });
+        return;
+      }
+      const s: any = student;
       const { data, error } = await supabase.functions.invoke("send-notification", {
         body: {
-          type: "registration",
+          channel: "whatsapp",
           guardianPhone: student.guardian_phone,
           studentName: `${student.first_name} ${student.last_name}`,
           registrationNumber: student.registration_number,
+          password,
+          details: {
+            form: s.form, stream: s.stream, gender: s.gender, residency: s.residency, status: s.status,
+            guardianName: s.guardian_name, totalFees: s.total_fees, totalPaid: s.total_paid, balance: s.computed_balance,
+          },
         },
       });
       if (error || data?.error) {
-        toast({ title: "Notification Failed", description: data?.error || data?.details?.message || "Could not send message.", variant: "destructive" });
+        toast({ title: "WhatsApp not sent", description: `${data?.error || "Could not send message."} New password: ${password}`, variant: "destructive" });
       } else {
-        toast({ title: "Notification Sent", description: `Message sent to ${student.guardian_phone} for ${student.first_name} ${student.last_name}.` });
+        toast({ title: "WhatsApp Sent", description: `Details and new password sent to ${student.guardian_phone}.` });
       }
     } catch {
       toast({ title: "Error", description: "Failed to send notification.", variant: "destructive" });
